@@ -1,0 +1,25 @@
+# macOS metadata
+.DS_Store
+._*
+__MACOSX/
+
+# Editor and temporary files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Temporary output
+tmp/
+temp/
+*.log
