@@ -1,0 +1,502 @@
+   540→   540→<body class="bg-textured">
+   541→   541→  <div class="grain" id="grain"></div>
+   542→   542→  
+   543→   543→  <!-- Top Nav -->
+   544→   544→  <header class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-black/50 border-b border-white/5">
+   545→   545→    <div class="max-w-[1600px] mx-auto px-6 lg:px-10 py-4 flex items-center justify-between">
+   546→   546→      <a href="#" class="flex items-center gap-3 group">
+   547→   547→        <div class="w-9 h-9 bg-[var(--accent)] flex items-center justify-center relative">
+   548→   548→          <i class="fas fa-bolt text-black text-base"></i>
+   549→   549→          <div class="absolute -inset-1 border border-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity"></div>
+   550→   550→        </div>
+   551→   551→        <div>
+   552→   552→          <div class="font-display text-2xl leading-none tracking-wider">IRONFORGE</div>
+   553→   553→          <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.3em] mt-0.5">STRENGTH · COMMUNITY</div>
+   554→   554→        </div>
+   555→   555→      </a>
+   556→   556→      
+   557→   557→      <nav class="hidden lg:flex items-center gap-10">
+   558→   558→        <a href="#curriculum" class="nav-link">Programs</a>
+   559→   559→        <a href="#coaches" class="nav-link">Coaches</a>
+   560→   560→        <a href="#stories" class="nav-link">Stories</a>
+   561→   561→        <a href="#booking" class="nav-link">Schedule</a>
+   562→   562→        <a href="#booking" class="nav-link">Contact</a>
+   563→   563→      </nav>
+   564→   564→      
+   565→   565→      <div class="flex items-center gap-5">
+   566→   566→        <div class="hidden md:flex items-center gap-2 font-mono text-[11px] text-[var(--muted)]">
+   567→   567→          <i class="fas fa-location-dot text-[var(--accent)]"></i>
+   568→   568→          <span>47 EASTBOUND ALLEY · NYC</span>
+   569→   569→        </div>
+   570→   570→        <a href="#booking" class="hidden sm:inline-block font-heading text-xs tracking-[0.2em] uppercase text-black bg-[var(--silver)] px-5 py-2.5 hover:bg-white transition-colors">
+   571→   571→          Book Trial
+   572→   572→        </a>
+   573→   573→      </div>
+   574→   574→    </div>
+   575→   575→  </header>
+   576→   576→  
+   577→   577→  <!-- HERO -->
+   578→   578→  <section class="relative h-screen min-h-[760px] w-full overflow-hidden" id="hero">
+   579→   579→    <!-- Reel frames -->
+   580→   580→    <div class="absolute inset-0" id="reelContainer">
+   581→   581→      <div class="reel-frame active">
+   582→   582→        <img src="https://picsum.photos/seed/forgeA/1920/1080.jpg" alt="Athlete training">
+   583→   583→      </div>
+   584→   584→      <div class="reel-frame">
+   585→   585→        <img src="https://picsum.photos/seed/forgeB/1920/1080.jpg" alt="Strength training">
+   586→   586→      </div>
+   587→   587→      <div class="reel-frame">
+   588→   588→        <img src="https://picsum.photos/seed/forgeC/1920/1080.jpg" alt="Conditioning">
+   589→   589→      </div>
+   590→   590→      <div class="reel-frame">
+   591→   591→        <img src="https://picsum.photos/seed/forgeD/1920/1080.jpg" alt="Athlete portrait">
+   592→   592→      </div>
+   593→   593→      <div class="reel-frame">
+   594→   594→        <img src="https://picsum.photos/seed/forgeE/1920/1080.jpg" alt="Equipment detail">
+   595→   595→      </div>
+   596→   596→    </div>
+   597→   597→    
+   598→   598→    <div class="hero-overlay"></div>
+   599→   599→    <div class="scan-line"></div>
+   600→   600→    
+   601→   601→    <!-- Hero content -->
+   602→   602→    <div class="relative z-10 h-full max-w-[1600px] mx-auto px-6 lg:px-10 flex flex-col justify-end pb-20 pt-32">
+   603→   603→      
+   604→   604→      <!-- Top right reel control -->
+   605→   605→      <div class="absolute top-32 right-6 lg:right-10 flex items-center gap-6 z-20" id="reelControls">
+   606→   606→        <div class="hidden md:flex items-center gap-3 font-mono text-[11px] text-[var(--fg-dim)]">
+   607→   607→          <span class="rec-dot w-2 h-2 bg-[var(--accent)] rounded-full"></span>
+   608→   608→          <span class="tracking-[0.2em]">REEL · LIVE</span>
+   609→   609→        </div>
+   610→   610→        <button id="muteToggle" class="unmute-toggle flex items-center gap-3 px-4 py-2.5 border border-white/20 hover:border-[var(--accent)] bg-black/40 backdrop-blur-sm transition-colors group">
+   611→   611→          <div class="flex items-end gap-[2px] h-4">
+   612→   612→            <span class="wave-bar"></span>
+   613→   613→            <span class="wave-bar"></span>
+   614→   614→            <span class="wave-bar"></span>
+   615→   615→            <span class="wave-bar"></span>
+   616→   616→            <span class="wave-bar"></span>
+   617→   617→          </div>
+   618→   618→          <span class="font-mono text-[10px] tracking-[0.2em] uppercase" id="muteLabel">Muted</span>
+   619→   619→          <i class="fas fa-volume-xmark text-xs text-[var(--muted)] group-hover:text-[var(--accent)]" id="muteIcon"></i>
+   620→   620→        </button>
+   621→   621→      </div>
+   622→   622→      
+   623→   623→      <!-- Main headline -->
+   624→   624→      <div class="reveal in-view max-w-5xl">
+   625→   625→        <div class="section-marker mb-6">
+   626→   626→          <span>EST. 2012 · NYC</span>
+   627→   627→        </div>
+   628→   628→        <h1 class="font-display text-[14vw] md:text-[10vw] lg:text-[8.5vw] leading-[0.85] mb-8">
+   629→   629→          <span class="headline-line"><span>BUILT BY</span></span>
+   630→   630→          <span class="headline-line"><span class="text-stroke">DISCIPLINE.</span></span>
+   631→   631→          <span class="headline-line"><span>FORGED IN <span class="text-[var(--accent)]">IRON.</span></span></span>
+   632→   632→        </h1>
+   633→   633→        <p class="max-w-xl text-[var(--fg-dim)] text-base md:text-lg leading-relaxed font-body">
+   634→   634→          A private strength & conditioning studio for athletes who refuse average. Twenty-four elite coaches. Three training systems. One unrelenting standard — <span class="text-[var(--fg)]">your transformation</span>.
+   635→   635→        </p>
+   636→   636→      </div>
+   637→   637→      
+   638→   638→      <!-- Bottom hero strip -->
+   639→   639→      <div class="mt-12 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
+   640→   640→        
+   641→   641→        <!-- Coach strip preview -->
+   642→   642→        <div class="flex items-center gap-4">
+   643→   643→          <div class="flex -space-x-3">
+   644→   644→            <img src="https://picsum.photos/seed/coach1/120/120.jpg" class="w-12 h-12 rounded-full border-2 border-[var(--bg)] object-cover img-noir" alt="Coach Marcus">
+   645→   645→            <img src="https://picsum.photos/seed/coach2/120/120.jpg" class="w-12 h-12 rounded-full border-2 border-[var(--bg)] object-cover img-noir" alt="Coach Elena">
+   646→   646→            <img src="https://picsum.photos/seed/coach3/120/120.jpg" class="w-12 h-12 rounded-full border-2 border-[var(--bg)] object-cover img-noir" alt="Coach Tank">
+   647→   647→            <img src="https://picsum.photos/seed/coach4/120/120.jpg" class="w-12 h-12 rounded-full border-2 border-[var(--bg)] object-cover img-noir" alt="Coach Alex">
+   648→   648→            <div class="w-12 h-12 rounded-full border-2 border-[var(--bg)] bg-[var(--accent)] flex items-center justify-center font-display text-base text-black">+20</div>
+   649→   649→          </div>
+   650→   650→          <div>
+   651→   651→            <div class="font-mono text-[10px] tracking-[0.2em] text-[var(--muted)] uppercase">Coaching Staff</div>
+   652→   652→            <div class="font-heading text-sm text-[var(--fg)] tracking-wider">24 certified specialists</div>
+   653→   653→          </div>
+   654→   654→        </div>
+   655→   655→        
+   656→   656→        <!-- Reel progress + chapter -->
+   657→   657→        <div class="flex items-center gap-6 max-w-md w-full lg:w-auto">
+   658→   658→          <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em]">
+   659→   659→            <span id="chapterNum">01</span> / 05
+   660→   660→          </div>
+   661→   661→          <div class="flex-1 progress-bar">
+   662→   662→            <div class="progress-bar-fill" id="reelProgress"></div>
+   663→   663→          </div>
+   664→   664→          <div class="font-mono text-[10px] text-[var(--accent)] tracking-[0.2em]">
+   665→   665→            TRAINING REEL
+   666→   666→          </div>
+   667→   667→        </div>
+   668→   668→      </div>
+   669→   669→    </div>
+   670→   670→    
+   671→   671→    <!-- Scrolling ticker -->
+   672→   672→    <div class="absolute bottom-0 left-0 right-0 border-t border-white/5 bg-black/60 backdrop-blur-sm py-3 overflow-hidden z-10">
+   673→   673→      <div class="marquee-track font-display text-sm tracking-[0.25em] text-[var(--silver-dim)]">
+   674→   674→        <span class="px-8">STRENGTH IS BUILT</span><span class="text-[var(--accent)]">/</span>
+   675→   675→        <span class="px-8">WEAKNESS IS TAUGHT</span><span class="text-[var(--accent)]">/</span>
+   676→   676→        <span class="px-8">EARN YOUR PLACE</span><span class="text-[var(--accent)]">/</span>
+   677→   677→        <span class="px-8">DISCIPLINE EQUALS FREEDOM</span><span class="text-[var(--accent)]">/</span>
+   678→   678→        <span class="px-8">NO SHORTCUTS</span><span class="text-[var(--accent)]">/</span>
+   679→   679→        <span class="px-8">FORGED NOT FOUND</span><span class="text-[var(--accent)]">/</span>
+   680→   680→        <span class="px-8">STRENGTH IS BUILT</span><span class="text-[var(--accent)]">/</span>
+   681→   681→        <span class="px-8">WEAKNESS IS TAUGHT</span><span class="text-[var(--accent)]">/</span>
+   682→   682→        <span class="px-8">EARN YOUR PLACE</span><span class="text-[var(--accent)]">/</span>
+   683→   683→        <span class="px-8">DISCIPLINE EQUALS FREEDOM</span><span class="text-[var(--accent)]">/</span>
+   684→   684→        <span class="px-8">NO SHORTCUTS</span><span class="text-[var(--accent)]">/</span>
+   685→   685→        <span class="px-8">FORGED NOT FOUND</span><span class="text-[var(--accent)]">/</span>
+   686→   686→      </div>
+   687→   687→    </div>
+   688→   688→  </section>
+   689→   689→  
+   690→   690→  <!-- STATS -->
+   691→   691→  <section class="border-y border-[var(--border)] bg-[var(--bg-darker)] relative overflow-hidden">
+   692→   692→    <div class="max-w-[1600px] mx-auto px-6 lg:px-10 py-16 lg:py-20">
+   693→   693→      <div class="reveal-stagger grid grid-cols-2 lg:grid-cols-4 gap-y-10 gap-x-6">
+   694→   694→        <div class="border-l border-[var(--border-light)] pl-6">
+   695→   695→          <div class="font-display text-6xl md:text-7xl text-[var(--fg)] number-display" data-count="12">0</div>
+   696→   696→          <div class="font-mono text-[11px] text-[var(--muted)] tracking-[0.2em] uppercase mt-2">Years operating</div>
+   697→   697→        </div>
+   698→   698→        <div class="border-l border-[var(--border-light)] pl-6">
+   699→   699→          <div class="font-display text-6xl md:text-7xl text-[var(--accent)] number-display" data-count="850">0</div>
+   700→   700→          <div class="font-mono text-[11px] text-[var(--muted)] tracking-[0.2em] uppercase mt-2">Active members</div>
+   701→   701→        </div>
+   702→   702→        <div class="border-l border-[var(--border-light)] pl-6">
+   703→   703→          <div class="font-display text-6xl md:text-7xl text-[var(--fg)] number-display" data-count="1240">0</div>
+   704→   704→          <div class="font-mono text-[11px] text-[var(--muted)] tracking-[0.2em] uppercase mt-2">Transformations</div>
+   705→   705→        </div>
+   706→   706→        <div class="border-l border-[var(--border-light)] pl-6">
+   707→   707→          <div class="font-display text-6xl md:text-7xl text-[var(--fg)] number-display" data-count="24">0</div>
+   708→   708→          <div class="font-mono text-[11px] text-[var(--muted)] tracking-[0.2em] uppercase mt-2">Elite coaches</div>
+   709→   709→        </div>
+   710→   710→      </div>
+   711→   711→    </div>
+   712→   712→  </section>
+   713→   713→  
+   714→   714→  <!-- CURRICULUM -->
+   715→   715→  <section class="relative py-28 lg:py-36" id="curriculum">
+   716→   716→    <div class="max-w-[1600px] mx-auto px-6 lg:px-10">
+   717→   717→      
+   718→   718→      <div class="reveal grid lg:grid-cols-12 gap-8 mb-20">
+   719→   719→        <div class="lg:col-span-5">
+   720→   720→          <div class="section-marker mb-6"><span>02 — Curriculum</span></div>
+   721→   721→          <h2 class="font-display text-6xl md:text-7xl lg:text-8xl leading-[0.9]">
+   722→   722→            Three paths.<br>
+   723→   723→            <span class="text-stroke">One outcome:</span><br>
+   724→   724→            <span class="text-[var(--accent)]">relentless progress.</span>
+   725→   725→          </h2>
+   726→   726→        </div>
+   727→   727→        <div class="lg:col-span-6 lg:col-start-7 flex flex-col justify-end">
+   728→   728→          <p class="text-[var(--fg-dim)] text-lg leading-relaxed mb-6">
+   729→   729→            Every program at IRONFORGE is engineered around a single objective — measurable, aggressive transformation. Choose your track. We bring the protocol, the accountability, and the community that refuses to let you settle.
+   730→   730→          </p>
+   731→   731→          <div class="flex flex-wrap gap-3">
+   732→   732→            <span class="goal-pill active">All Programs</span>
+   733→   733→            <span class="goal-pill">Muscle Gain</span>
+   734→   734→            <span class="goal-pill">Fat Loss</span>
+   735→   735→            <span class="goal-pill">Fitness</span>
+   736→   736→          </div>
+   737→   737→        </div>
+   738→   738→      </div>
+   739→   739→      
+   740→   740→      <!-- Program cards -->
+   741→   741→      <div class="reveal-stagger grid md:grid-cols-3 gap-6 lg:gap-8">
+   742→   742→        
+   743→   743→        <!-- HYPERTROPHY -->
+   744→   744→        <article class="program-card info-card notch-corner group">
+   745→   745→          <div class="relative h-72 overflow-hidden">
+   746→   746→            <img src="https://picsum.photos/seed/progHypertrophy/800/600.jpg" class="program-img w-full h-full object-cover img-noir" alt="Hypertrophy training">
+   747→   747→            <div class="absolute inset-0 bg-gradient-to-t from-[var(--bg-card)] via-transparent to-transparent"></div>
+   748→   748→            <div class="absolute top-4 left-4 font-mono text-[11px] text-[var(--accent)] tracking-[0.2em]">01 / MUSCLE GAIN</div>
+   749→   749→            <div class="absolute top-4 right-4 px-2 py-1 bg-[var(--accent)] text-black font-mono text-[10px] tracking-[0.15em]">INTENSITY 85%</div>
+   750→   750→          </div>
+   751→   751→          <div class="p-7">
+   752→   752→            <h3 class="font-display text-4xl mb-3">HYPERTROPHY</h3>
+   753→   753→            <p class="text-[var(--fg-dim)] text-sm leading-relaxed mb-6">
+   754→   754→              Progressive overload protocols designed to build dense, functional muscle mass. Compound movements, controlled eccentric, calculated volume.
+   755→   755→            </p>
+   756→   756→            <div class="grid grid-cols-2 gap-y-3 gap-x-4 mb-6 pb-6 border-b border-[var(--border-light)]">
+   757→   757→              <div>
+   758→   758→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase">Duration</div>
+   759→   759→                <div class="font-heading text-base">60 MIN</div>
+   760→   760→              </div>
+   761→   761→              <div>
+   762→   762→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase">Frequency</div>
+   763→   763→                <div class="font-heading text-base">4–5× / WEEK</div>
+   764→   764→              </div>
+   765→   765→              <div>
+   766→   766→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase">Equipment</div>
+   767→   767→                <div class="font-heading text-base">FREE WEIGHTS</div>
+   768→   768→              </div>
+   769→   769→              <div>
+   770→   770→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase">Level</div>
+   771→   771→                <div class="font-heading text-base">INTERMEDIATE+</div>
+   772→   772→              </div>
+   773→   773→            </div>
+   774→   774→            <a href="#booking" class="flex items-center justify-between font-heading text-sm tracking-[0.15em] uppercase link-underline">
+   775→   775→              <span>Explore Program</span>
+   776→   776→              <i class="fas fa-arrow-right text-[var(--accent)]"></i>
+   777→   777→            </a>
+   778→   778→          </div>
+   779→   779→        </article>
+   780→   780→        
+   781→   781→        <!-- METABOLIC SHRED -->
+   782→   782→        <article class="program-card info-card notch-corner group">
+   783→   783→          <div class="relative h-72 overflow-hidden">
+   784→   784→            <img src="https://picsum.photos/seed/progShred/800/600.jpg" class="program-img w-full h-full object-cover img-noir" alt="Metabolic conditioning">
+   785→   785→            <div class="absolute inset-0 bg-gradient-to-t from-[var(--bg-card)] via-transparent to-transparent"></div>
+   786→   786→            <div class="absolute top-4 left-4 font-mono text-[11px] text-[var(--accent)] tracking-[0.2em]">02 / FAT LOSS</div>
+   787→   787→            <div class="absolute top-4 right-4 px-2 py-1 bg-[var(--accent)] text-black font-mono text-[10px] tracking-[0.15em]">INTENSITY 95%</div>
+   788→   788→          </div>
+   789→   789→          <div class="p-7">
+   790→   790→            <h3 class="font-display text-4xl mb-3">METABOLIC SHRED</h3>
+   791→   791→            <p class="text-[var(--fg-dim)] text-sm leading-relaxed mb-6">
+   792→   792→              High-intensity interval circuits engineered to torch adipose tissue while preserving lean mass. EMOM, AMRAP, and Tabata protocols.
+   793→   793→            </p>
+   794→   794→            <div class="grid grid-cols-2 gap-y-3 gap-x-4 mb-6 pb-6 border-b border-[var(--border-light)]">
+   795→   795→              <div>
+   796→   796→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase">Duration</div>
+   797→   797→                <div class="font-heading text-base">45 MIN</div>
+   798→   798→              </div>
+   799→   799→              <div>
+   800→   800→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase">Frequency</div>
+   801→   801→                <div class="font-heading text-base">3–4× / WEEK</div>
+   802→   802→              </div>
+   803→   803→              <div>
+   804→   804→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase">Equipment</div>
+   805→   805→                <div class="font-heading text-base">KB · ROPES · SLED</div>
+   806→   806→              </div>
+   807→   807→              <div>
+   808→   808→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase">Level</div>
+   809→   809→                <div class="font-heading text-base">ALL LEVELS</div>
+   810→   810→              </div>
+   811→   811→            </div>
+   812→   812→            <a href="#booking" class="flex items-center justify-between font-heading text-sm tracking-[0.15em] uppercase link-underline">
+   813→   813→              <span>Explore Program</span>
+   814→   814→              <i class="fas fa-arrow-right text-[var(--accent)]"></i>
+   815→   815→            </a>
+   816→   816→          </div>
+   817→   817→        </article>
+   818→   818→        
+   819→   819→        <!-- PRIMAL FOUNDATION -->
+   820→   820→        <article class="program-card info-card notch-corner group">
+   821→   821→          <div class="relative h-72 overflow-hidden">
+   822→   822→            <img src="https://picsum.photos/seed/progFoundation/800/600.jpg" class="program-img w-full h-full object-cover img-noir" alt="Functional fitness">
+   823→   823→            <div class="absolute inset-0 bg-gradient-to-t from-[var(--bg-card)] via-transparent to-transparent"></div>
+   824→   824→            <div class="absolute top-4 left-4 font-mono text-[11px] text-[var(--accent)] tracking-[0.2em]">03 / FITNESS</div>
+   825→   825→            <div class="absolute top-4 right-4 px-2 py-1 bg-[var(--accent)] text-black font-mono text-[10px] tracking-[0.15em]">INTENSITY 70%</div>
+   826→   826→          </div>
+   827→   827→          <div class="p-7">
+   828→   828→            <h3 class="font-display text-4xl mb-3">PRIMAL FOUNDATION</h3>
+   829→   829→            <p class="text-[var(--fg-dim)] text-sm leading-relaxed mb-6">
+   830→   830→              Functional strength, mobility, and conditioning for sustainable athleticism. Build the body that performs in real life — balanced, mobile, durable.
+   831→   831→            </p>
+   832→   832→            <div class="grid grid-cols-2 gap-y-3 gap-x-4 mb-6 pb-6 border-b border-[var(--border-light)]">
+   833→   833→              <div>
+   834→   834→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase">Duration</div>
+   835→   835→                <div class="font-heading text-base">50 MIN</div>
+   836→   836→              </div>
+   837→   837→              <div>
+   838→   838→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase">Frequency</div>
+   839→   839→                <div class="font-heading text-base">3–5× / WEEK</div>
+   840→   840→              </div>
+   841→   841→              <div>
+   842→   842→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase">Equipment</div>
+   843→   843→                <div class="font-heading text-base">TRX · BANDS · BW</div>
+   844→   844→              </div>
+   845→   845→              <div>
+   846→   846→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase">Level</div>
+   847→   847→                <div class="font-heading text-base">BEGINNER+</div>
+   848→   848→              </div>
+   849→   849→            </div>
+   850→   850→            <a href="#booking" class="flex items-center justify-between font-heading text-sm tracking-[0.15em] uppercase link-underline">
+   851→   851→              <span>Explore Program</span>
+   852→   852→              <i class="fas fa-arrow-right text-[var(--accent)]"></i>
+   853→   853→            </a>
+   854→   854→          </div>
+   855→   855→        </article>
+   856→   856→        
+   857→   857→      </div>
+   858→   858→    </div>
+   859→   859→  </section>
+   860→   860→  
+   861→   861→  <!-- COACHES -->
+   862→   862→  <section class="relative py-28 lg:py-36 border-t border-[var(--border)] bg-[var(--bg-darker)]" id="coaches">
+   863→   863→    <div class="max-w-[1600px] mx-auto px-6 lg:px-10">
+   864→   864→      
+   865→   865→      <div class="reveal grid lg:grid-cols-12 gap-8 mb-20">
+   866→   866→        <div class="lg:col-span-7">
+   867→   867→          <div class="section-marker mb-6"><span>03 — The Forge Masters</span></div>
+   868→   868→          <h2 class="font-display text-6xl md:text-7xl lg:text-8xl leading-[0.9]">
+   869→   869→            Coaches who <span class="text-[var(--accent)]">build</span><br>
+   870→   870→            coaches who <span class="text-stroke">transform.</span>
+   871→   871→          </h2>
+   872→   872→        </div>
+   873→   873→        <div class="lg:col-span-4 lg:col-start-9 flex flex-col justify-end">
+   874→   874→          <p class="text-[var(--fg-dim)] text-base leading-relaxed">
+   875→   875→            Each IRONFORGE coach holds multiple certifications and a minimum seven-year track record of athlete results. Hover any card to reveal their credentials and signature protocol.
+   876→   876→          </p>
+   877→   877→        </div>
+   878→   878→      </div>
+   879→   879→      
+   880→   880→      <!-- Coach grid -->
+   881→   881→      <div class="reveal-stagger grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+   882→   882→        
+   883→   883→        <!-- Coach 1: Marcus -->
+   884→   884→        <div class="flip-card">
+   885→   885→          <div class="flip-card-inner">
+   886→   886→            <!-- Front -->
+   887→   887→            <div class="flip-face flip-front info-card flex flex-col">
+   888→   888→              <div class="coach-img-wrap">
+   889→   889→                <img src="https://picsum.photos/seed/coachMarcus/600/800.jpg" alt="Marcus Reid">
+   890→   890→                <div class="absolute top-4 left-4 font-mono text-[10px] text-[var(--accent)] tracking-[0.2em]">/ 01</div>
+   891→   891→                <div class="absolute top-4 right-4 px-2 py-1 bg-black/60 backdrop-blur-sm font-mono text-[10px] text-[var(--fg)] tracking-[0.15em]">HEAD COACH</div>
+   892→   892→                <div class="absolute bottom-4 left-4 right-4">
+   893→   893→                  <div class="font-mono text-[10px] text-[var(--silver-dim)] tracking-[0.2em] uppercase">Strength & Hypertrophy</div>
+   894→   894→                </div>
+   895→   895→              </div>
+   896→   896→              <div class="p-6 flex-1 flex flex-col justify-between">
+   897→   897→                <div>
+   898→   898→                  <h3 class="font-display text-3xl leading-none">MARCUS REID</h3>
+   899→   899→                  <p class="text-[var(--muted)] text-xs mt-2 font-heading tracking-wider uppercase">Head Strength Coach</p>
+   900→   900→                </div>
+   901→   901→                <div class="flex items-center justify-between mt-4 pt-4 border-t border-[var(--border-light)]">
+   902→   902→                  <span class="font-mono text-[10px] text-[var(--muted)] tracking-[0.15em]">12 YRS · CSCS</span>
+   903→   903→                  <span class="font-mono text-[10px] text-[var(--accent)] tracking-[0.15em]">HOVER →</span>
+   904→   904→                </div>
+   905→   905→              </div>
+   906→   906→            </div>
+   907→   907→            <!-- Back -->
+   908→   908→            <div class="flip-face flip-back info-card p-7 flex flex-col bg-[var(--bg-card)]">
+   909→   909→              <div class="font-mono text-[10px] text-[var(--accent)] tracking-[0.2em] uppercase mb-4">/ Marcus Reid — Profile</div>
+   910→   910→              <h3 class="font-display text-2xl mb-5">Credentials</h3>
+   911→   911→              <ul class="space-y-2.5 text-sm mb-6">
+   912→   912→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>CSCS · NSCA Certified</span></li>
+   913→   913→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>Former National Powerlifter</span></li>
+   914→   914→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>Precision Nutrition L2</span></li>
+   915→   915→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>StrongFirst L2</span></li>
+   916→   916→              </ul>
+   917→   917→              <div class="mt-auto pt-5 border-t border-[var(--border-light)]">
+   918→   918→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase mb-2">Signature Workout</div>
+   919→   919→                <div class="font-display text-2xl text-[var(--accent)]">IRON PROTOCOL</div>
+   920→   920→                <p class="text-xs text-[var(--fg-dim)] mt-2">5×5 progressive overload — squats, presses, deadlifts.</p>
+   921→   921→              </div>
+   922→   922→            </div>
+   923→   923→          </div>
+   924→   924→        </div>
+   925→   925→        
+   926→   926→        <!-- Coach 2: Elena -->
+   927→   927→        <div class="flip-card">
+   928→   928→          <div class="flip-card-inner">
+   929→   929→            <div class="flip-face flip-front info-card flex flex-col">
+   930→   930→              <div class="coach-img-wrap">
+   931→   931→                <img src="https://picsum.photos/seed/coachElena/600/800.jpg" alt="Elena Voss">
+   932→   932→                <div class="absolute top-4 left-4 font-mono text-[10px] text-[var(--accent)] tracking-[0.2em]">/ 02</div>
+   933→   933→                <div class="absolute top-4 right-4 px-2 py-1 bg-black/60 backdrop-blur-sm font-mono text-[10px] text-[var(--fg)] tracking-[0.15em]">SPECIALIST</div>
+   934→   934→                <div class="absolute bottom-4 left-4 right-4">
+   935→   935→                  <div class="font-mono text-[10px] text-[var(--silver-dim)] tracking-[0.2em] uppercase">Metabolic & Conditioning</div>
+   936→   936→                </div>
+   937→   937→              </div>
+   938→   938→              <div class="p-6 flex-1 flex flex-col justify-between">
+   939→   939→                <div>
+   940→   940→                  <h3 class="font-display text-3xl leading-none">ELENA VOSS</h3>
+   941→   941→                  <p class="text-[var(--muted)] text-xs mt-2 font-heading tracking-wider uppercase">Conditioning Lead</p>
+   942→   942→                </div>
+   943→   943→                <div class="flex items-center justify-between mt-4 pt-4 border-t border-[var(--border-light)]">
+   944→   944→                  <span class="font-mono text-[10px] text-[var(--muted)] tracking-[0.15em]">8 YRS · ACE-CPT</span>
+   945→   945→                  <span class="font-mono text-[10px] text-[var(--accent)] tracking-[0.15em]">HOVER →</span>
+   946→   946→                </div>
+   947→   947→              </div>
+   948→   948→            </div>
+   949→   949→            <div class="flip-face flip-back info-card p-7 flex flex-col bg-[var(--bg-card)]">
+   950→   950→              <div class="font-mono text-[10px] text-[var(--accent)] tracking-[0.2em] uppercase mb-4">/ Elena Voss — Profile</div>
+   951→   951→              <h3 class="font-display text-2xl mb-5">Credentials</h3>
+   952→   952→              <ul class="space-y-2.5 text-sm mb-6">
+   953→   953→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>ACE-CPT · PN-L1</span></li>
+   954→   954→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>Ex-Ironman Triathlete</span></li>
+   955→   955→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>CrossFit L2</span></li>
+   956→   956→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>TRX Suspension Certified</span></li>
+   957→   957→              </ul>
+   958→   958→              <div class="mt-auto pt-5 border-t border-[var(--border-light)]">
+   959→   959→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase mb-2">Signature Workout</div>
+   960→   960→                <div class="font-display text-2xl text-[var(--accent)]">BURN ENGINE</div>
+   961→   961→                <p class="text-xs text-[var(--fg-dim)] mt-2">EMOM circuits — kettlebell, ropes, sled drives.</p>
+   962→   962→              </div>
+   963→   963→            </div>
+   964→   964→          </div>
+   965→   965→        </div>
+   966→   966→        
+   967→   967→        <!-- Coach 3: Tank -->
+   968→   968→        <div class="flip-card">
+   969→   969→          <div class="flip-card-inner">
+   970→   970→            <div class="flip-face flip-front info-card flex flex-col">
+   971→   971→              <div class="coach-img-wrap">
+   972→   972→                <img src="https://picsum.photos/seed/coachTank/600/800.jpg" alt="Jiang Tank Wei">
+   973→   973→                <div class="absolute top-4 left-4 font-mono text-[10px] text-[var(--accent)] tracking-[0.2em]">/ 03</div>
+   974→   974→                <div class="absolute top-4 right-4 px-2 py-1 bg-black/60 backdrop-blur-sm font-mono text-[10px] text-[var(--fg)] tracking-[0.15em]">HYPERTROPHY</div>
+   975→   975→                <div class="absolute bottom-4 left-4 right-4">
+   976→   976→                  <div class="font-mono text-[10px] text-[var(--silver-dim)] tracking-[0.2em] uppercase">Mass & Hypertrophy</div>
+   977→   977→                </div>
+   978→   978→              </div>
+   979→   979→              <div class="p-6 flex-1 flex flex-col justify-between">
+   980→   980→                <div>
+   981→   981→                  <h3 class="font-display text-3xl leading-none">"TANK" WEI</h3>
+   982→   982→                  <p class="text-[var(--muted)] text-xs mt-2 font-heading tracking-wider uppercase">Hypertrophy Specialist</p>
+   983→   983→                </div>
+   984→   984→                <div class="flex items-center justify-between mt-4 pt-4 border-t border-[var(--border-light)]">
+   985→   985→                  <span class="font-mono text-[10px] text-[var(--muted)] tracking-[0.15em]">10 YRS · IFBB PRO</span>
+   986→   986→                  <span class="font-mono text-[10px] text-[var(--accent)] tracking-[0.15em]">HOVER →</span>
+   987→   987→                </div>
+   988→   988→              </div>
+   989→   989→            </div>
+   990→   990→            <div class="flip-face flip-back info-card p-7 flex flex-col bg-[var(--bg-card)]">
+   991→   991→              <div class="font-mono text-[10px] text-[var(--accent)] tracking-[0.2em] uppercase mb-4">/ Tank Wei — Profile</div>
+   992→   992→              <h3 class="font-display text-2xl mb-5">Credentials</h3>
+   993→   993→              <ul class="space-y-2.5 text-sm mb-6">
+   994→   994→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>IFBB Pro Bodybuilder</span></li>
+   995→   995→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>NASM-CPT · PES</span></li>
+   996→   996→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span> posing & Stage Coach</span></li>
+   997→   997→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>Contest Prep Specialist</span></li>
+   998→   998→              </ul>
+   999→   999→              <div class="mt-auto pt-5 border-t border-[var(--border-light)]">
+  1000→  1000→                <div class="font-mono text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase mb-2">Signature Workout</div>
+  1001→  1001→                <div class="font-display text-2xl text-[var(--accent)]">MASS ARCHITECTURE</div>
+  1002→  1002→                <p class="text-xs text-[var(--fg-dim)] mt-2">High-volume split training with tempo eccentrics.</p>
+  1003→  1003→              </div>
+  1004→  1004→            </div>
+  1005→  1005→          </div>
+  1006→  1006→        </div>
+  1007→  1007→        
+  1008→  1008→        <!-- Coach 4: Alex -->
+  1009→  1009→        <div class="flip-card">
+  1010→  1010→          <div class="flip-card-inner">
+  1011→  1011→            <div class="flip-face flip-front info-card flex flex-col">
+  1012→  1012→              <div class="coach-img-wrap">
+  1013→  1013→                <img src="https://picsum.photos/seed/coachAlex/600/800.jpg" alt="Alex Mercer">
+  1014→  1014→                <div class="absolute top-4 left-4 font-mono text-[10px] text-[var(--accent)] tracking-[0.2em]">/ 04</div>
+  1015→  1015→                <div class="absolute top-4 right-4 px-2 py-1 bg-black/60 backdrop-blur-sm font-mono text-[10px] text-[var(--fg)] tracking-[0.15em]">MOVEMENT</div>
+  1016→  1016→                <div class="absolute bottom-4 left-4 right-4">
+  1017→  1017→                  <div class="font-mono text-[10px] text-[var(--silver-dim)] tracking-[0.2em] uppercase">Functional & Mobility</div>
+  1018→  1018→                </div>
+  1019→  1019→              </div>
+  1020→  1020→              <div class="p-6 flex-1 flex flex-col justify-between">
+  1021→  1021→                <div>
+  1022→  1022→                  <h3 class="font-display text-3xl leading-none">ALEX MERCER</h3>
+  1023→  1023→                  <p class="text-[var(--muted)] text-xs mt-2 font-heading tracking-wider uppercase">Movement Specialist</p>
+  1024→  1024→                </div>
+  1025→  1025→                <div class="flex items-center justify-between mt-4 pt-4 border-t border-[var(--border-light)]">
+  1026→  1026→                  <span class="font-mono text-[10px] text-[var(--muted)] tracking-[0.15em]">7 YRS · FRC · SFG</span>
+  1027→  1027→                  <span class="font-mono text-[10px] text-[var(--accent)] tracking-[0.15em]">HOVER →</span>
+  1028→  1028→                </div>
+  1029→  1029→              </div>
+  1030→  1030→            </div>
+  1031→  1031→            <div class="flip-face flip-back info-card p-7 flex flex-col bg-[var(--bg-card)]">
+  1032→  1032→              <div class="font-mono text-[10px] text-[var(--accent)] tracking-[0.2em] uppercase mb-4">/ Alex Mercer — Profile</div>
+  1033→  1033→              <h3 class="font-display text-2xl mb-5">Credentials</h3>
+  1034→  1034→              <ul class="space-y-2.5 text-sm mb-6">
+  1035→  1035→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>FRC Mobility Specialist</span></li>
+  1036→  1036→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>StrongFirst SFG-II</span></li>
+  1037→  1037→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>Ex-Naval PT Instructor</span></li>
+  1038→  1038→                <li class="flex items-center gap-3"><i class="fas fa-circle-check text-[var(--accent)] text-xs"></i><span>Functional Patterns</span></li>
+  1039→  1039→              </ul>
+
+[showing lines 540-1039 of 1951; use offset=1040 with limit to continue reading]

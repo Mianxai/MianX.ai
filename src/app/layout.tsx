@@ -14,11 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mianx.ai — AI Agents Agency | Autonomous AI Workforce",
+  title: "MianX.ai — AI Agents Agency | Autonomous AI Workforce",
   description:
-    "Mianx.ai is the world's most trusted AI-native enterprise platform. Build, operate, and scale businesses through autonomous AI workforces under human leadership.",
+    "MianX.ai is the world's most trusted AI-native enterprise platform. Build, operate, and scale businesses through autonomous AI workforces.",
   keywords: [
-    "Mianx.ai",
+    "MianX.ai",
     "AI Agency",
     "AI Agents",
     "Autonomous AI Workforce",
@@ -26,12 +26,11 @@ export const metadata: Metadata = {
     "AI Dashboard",
     "Enterprise AI",
   ],
-  authors: [{ name: "Mianx.ai" }],
+  authors: [{ name: "MianX.ai" }],
   openGraph: {
-    title: "Mianx.ai — AI Agents Agency",
-    description:
-      "Autonomous AI workforces that capture leads, analyze data, and drive business growth.",
-    siteName: "Mianx.ai",
+    title: "MianX.ai — AI Agents Agency",
+    description: "Autonomous AI workforces that capture leads and drive growth.",
+    siteName: "MianX.ai",
     type: "website",
   },
 };
@@ -44,7 +43,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground noise-overlay`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         {children}
         <Toaster />
