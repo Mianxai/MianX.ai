@@ -1,0 +1,938 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect, useCallback, useRef } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  BrainCircuit, Bot, Target, TrendingUp, Users, BarChart3,
+     7→  MessageSquare, Settings, ArrowRight, Zap, Shield, Globe,
+     8→  Cpu, Network, Layers, Eye, Bell, Search, Menu, X,
+     9→  ChevronDown, Plus, Filter, RefreshCw, Activity, Send,
+    10→  Clock, Mail, Phone, Building2, Trash2, UserCheck, Star,
+    11→} from "lucide-react";
+    12→import { Button } from "@/components/ui/button";
+    13→
+    14→/* ============================================================
+    15→   TYPES
+    16→   ============================================================ */
+    17→
+    18→interface Lead {
+    19→  id: string;
+    20→  name: string;
+    21→  email: string;
+    22→  phone: string | null;
+    23→  company: string | null;
+    24→  source: string;
+    25→  status: string;
+    26→  score: number;
+    27→  value: string;
+    28→  message: string | null;
+    29→  assignedTo: string | null;
+    30→  createdAt: string;
+    31→}
+    32→
+    33→interface AgentActivity {
+    34→  id: string;
+    35→  agent: string;
+    36→  action: string;
+    37→  status: string;
+    38→  createdAt: string;
+    39→}
+    40→
+    41→interface Stats {
+    42→  totalLeads: number;
+    43→  hotLeads: number;
+    44→  warmLeads: number;
+    45→  newLeads: number;
+    46→  totalValue: number;
+    47→  activeAgents: number;
+    48→  conversions: number;
+    49→  recentLeads: number;
+    50→}
+    51→
+    52→/* ============================================================
+    53→   ANIMATION VARIANTS
+    54→   ============================================================ */
+    55→
+    56→const fadeUp = {
+    57→  hidden: { opacity: 0, y: 40 },
+    58→  visible: (i: number) => ({
+    59→    opacity: 1, y: 0,
+    60→    transition: { delay: i * 0.1, duration: 0.7, ease: [0.22, 1, 0.36, 1] },
+    61→  }),
+    62→};
+    63→
+    64→const scaleIn = {
+    65→  hidden: { opacity: 0, scale: 0.9 },
+    66→  visible: (i: number) => ({
+    67→    opacity: 1, scale: 1,
+    68→    transition: { delay: i * 0.08, duration: 0.5, ease: "easeOut" },
+    69→  }),
+    70→};
+    71→
+    72→/* ============================================================
+    73→   LOGO COMPONENT
+    74→   ============================================================ */
+    75→
+    76→function MianXLogo({ size = "default" }: { size?: "small" | "default" | "large" }) {
+    77→  const sz = { small: 28, default: 36, large: 48 }[size];
+    78→  const txtSz = { small: "text-base", default: "text-xl", large: "text-3xl" }[size];
+    79→  const subSz = { small: "text-[7px]", default: "text-[9px]", large: "text-[11px]" }[size];
+    80→  return (
+    81→    <div className="flex items-center gap-2.5">
+    82→      <div className="relative" style={{ width: sz, height: sz }}>
+    83→        <div
+    84→          className="flex items-center justify-center w-full h-full"
+    85→          style={{ background: "#FF4D00", borderRadius: size === "small" ? 6 : 8 }}
+    86→        >
+    87→          <BrainCircuit size={sz * 0.5} color="#000" strokeWidth={2.5} />
+    88→        </div>
+    89→      </div>
+    90→      <div>
+    91→        <div className={`${txtSz} font-bold leading-none tracking-wider`} style={{ fontFamily: "var(--font-geist-sans)" }}>
+    92→          <span className="text-[#E8E8EC]">Mian</span><span className="text-[#FF4D00]">X</span><span className="text-[#6B6B80] font-light">.ai</span>
+    93→        </div>
+    94→        {size !== "small" && (
+    95→          <div className={`${subSz} tracking-[0.25em] text-[#6B6B80] mt-0.5 font-mono`}>
+    96→            AI AGENTS AGENCY
+    97→          </div>
+    98→        )}
+    99→      </div>
+   100→    </div>
+   101→  );
+   102→}
+   103→
+   104→/* ============================================================
+   105→   TOAST SYSTEM
+   106→   ============================================================ */
+   107→
+   108→function Toast({ message, visible }: { message: string; visible: boolean }) {
+   109→  return (
+   110→    <div
+   111→      className={`fixed top-20 right-6 z-[150] transition-all duration-500 ${
+   112→        visible ? "translate-x-0 opacity-100" : "translate-x-[120%] opacity-0"
+   113→      }`}
+   114→      style={{
+   115→        background: "#111118",
+   116→        border: "1px solid #FF4D00",
+   117→        borderLeft: "3px solid #FF4D00",
+   118→        padding: "0.75rem 1.25rem",
+   119→        maxWidth: "360px",
+   120→      }}
+   121→    >
+   122→      <div className="flex items-center gap-2">
+   123→        <div className="w-2 h-2 rounded-full bg-[#00FF88]" />
+   124→        <span className="text-sm">{message}</span>
+   125→      </div>
+   126→    </div>
+   127→  );
+   128→}
+   129→
+   130→/* ============================================================
+   131→   NAVIGATION
+   132→   ============================================================ */
+   133→
+   134→function Navbar({
+   135→  onOpenDashboard,
+   136→  isDashboard,
+   137→  onBackToLanding,
+   138→}: {
+   139→  onOpenDashboard: () => void;
+   140→  isDashboard: boolean;
+   141→  onBackToLanding: () => void;
+   142→}) {
+   143→  const [scrolled, setScrolled] = useState(false);
+   144→  const [mobileOpen, setMobileOpen] = useState(false);
+   145→
+   146→  useEffect(() => {
+   147→    const h = () => setScrolled(window.scrollY > 50);
+   148→    window.addEventListener("scroll", h);
+   149→    return () => window.removeEventListener("scroll", h);
+   150→  }, []);
+   151→
+   152→  const landingLinks = [
+   153→    { label: "Features", href: "#features" },
+   154→    { label: "How It Works", href: "#how-it-works" },
+   155→    { label: "AI Workforce", href: "#workforce" },
+   156→  ];
+   157→
+   158→  return (
+   159→    <motion.nav
+   160→      initial={{ y: -100 }}
+   161→      animate={{ y: 0 }}
+   162→      transition={{ duration: 0.6, ease: "easeOut" }}
+   163→      className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md transition-all duration-500"
+   164→      style={{
+   165→        background: scrolled ? "rgba(8,8,12,0.85)" : "rgba(8,8,12,0.5)",
+   166→        borderBottom: "1px solid rgba(255,255,255,0.04)",
+   167→      }}
+   168→    >
+   169→      <div className="max-w-[1400px] mx-auto px-5 lg:px-8 py-3.5 flex items-center justify-between">
+   170→        <button onClick={isDashboard ? onBackToLanding : () => window.scrollTo({ top: 0, behavior: "smooth" })}>
+   171→          <MianXLogo size="small" />
+   172→        </button>
+   173→
+   174→        {!isDashboard && (
+   175→          <nav className="hidden lg:flex items-center gap-9">
+   176→            {landingLinks.map((link) => (
+   177→              <a key={link.href} href={link.href} className="nav-link">
+   178→                {link.label}
+   179→              </a>
+   180→            ))}
+   181→          </nav>
+   182→        )}
+   183→
+   184→        <div className="flex items-center gap-3">
+   185→          {isDashboard ? (
+   186→            <Button
+   187→              onClick={onBackToLanding}
+   188→              variant="ghost"
+   189→              className="text-xs uppercase tracking-wider text-[#888899] hover:text-[#E8E8EC]"
+   190→            >
+   191→              <ArrowRight className="mr-1.5 h-3.5 w-3.5 rotate-180" />
+   192→              Back to Site
+   193→            </Button>
+   194→          ) : (
+   195→            <>
+   196→              <Button
+   197→                onClick={onOpenDashboard}
+   198→                variant="ghost"
+   199→                className="text-xs uppercase tracking-wider text-[#888899] hover:text-[#E8E8EC] hidden sm:flex"
+   200→              >
+   201→                Dashboard
+   202→              </Button>
+   203→              <Button
+   204→                onClick={onOpenDashboard}
+   205→                className="pulse-btn text-xs uppercase tracking-wider font-semibold px-5 py-2"
+   206→                style={{ background: "#FF4D00", color: "#000", borderRadius: 4 }}
+   207→              >
+   208→                <Zap className="mr-1.5 h-3.5 w-3.5" />
+   209→                Launch Dashboard
+   210→              </Button>
+   211→            </>
+   212→          )}
+   213→          <button className="lg:hidden text-[#E8E8EC]" onClick={() => setMobileOpen(!mobileOpen)}>
+   214→            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+   215→          </button>
+   216→        </div>
+   217→      </div>
+   218→
+   219→      {mobileOpen && (
+   220→        <motion.div
+   221→          initial={{ opacity: 0, height: 0 }}
+   222→          animate={{ opacity: 1, height: "auto" }}
+   223→          className="lg:hidden pb-4 border-t border-white/5 px-5"
+   224→        >
+   225→          {!isDashboard &&
+   226→            landingLinks.map((link) => (
+   227→              <a
+   228→                key={link.href}
+   229→                href={link.href}
+   230→                onClick={() => setMobileOpen(false)}
+   231→                className="block py-3 text-xs uppercase tracking-wider text-[#888899]"
+   232→              >
+   233→                {link.label}
+   234→              </a>
+   235→            ))}
+   236→          <button
+   237→            onClick={() => { onOpenDashboard(); setMobileOpen(false); }}
+   238→            className="w-full mt-2 py-3 text-xs uppercase tracking-wider font-semibold text-left"
+   239→            style={{ color: "#FF4D00" }}
+   240→          >
+   241→            {isDashboard ? "Back to Site" : "Launch Dashboard"}
+   242→          </button>
+   243→        </motion.div>
+   244→      )}
+   245→    </motion.nav>
+   246→  );
+   247→}
+   248→
+   249→/* ============================================================
+   250→   LANDING PAGE
+   251→   ============================================================ */
+   252→
+   253→function LandingPage({ onOpenDashboard }: { onOpenDashboard: () => void }) {
+   254→  const features = [
+   255→    { icon: Target, title: "Lead Capture", desc: "AI agents deployed across channels that intelligently capture, qualify, and route every lead to your dashboard in real-time.", color: "#FF4D00" },
+   256→    { icon: Eye, title: "Super Admin Dashboard", desc: "Unified command center — every lead, every agent, every outcome. Full visibility and control designed for founders.", color: "#00D4FF" },
+   257→    { icon: Bot, title: "Autonomous AI Agents", desc: "Specialized AI agents take over — analyzing, qualifying, nurturing, and converting leads while you focus on strategy.", color: "#00FF88" },
+   258→    { icon: BrainCircuit, title: "AI Workforce OS", desc: "Deploy entire AI departments — Sales, Marketing, Support — working as a coordinated team under your leadership.", color: "#FF4D00" },
+   259→    { icon: Shield, title: "Enterprise Security", desc: "Zero-trust architecture, end-to-end encryption, and role-based access. Your data stays protected.", color: "#00D4FF" },
+   260→    { icon: TrendingUp, title: "Intelligence Platform", desc: "Every interaction compounds knowledge. Making your AI workforce smarter with every single engagement.", color: "#00FF88" },
+   261→  ];
+   262→
+   263→  const steps = [
+   264→    { step: "01", title: "Client Submits Lead", desc: "Leads flow from your website, social media, email, or API. Every lead is captured and logged automatically.", icon: Globe, color: "#FF4D00" },
+   265→    { step: "02", title: "Dashboard Shows Lead", desc: "Real-time unified command center. See source, quality score, contact info, and AI analysis in one view.", icon: BarChart3, color: "#00D4FF" },
+   266→    { step: "03", title: "AI Agents Activate", desc: "Sales AI qualifies. Marketing AI nurtures. Support AI communicates. All simultaneously, all autonomously.", icon: Bot, color: "#00FF88" },
+   267→    { step: "04", title: "Conversion & Scale", desc: "Real-time analytics and performance tracking ensure your agency scales without limits.", icon: TrendingUp, color: "#FFD93D" },
+   268→  ];
+   269→
+   270→  const agents = [
+   271→    { name: "Sales AI", role: "Lead Conversion", tasks: 47, color: "#FF4D00", status: "active" },
+   272→    { name: "Marketing AI", role: "Campaigns", tasks: 23, color: "#00D4FF", status: "active" },
+   273→    { name: "Support AI", role: "Communication", tasks: 89, color: "#00FF88", status: "active" },
+   274→    { name: "Analytics AI", role: "Intelligence", tasks: 15, color: "#FFD93D", status: "active" },
+   275→    { name: "CRM AI", role: "Relationships", tasks: 0, color: "#FF6B6B", status: "standby" },
+   276→    { name: "Ops AI", role: "Operations", tasks: 34, color: "#FF4D00", status: "active" },
+   277→  ];
+   278→
+   279→  return (
+   280→    <div className="bg-textured">
+   281→      {/* HERO */}
+   282→      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+   283→        <div className="absolute inset-0 opacity-[0.015]" style={{
+   284→          backgroundImage: "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+   285→          backgroundSize: "60px 60px",
+   286→        }} />
+   287→        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full blur-[150px]" style={{ background: "rgba(255,77,0,0.06)" }} />
+   288→        <div className="absolute bottom-1/3 right-1/4 w-[400px] h-[400px] rounded-full blur-[120px]" style={{ background: "rgba(0,212,255,0.04)" }} />
+   289→
+   290→        <motion.div initial="hidden" animate="visible" className="relative z-10 max-w-5xl mx-auto px-5 text-center">
+   291→          <motion.div custom={0} variants={fadeUp} className="mb-6">
+   292→            <div className="section-marker">AI-Native Platform</div>
+   293→          </motion.div>
+   294→
+   295→          <motion.h1
+   296→            custom={1} variants={fadeUp}
+   297→            className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black uppercase leading-[0.85] tracking-tight"
+   298→          >
+   299→            <span className="block">Your AI</span>
+   300→            <span className="block" style={{ color: "#FF4D00" }}>Agents Agency</span>
+   301→            <span className="block text-3xl sm:text-4xl md:text-5xl font-light tracking-wider text-[#6B6B80] mt-2 sm:mt-3">
+   302→              STARTS HERE
+   303→            </span>
+   304→          </motion.h1>
+   305→
+   306→          <motion.p custom={2} variants={fadeUp} className="mt-6 sm:mt-8 text-sm sm:text-base text-[#888899] max-w-xl mx-auto leading-relaxed">
+   307→            Autonomous AI workforces that capture leads from clients, display them in your
+   308→            super admin dashboard, and let AI agents work on them — <span className="text-[#FF4D00]">all on autopilot</span>.
+   309→          </motion.p>
+   310→
+   311→          <motion.div custom={3} variants={fadeUp} className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+   312→            <button
+   313→              onClick={onOpenDashboard}
+   314→              className="pulse-btn text-xs uppercase tracking-[0.15em] font-bold px-8 py-3.5 transition-transform hover:scale-105"
+   315→              style={{ background: "#FF4D00", color: "#000", borderRadius: 4 }}
+   316→            >
+   317→              <Zap className="inline mr-2 h-4 w-4" />
+   318→              Launch Dashboard
+   319→            </button>
+   320→            <button
+   321→              onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
+   322→              className="text-xs uppercase tracking-[0.15em] px-8 py-3.5 transition-colors hover:text-white"
+   323→              style={{ border: "1px solid #2A2A3A", color: "#888899", borderRadius: 4 }}
+   324→            >
+   325→              Explore Features
+   326→            </button>
+   327→          </motion.div>
+   328→
+   329→          <motion.div custom={4} variants={fadeUp} className="mt-12 sm:mt-16 grid grid-cols-3 gap-8 max-w-md mx-auto">
+   330→            {[
+   331→              { value: "10x", label: "Faster" },
+   332→              { value: "24/7", label: "Autonomous" },
+   333→              { value: "99.9%", label: "Uptime" },
+   334→            ].map((s) => (
+   335→              <div key={s.label} className="text-center">
+   336→                <div className="text-2xl sm:text-3xl font-black" style={{ color: "#FF4D00" }}>{s.value}</div>
+   337→                <div className="text-[10px] uppercase tracking-[0.15em] text-[#6B6B80] mt-1">{s.label}</div>
+   338→              </div>
+   339→            ))}
+   340→          </motion.div>
+   341→        </motion.div>
+   342→
+   343→        <div className="absolute bottom-0 left-0 right-0 h-32" style={{ background: "linear-gradient(to top, #08080C, transparent)" }} />
+   344→      </section>
+   345→
+   346→      {/* MARQUEE */}
+   347→      <div className="overflow-hidden py-6 border-y" style={{ borderColor: "#1E1E2A" }}>
+   348→        <div className="marquee-track">
+   349→          {[...Array(2)].map((_, i) => (
+   350→            <div key={i} className="flex items-center gap-8 px-4">
+   351→              {["LEAD CAPTURE", "AI AGENTS", "DASHBOARD", "AUTONOMOUS", "ENTERPRISE", "REAL-TIME", "SCALABLE", "INTELLIGENT"].map((t) => (
+   352→                <span key={t} className="text-xs uppercase tracking-[0.3em] text-[#3A3A4A] whitespace-nowrap font-mono">
+   353→                  {t} <span className="mx-4" style={{ color: "#FF4D00" }}>&#x2022;</span>
+   354→                </span>
+   355→              ))}
+   356→            </div>
+   357→          ))}
+   358→        </div>
+   359→      </div>
+   360→
+   361→      {/* FEATURES */}
+   362→      <section id="features" className="relative py-20 sm:py-28">
+   363→        <div className="max-w-[1200px] mx-auto px-5">
+   364→          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }} className="text-center mb-14">
+   365→            <motion.div custom={0} variants={fadeUp}><div className="section-marker">Capabilities</div></motion.div>
+   366→            <motion.h2 custom={1} variants={fadeUp} className="text-3xl sm:text-4xl md:text-5xl font-black uppercase mt-4">
+   367→              Everything You Need
+   368→            </motion.h2>
+   369→          </motion.div>
+   370→
+   371→          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   372→            {features.map((f, i) => (
+   373→              <motion.div
+   374→                key={f.title} custom={i} variants={scaleIn}
+   375→                whileHover={{ y: -6, transition: { duration: 0.3 } }}
+   376→                className="notch-corner p-6 cursor-pointer"
+   377→                style={{ background: "#111118", border: "1px solid #1E1E2A", transition: "border-color 0.3s" }}
+   378→                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#FF4D0040")}
+   379→                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1E1E2A")}
+   380→              >
+   381→                <div className="w-10 h-10 rounded flex items-center justify-center mb-4" style={{ background: `${f.color}12` }}>
+   382→                  <f.icon size={20} style={{ color: f.color }} />
+   383→                </div>
+   384→                <h3 className="text-base font-bold uppercase tracking-wider mb-2">{f.title}</h3>
+   385→                <p className="text-xs text-[#6B6B80] leading-relaxed">{f.desc}</p>
+   386→              </motion.div>
+   387→            ))}
+   388→          </motion.div>
+   389→        </div>
+   390→      </section>
+   391→
+   392→      {/* HOW IT WORKS */}
+   393→      <section id="how-it-works" className="relative py-20 sm:py-28" style={{ background: "#0A0A10" }}>
+   394→        <div className="max-w-[1200px] mx-auto px-5">
+   395→          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }} className="text-center mb-14">
+   396→            <motion.div custom={0} variants={fadeUp}><div className="section-marker">The Process</div></motion.div>
+   397→            <motion.h2 custom={1} variants={fadeUp} className="text-3xl sm:text-4xl md:text-5xl font-black uppercase mt-4">
+   398→              How It Works
+   399→            </motion.h2>
+   400→          </motion.div>
+   401→
+   402→          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+   403→            {steps.map((s, i) => (
+   404→              <motion.div
+   405→                key={s.step} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={i} variants={fadeUp}
+   406→                className="relative group"
+   407→              >
+   408→                <div className="relative mb-5">
+   409→                  <div className="w-14 h-14 rounded-lg flex items-center justify-center" style={{ background: `${s.color}10`, border: `1px solid ${s.color}20` }}>
+   410→                    <s.icon size={24} style={{ color: s.color }} />
+   411→                  </div>
+   412→                  <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: s.color, color: "#000" }}>
+   413→                    {s.step}
+   414→                  </div>
+   415→                </div>
+   416→                <h3 className="text-sm font-bold uppercase tracking-wider mb-2">{s.title}</h3>
+   417→                <p className="text-xs text-[#6B6B80] leading-relaxed">{s.desc}</p>
+   418→              </motion.div>
+   419→            ))}
+   420→          </div>
+   421→        </div>
+   422→      </section>
+   423→
+   424→      {/* AI WORKFORCE */}
+   425→      <section id="workforce" className="relative py-20 sm:py-28">
+   426→        <div className="max-w-[1200px] mx-auto px-5">
+   427→          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+   428→            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }}>
+   429→              <motion.div custom={0} variants={fadeUp}><div className="section-marker">AI Workforce</div></motion.div>
+   430→              <motion.h2 custom={1} variants={fadeUp} className="text-3xl sm:text-4xl md:text-5xl font-black uppercase mt-4">
+   431→                Deploy Your <span style={{ color: "#FF4D00" }}>AI Department</span>
+   432→              </motion.h2>
+   433→              <motion.p custom={2} variants={fadeUp} className="mt-5 text-sm text-[#888899] leading-relaxed">
+   434→                Each AI agent is a specialized worker in your organization. They collaborate as a team,
+   435→                share knowledge, and continuously improve. Your always-on, never-tiring digital workforce.
+   436→              </motion.p>
+   437→              <motion.div custom={3} variants={fadeUp} className="mt-6 space-y-3">
+   438→                {["Autonomous task execution with human oversight", "Cross-agent knowledge sharing", "Real-time performance monitoring", "Scalable from 1 to 1,000+ agents"].map((item) => (
+   439→                  <div key={item} className="flex items-center gap-3">
+   440→                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#FF4D00" }} />
+   441→                    <span className="text-xs text-[#888899]">{item}</span>
+   442→                  </div>
+   443→                ))}
+   444→              </motion.div>
+   445→            </motion.div>
+   446→
+   447→            <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+   448→              {agents.map((a, i) => (
+   449→                <motion.div key={a.name} custom={i} variants={scaleIn}
+   450→                  whileHover={{ scale: 1.04, transition: { duration: 0.2 } }}
+   451→                  className="p-4 scan-line-effect"
+   452→                  style={{ background: "#111118", border: "1px solid #1E1E2A", borderRadius: 8 }}
+   453→                >
+   454→                  <div className="flex items-center justify-between mb-3">
+   455→                    <div className="w-8 h-8 rounded flex items-center justify-center" style={{ background: `${a.color}10` }}>
+   456→                      <Bot size={14} style={{ color: a.color }} />
+   457→                    </div>
+   458→                    <div className={`w-1.5 h-1.5 rounded-full ${a.status === "active" ? "accent-dot" : ""}`} style={{
+   459→                      background: a.status === "active" ? "#00FF88" : "#6B6B80",
+   460→                    }} />
+   461→                  </div>
+   462→                  <div className="text-xs font-bold uppercase tracking-wider">{a.name}</div>
+   463→                  <div className="text-[10px] text-[#6B6B80] mt-0.5">{a.role}</div>
+   464→                  {a.tasks > 0 && (
+   465→                    <div className="mt-2.5 flex items-center justify-between">
+   466→                      <span className="text-[10px] text-[#6B6B80]">{a.tasks} tasks</span>
+   467→                      <div className="w-10 h-1 rounded-full overflow-hidden" style={{ background: "#1E1E2A" }}>
+   468→                        <motion.div initial={{ width: 0 }} whileInView={{ width: `${Math.min(a.tasks, 100)}%` }} viewport={{ once: true }} transition={{ duration: 1.2, delay: i * 0.15 }} className="h-full rounded-full" style={{ background: a.color }} />
+   469→                      </div>
+   470→                    </div>
+   471→                  )}
+   472→                </motion.div>
+   473→              ))}
+   474→            </motion.div>
+   475→          </div>
+   476→        </div>
+   477→      </section>
+   478→
+   479→      {/* CTA */}
+   480→      <section className="relative py-20 sm:py-28" style={{ background: "#0A0A10" }}>
+   481→        <div className="absolute inset-0 flex items-center justify-center">
+   482→          <div className="w-[400px] h-[400px] rounded-full blur-[150px]" style={{ background: "rgba(255,77,0,0.06)" }} />
+   483→        </div>
+   484→        <div className="max-w-3xl mx-auto px-5 text-center relative z-10">
+   485→          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }}>
+   486→            <motion.h2 custom={0} variants={fadeUp} className="text-3xl sm:text-4xl md:text-5xl font-black uppercase">
+   487→              Ready to Build Your<br /><span style={{ color: "#FF4D00" }}>AI Empire?</span>
+   488→            </motion.h2>
+   489→            <motion.p custom={1} variants={fadeUp} className="mt-5 text-sm text-[#888899] max-w-lg mx-auto">
+   490→              Join the next generation of enterprise builders. Deploy your AI workforce, capture leads, and scale — all on autopilot.
+   491→            </motion.p>
+   492→            <motion.div custom={2} variants={fadeUp} className="mt-8">
+   493→              <button
+   494→                onClick={onOpenDashboard}
+   495→                className="pulse-btn text-xs uppercase tracking-[0.15em] font-bold px-10 py-4 transition-transform hover:scale-105"
+   496→                style={{ background: "#FF4D00", color: "#000", borderRadius: 4 }}
+   497→              >
+   498→                <Zap className="inline mr-2 h-4 w-4" />
+   499→                Open Dashboard Now
+   500→              </button>
+   501→            </motion.div>
+   502→          </motion.div>
+   503→        </div>
+   504→      </section>
+   505→
+   506→      {/* FOOTER */}
+   507→      <footer className="border-t py-12" style={{ borderColor: "#1E1E2A" }}>
+   508→        <div className="max-w-[1200px] mx-auto px-5">
+   509→          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+   510→            <MianXLogo size="small" />
+   511→            <div className="flex items-center gap-3 text-[10px] text-[#6B6B80] uppercase tracking-wider">
+   512→              <span>&copy; 2026 MianX.ai</span>
+   513→              <span style={{ color: "#FF4D00" }}>&#x2022;</span>
+   514→              <span>AI + Human Leadership</span>
+   515→            </div>
+   516→          </div>
+   517→        </div>
+   518→      </footer>
+   519→    </div>
+   520→  );
+   521→}
+   522→
+   523→/* ============================================================
+   524→   SUPER ADMIN DASHBOARD (WORKING)
+   525→   ============================================================ */
+   526→
+   527→function SuperAdminDashboard() {
+   528→  const [leads, setLeads] = useState<Lead[]>([]);
+   529→  const [activities, setActivities] = useState<AgentActivity[]>([]);
+   530→  const [stats, setStats] = useState<Stats | null>(null);
+   531→  const [activeTab, setActiveTab] = useState("leads");
+   532→  const [showAddForm, setShowAddForm] = useState(false);
+   533→  const [toast, setToast] = useState({ message: "", visible: false });
+   534→  const [filterStatus, setFilterStatus] = useState("all");
+   535→  const [newLead, setNewLead] = useState({ name: "", email: "", phone: "", company: "", source: "website", message: "" });
+   536→  const [submitting, setSubmitting] = useState(false);
+   537→  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+   538→
+   539→  const fetchData = useCallback(async () => {
+   540→    try {
+   541→      const [leadsRes, actRes, statsRes] = await Promise.all([
+   542→        fetch("/api/leads"), fetch("/api/activity"), fetch("/api/stats"),
+   543→      ]);
+   544→      const leadsData = await leadsRes.json();
+   545→      const actData = await actRes.json();
+   546→      const statsData = await statsRes.json();
+   547→      setLeads(leadsData.leads || []);
+   548→      setActivities(actData || []);
+   549→      setStats(statsData);
+   550→    } catch {
+   551→      // silently retry on next interval
+   552→    }
+   553→  }, []);
+   554→
+   555→  useEffect(() => {
+   556→    const load = () => { fetchData(); };
+   557→    load();
+   558→    intervalRef.current = setInterval(load, 5000);
+   559→    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+   560→  }, [fetchData]);
+   561→
+   562→  const showToast = (msg: string) => {
+   563→    setToast({ message: msg, visible: true });
+   564→    setTimeout(() => setToast({ message: "", visible: false }), 3000);
+   565→  };
+   566→
+   567→  const handleSubmitLead = async (e: React.FormEvent) => {
+   568→    e.preventDefault();
+   569→    if (!newLead.name || !newLead.email) return;
+   570→    setSubmitting(true);
+   571→    try {
+   572→      const res = await fetch("/api/leads", {
+   573→        method: "POST",
+   574→        headers: { "Content-Type": "application/json" },
+   575→        body: JSON.stringify(newLead),
+   576→      });
+   577→      if (res.ok) {
+   578→        showToast(`New lead received: ${newLead.name}`);
+   579→        setNewLead({ name: "", email: "", phone: "", company: "", source: "website", message: "" });
+   580→        setShowAddForm(false);
+   581→        fetchData();
+   582→      }
+   583→    } catch {
+   584→      showToast("Failed to add lead");
+   585→    }
+   586→    setSubmitting(false);
+   587→  };
+   588→
+   589→  const handleDeleteLead = async (id: string) => {
+   590→    await fetch(`/api/leads/${id}`, { method: "DELETE" });
+   591→    fetchData();
+   592→    showToast("Lead deleted");
+   593→  };
+   594→
+   595→  const handleUpdateStatus = async (id: string, status: string) => {
+   596→    await fetch(`/api/leads/${id}`, {
+   597→      method: "PATCH",
+   598→      headers: { "Content-Type": "application/json" },
+   599→      body: JSON.stringify({ status }),
+   600→    });
+   601→    fetchData();
+   602→    showToast(`Lead status updated to ${status}`);
+   603→  };
+   604→
+   605→  const filteredLeads = filterStatus === "all" ? leads : leads.filter((l) => l.status === filterStatus);
+   606→
+   607→  const statusCounts = {
+   608→    all: leads.length,
+   609→    hot: leads.filter((l) => l.status === "hot").length,
+   610→    warm: leads.filter((l) => l.status === "warm").length,
+   611→    new: leads.filter((l) => l.status === "new").length,
+   612→    cold: leads.filter((l) => l.status === "cold").length,
+   613→  };
+   614→
+   615→  const statCards = stats
+   616→    ? [
+   617→        { label: "Total Leads", value: stats.totalLeads.toString(), change: `+${stats.recentLeads} this week`, icon: Users, color: "#FF4D00" },
+   618→        { label: "Active Agents", value: stats.activeAgents.toString(), change: "All online", icon: Bot, color: "#00D4FF" },
+   619→        { label: "Conversions", value: stats.conversions.toString(), change: "Hot leads", icon: TrendingUp, color: "#00FF88" },
+   620→        { label: "Pipeline Value", value: `$${(stats.totalValue / 1000).toFixed(1)}K`, change: "Total value", icon: BarChart3, color: "#FFD93D" },
+   621→      ]
+   622→    : [];
+   623→
+   624→  return (
+   625→    <div className="min-h-screen pt-16" style={{ background: "#08080C" }}>
+   626→      <Toast message={toast.message} visible={toast.visible} />
+   627→
+   628→      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
+   629→        {/* Header Bar */}
+   630→        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+   631→          <div>
+   632→            <div className="flex items-center gap-2 mb-1">
+   633→              <div className="w-2 h-2 rounded-full rec-dot" style={{ background: "#FF4D00" }} />
+   634→              <span className="text-[10px] uppercase tracking-[0.2em] text-[#6B6B80] font-mono">Live</span>
+   635→            </div>
+   636→            <h1 className="text-xl sm:text-2xl font-black uppercase tracking-wider">Super Admin Dashboard</h1>
+   637→          </div>
+   638→          <div className="flex items-center gap-2">
+   639→            <button onClick={() => { fetchData(); showToast("Data refreshed"); }} className="flex items-center gap-1.5 px-3 py-2 text-[10px] uppercase tracking-wider" style={{ border: "1px solid #1E1E2A", color: "#888899", borderRadius: 4 }}>
+   640→              <RefreshCw size={12} /> Refresh
+   641→            </button>
+   642→            <button onClick={() => setShowAddForm(!showAddForm)} className="pulse-btn flex items-center gap-1.5 px-4 py-2 text-[10px] uppercase tracking-wider font-bold" style={{ background: "#FF4D00", color: "#000", borderRadius: 4 }}>
+   643→              <Plus size={12} /> Add Lead
+   644→            </button>
+   645→          </div>
+   646→        </div>
+   647→
+   648→        {/* Add Lead Form */}
+   649→        <AnimatePresence>
+   650→          {showAddForm && (
+   651→            <motion.div
+   652→              initial={{ opacity: 0, height: 0 }}
+   653→              animate={{ opacity: 1, height: "auto" }}
+   654→              exit={{ opacity: 0, height: 0 }}
+   655→              className="overflow-hidden mb-6"
+   656→            >
+   657→              <form onSubmit={handleSubmitLead} className="notch-corner p-5" style={{ background: "#111118", border: "1px solid #1E1E2A" }}>
+   658→                <h3 className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: "#FF4D00" }}>New Lead</h3>
+   659→                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   660→                  <input required value={newLead.name} onChange={(e) => setNewLead({ ...newLead, name: e.target.value })} placeholder="NAME *" className="w-full bg-transparent border-b text-sm py-2 focus:outline-none" style={{ borderColor: "#1E1E2A", color: "#E8E8EC" }} />
+   661→                  <input required type="email" value={newLead.email} onChange={(e) => setNewLead({ ...newLead, email: e.target.value })} placeholder="EMAIL *" className="w-full bg-transparent border-b text-sm py-2 focus:outline-none" style={{ borderColor: "#1E1E2A", color: "#E8E8EC" }} />
+   662→                  <input value={newLead.phone} onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })} placeholder="PHONE" className="w-full bg-transparent border-b text-sm py-2 focus:outline-none" style={{ borderColor: "#1E1E2A", color: "#E8E8EC" }} />
+   663→                  <input value={newLead.company} onChange={(e) => setNewLead({ ...newLead, company: e.target.value })} placeholder="COMPANY" className="w-full bg-transparent border-b text-sm py-2 focus:outline-none" style={{ borderColor: "#1E1E2A", color: "#E8E8EC" }} />
+   664→                  <select value={newLead.source} onChange={(e) => setNewLead({ ...newLead, source: e.target.value })} className="w-full bg-transparent border-b text-sm py-2 focus:outline-none" style={{ borderColor: "#1E1E2A", color: "#6B6B80" }}>
+   665→                    <option value="website" style={{ background: "#111118" }}>Website</option>
+   666→                    <option value="linkedin" style={{ background: "#111118" }}>LinkedIn</option>
+   667→                    <option value="email" style={{ background: "#111118" }}>Email</option>
+   668→                    <option value="referral" style={{ background: "#111118" }}>Referral</option>
+   669→                    <option value="api" style={{ background: "#111118" }}>API</option>
+   670→                  </select>
+   671→                  <input value={newLead.message} onChange={(e) => setNewLead({ ...newLead, message: e.target.value })} placeholder="MESSAGE" className="w-full bg-transparent border-b text-sm py-2 focus:outline-none" style={{ borderColor: "#1E1E2A", color: "#E8E8EC" }} />
+   672→                </div>
+   673→                <div className="flex items-center gap-3 mt-5">
+   674→                  <button type="submit" disabled={submitting} className="flex items-center gap-1.5 px-5 py-2.5 text-[10px] uppercase tracking-wider font-bold" style={{ background: "#FF4D00", color: "#000", borderRadius: 4 }}>
+   675→                    <Send size={12} /> {submitting ? "Submitting..." : "Submit Lead"}
+   676→                  </button>
+   677→                  <button type="button" onClick={() => setShowAddForm(false)} className="px-4 py-2.5 text-[10px] uppercase tracking-wider" style={{ border: "1px solid #1E1E2A", color: "#6B6B80", borderRadius: 4 }}>Cancel</button>
+   678→                </div>
+   679→              </form>
+   680→            </motion.div>
+   681→          )}
+   682→        </AnimatePresence>
+   683→
+   684→        {/* Stats Cards */}
+   685→        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+   686→          {statCards.map((s) => (
+   687→            <div key={s.label} className="dash-card p-4" style={{ borderRadius: 8 }}>
+   688→              <div className="flex items-center justify-between mb-2.5">
+   689→                <div className="w-8 h-8 rounded flex items-center justify-center" style={{ background: `${s.color}10` }}>
+   690→                  <s.icon size={16} style={{ color: s.color }} />
+   691→                </div>
+   692→                <span className="text-[10px]" style={{ color: s.color }}>{s.change}</span>
+   693→              </div>
+   694→              <div className="text-xl sm:text-2xl font-black">{s.value}</div>
+   695→              <div className="text-[10px] uppercase tracking-wider text-[#6B6B80] mt-0.5">{s.label}</div>
+   696→            </div>
+   697→          ))}
+   698→        </div>
+   699→
+   700→        {/* Main Content Area */}
+   701→        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+   702→          {/* Left: Leads + Activity */}
+   703→          <div className="lg:col-span-2">
+   704→            {/* Tabs */}
+   705→            <div className="flex items-center gap-1 mb-4" style={{ borderBottom: "1px solid #1E1E2A" }}>
+   706→              {[{ id: "leads", label: "Leads" }, { id: "agents", label: "Agent Activity" }].map((tab) => (
+   707→                <button
+   708→                  key={tab.id} onClick={() => setActiveTab(tab.id)}
+   709→                  className={`px-4 py-2.5 text-[11px] uppercase tracking-wider font-semibold transition-colors relative ${
+   710→                    activeTab === tab.id ? "text-[#FF4D00]" : "text-[#6B6B80] hover:text-[#888899]"
+   711→                  }`}
+   712→                >
+   713→                  {tab.label}
+   714→                  {activeTab === tab.id && (
+   715→                    <motion.div layoutId="dash-tab" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "#FF4D00" }} />
+   716→                  )}
+   717→                </button>
+   718→              ))}
+   719→            </div>
+   720→
+   721→            {/* LEADS TAB */}
+   722→            {activeTab === "leads" && (
+   723→              <div>
+   724→                {/* Filters */}
+   725→                <div className="flex flex-wrap items-center gap-2 mb-4">
+   726→                  <Filter size={12} className="text-[#6B6B80]" />
+   727→                  {["all", "hot", "warm", "new", "cold"].map((s) => (
+   728→                    <button
+   729→                      key={s} onClick={() => setFilterStatus(s)}
+   730→                      className="text-[10px] uppercase tracking-wider px-3 py-1.5 transition-all"
+   731→                      style={{
+   732→                        background: filterStatus === s ? "#FF4D00" : "transparent",
+   733→                        color: filterStatus === s ? "#000" : "#6B6B80",
+   734→                        border: `1px solid ${filterStatus === s ? "#FF4D00" : "#1E1E2A"}`,
+   735→                        borderRadius: 3,
+   736→                        fontWeight: filterStatus === s ? 700 : 400,
+   737→                      }}
+   738→                    >
+   739→                      {s} ({statusCounts[s as keyof typeof statusCounts]})
+   740→                    </button>
+   741→                  ))}
+   742→                </div>
+   743→
+   744→                {/* Leads Table */}
+   745→                <div className="space-y-2">
+   746→                  {/* Header */}
+   747→                  <div className="hidden sm:grid grid-cols-12 gap-2 text-[9px] uppercase tracking-wider text-[#6B6B80] px-4 py-2">
+   748→                    <span className="col-span-3">Company / Name</span>
+   749→                    <span className="col-span-2">Source</span>
+   750→                    <span className="col-span-2">Score</span>
+   751→                    <span className="col-span-2">Status</span>
+   752→                    <span className="col-span-2 text-right">Value</span>
+   753→                    <span className="col-span-1" />
+   754→                  </div>
+   755→                  {/* Rows */}
+   756→                  {filteredLeads.map((lead) => (
+   757→                    <motion.div
+   758→                      key={lead.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+   759→                      className="dash-card px-4 py-3 cursor-pointer group"
+   760→                      style={{ borderRadius: 6 }}
+   761→                    >
+   762→                      <div className="grid grid-cols-2 sm:grid-cols-12 gap-2 items-center">
+   763→                        <div className="col-span-2 sm:col-span-3 min-w-0">
+   764→                          <div className="text-sm font-semibold truncate">{lead.company || lead.name}</div>
+   765→                          <div className="text-[10px] text-[#6B6B80] truncate sm:block hidden">{lead.email}</div>
+   766→                        </div>
+   767→                        <div className="col-span-1 sm:col-span-2 flex items-center gap-1.5 text-[10px] text-[#6B6B80]">
+   768→                          <Globe size={10} />
+   769→                          <span className="capitalize">{lead.source}</span>
+   770→                        </div>
+   771→                        <div className="col-span-2 sm:col-span-2 flex items-center gap-2">
+   772→                          <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "#1E1E2A" }}>
+   773→                            <div className="h-full rounded-full" style={{
+   774→                              width: `${lead.score}%`,
+   775→                              background: lead.score >= 80 ? "#FF4D00" : lead.score >= 60 ? "#FFD93D" : "#6B6B80",
+   776→                            }} />
+   777→                          </div>
+   778→                          <span className="text-[10px] text-[#6B6B80] w-6 text-right">{lead.score}</span>
+   779→                        </div>
+   780→                        <div className="col-span-1 sm:col-span-2">
+   781→                          <select
+   782→                            value={lead.status} onChange={(e) => handleUpdateStatus(lead.id, e.target.value)}
+   783→                            className={`text-[10px] uppercase tracking-wider px-2 py-1 w-full cursor-pointer bg-transparent border-none focus:outline-none status-${lead.status}`}
+   784→                            style={{ borderRadius: 3 }}
+   785→                          >
+   786→                            <option value="new" style={{ background: "#111118" }}>New</option>
+   787→                            <option value="warm" style={{ background: "#111118" }}>Warm</option>
+   788→                            <option value="hot" style={{ background: "#111118" }}>Hot</option>
+   789→                            <option value="cold" style={{ background: "#111118" }}>Cold</option>
+   790→                          </select>
+   791→                        </div>
+   792→                        <div className="col-span-1 sm:col-span-2 text-sm font-bold text-right">{lead.value}</div>
+   793→                        <div className="col-span-1 sm:col-span-1 flex justify-end">
+   794→                          <button onClick={() => handleDeleteLead(lead.id)} className="opacity-0 group-hover:opacity-100 transition-opacity p-1" style={{ color: "#6B6B80" }}>
+   795→                            <Trash2 size={12} />
+   796→                          </button>
+   797→                        </div>
+   798→                      </div>
+   799→                      {lead.message && (
+   800→                        <div className="mt-2 text-[10px] text-[#6B6B80] truncate sm:block hidden" style={{ borderTop: "1px solid #1E1E2A", paddingTop: 8, marginTop: 8 }}>
+   801→                          {lead.message}
+   802→                        </div>
+   803→                      )}
+   804→                    </motion.div>
+   805→                  ))}
+   806→                  {filteredLeads.length === 0 && (
+   807→                    <div className="text-center py-12 text-[#6B6B80] text-xs uppercase tracking-wider">
+   808→                      No leads found
+   809→                    </div>
+   810→                  )}
+   811→                </div>
+   812→              </div>
+   813→            )}
+   814→
+   815→            {/* AGENT ACTIVITY TAB */}
+   816→            {activeTab === "agents" && (
+   817→              <div className="space-y-2">
+   818→                {activities.map((act) => (
+   819→                  <div key={act.id} className="dash-card px-4 py-3 flex items-start gap-3" style={{ borderRadius: 6 }}>
+   820→                    <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{
+   821→                      background: act.status === "success" ? "#00FF88" : "#00D4FF",
+   822→                    }} />
+   823→                    <div className="flex-1 min-w-0">
+   824→                      <p className="text-xs">
+   825→                        <span className="font-bold" style={{ color: "#FF4D00" }}>{act.agent}</span>{" "}
+   826→                        <span className="text-[#6B6B80]">{act.action}</span>
+   827→                      </p>
+   828→                      <span className="text-[9px] text-[#3A3A4A] font-mono">
+   829→                        {new Date(act.createdAt).toLocaleString()}
+   830→                      </span>
+   831→                    </div>
+   832→                  </div>
+   833→                ))}
+   834→                {activities.length === 0 && (
+   835→                  <div className="text-center py-12 text-[#6B6B80] text-xs uppercase tracking-wider">
+   836→                    No activity yet
+   837→                  </div>
+   838→                )}
+   839→              </div>
+   840→            )}
+   841→          </div>
+   842→
+   843→          {/* Right Sidebar */}
+   844→          <div className="space-y-4">
+   845→            {/* Status Breakdown */}
+   846→            <div className="dash-card p-5" style={{ borderRadius: 8 }}>
+   847→              <h3 className="text-[10px] uppercase tracking-[0.15em] text-[#6B6B80] mb-4">Lead Status Breakdown</h3>
+   848→              {[
+   849→                { label: "Hot", count: statusCounts.hot, color: "#FF4D00" },
+   850→                { label: "Warm", count: statusCounts.warm, color: "#FFD93D" },
+   851→                { label: "New", count: statusCounts.new, color: "#00D4FF" },
+   852→                { label: "Cold", count: statusCounts.cold, color: "#6B6B80" },
+   853→              ].map((s) => (
+   854→                <div key={s.label} className="flex items-center justify-between mb-3">
+   855→                  <div className="flex items-center gap-2">
+   856→                    <div className="w-2 h-2 rounded-full" style={{ background: s.color }} />
+   857→                    <span className="text-xs uppercase tracking-wider">{s.label}</span>
+   858→                  </div>
+   859→                  <div className="flex items-center gap-3">
+   860→                    <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: "#1E1E2A" }}>
+   861→                      <div className="h-full rounded-full" style={{ width: `${leads.length > 0 ? (s.count / leads.length) * 100 : 0}%`, background: s.color }} />
+   862→                    </div>
+   863→                    <span className="text-xs font-bold w-5 text-right">{s.count}</span>
+   864→                  </div>
+   865→                </div>
+   866→              ))}
+   867→            </div>
+   868→
+   869→            {/* Source Breakdown */}
+   870→            <div className="dash-card p-5" style={{ borderRadius: 8 }}>
+   871→              <h3 className="text-[10px] uppercase tracking-[0.15em] text-[#6B6B80] mb-4">Lead Sources</h3>
+   872→              {Object.entries(
+   873→                leads.reduce((acc: Record<string, number>, l) => { acc[l.source] = (acc[l.source] || 0) + 1; return acc; }, {})
+   874→              ).map(([source, count]) => (
+   875→                <div key={source} className="flex items-center justify-between mb-2.5">
+   876→                  <span className="text-xs capitalize text-[#888899]">{source}</span>
+   877→                  <span className="text-xs font-bold">{count}</span>
+   878→                </div>
+   879→              ))}
+   880→            </div>
+   881→
+   882→            {/* Quick Actions */}
+   883→            <div className="dash-card p-5" style={{ borderRadius: 8 }}>
+   884→              <h3 className="text-[10px] uppercase tracking-[0.15em] text-[#6B6B80] mb-4">AI Agents Status</h3>
+   885→              {["Sales AI", "Marketing AI", "Support AI", "Analytics AI", "CRM AI", "Ops AI"].map((agent) => (
+   886→                <div key={agent} className="flex items-center justify-between mb-2.5">
+   887→                  <div className="flex items-center gap-2">
+   888→                    <div className="w-1.5 h-1.5 rounded-full accent-dot" style={{ background: agent === "CRM AI" ? "#6B6B80" : "#00FF88" }} />
+   889→                    <span className="text-xs">{agent}</span>
+   890→                  </div>
+   891→                  <span className="text-[9px] uppercase tracking-wider" style={{ color: agent === "CRM AI" ? "#6B6B80" : "#00FF88" }}>
+   892→                    {agent === "CRM AI" ? "Standby" : "Active"}
+   893→                  </span>
+   894→                </div>
+   895→              ))}
+   896→            </div>
+   897→
+   898→            {/* Auto-refresh indicator */}
+   899→            <div className="flex items-center justify-center gap-2 py-3">
+   900→              <RefreshCw size={10} className="text-[#6B6B80] animate-spin" style={{ animationDuration: "3s" }} />
+   901→              <span className="text-[9px] uppercase tracking-wider text-[#6B6B80] font-mono">Auto-refreshing every 5s</span>
+   902→            </div>
+   903→          </div>
+   904→        </div>
+   905→      </div>
+   906→    </div>
+   907→  );
+   908→}
+   909→
+   910→/* ============================================================
+   911→   MAIN PAGE
+   912→   ============================================================ */
+   913→
+   914→export default function Home() {
+   915→  const [view, setView] = useState<"landing" | "dashboard">("landing");
+   916→
+   917→  return (
+   918→    <main className="min-h-screen flex flex-col">
+   919→      <div className="grain" />
+   920→      <Navbar
+   921→        isDashboard={view === "dashboard"}
+   922→        onOpenDashboard={() => setView("dashboard")}
+   923→        onBackToLanding={() => setView("landing")}
+   924→      />
+   925→      <AnimatePresence mode="wait">
+   926→        {view === "landing" ? (
+   927→          <motion.div key="landing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+   928→            <LandingPage onOpenDashboard={() => setView("dashboard")} />
+   929→          </motion.div>
+   930→        ) : (
+   931→          <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+   932→            <SuperAdminDashboard />
+   933→          </motion.div>
+   934→        )}
+   935→      </AnimatePresence>
+   936→    </main>
+   937→  );
+   938→}
