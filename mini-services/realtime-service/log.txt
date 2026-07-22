@@ -1,0 +1,2 @@
+$ bun --hot index.ts
+[RealtimeService] Running on port 3003 (Socket.io + HTTP triggers)
