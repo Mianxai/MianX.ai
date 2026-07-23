@@ -5,9 +5,13 @@ import {
   SUPABASE_NOT_CONFIGURED_MESSAGE,
 } from "@/lib/supabase";
 import { getSessionUser } from "@/lib/auth";
+import { buildLeadPatch } from "@/lib/leads";
 
 export const dynamic = "force-dynamic";
 
+// PROTECTED: status changes, archiving (soft delete), and saving AI analysis
+// results. Uses an explicit field allowlist (see lib/leads.js) so a client
+// can never mass-assign arbitrary columns (id, created_at, email, etc.).
 export async function PATCH(req, { params }) {
   if (!isSupabaseConfigured()) {
     return NextResponse.json(
@@ -18,7 +22,21 @@ export async function PATCH(req, { params }) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const { patch, errors, hasFields } = buildLeadPatch(body);
+  if (Object.keys(errors).length > 0) {
+    return NextResponse.json({ error: "Invalid update", fieldErrors: errors }, { status: 400 });
+  }
+  if (!hasFields) {
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+  }
+
   const supabaseAdmin = getSupabaseAdmin();
   if (!supabaseAdmin) {
     return NextResponse.json(
@@ -26,9 +44,10 @@ export async function PATCH(req, { params }) {
       { status: 503 }
     );
   }
+
   const { data, error } = await supabaseAdmin
     .from("leads")
-    .update(body)
+    .update(patch)
     .eq("id", params.id)
     .select()
     .single();
