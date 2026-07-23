@@ -1,19 +1,15 @@
 import "./globals.css";
-import AmbientField from "@/components/AmbientField";
 
 export const metadata = {
-  title: "Mianx.ai — Autonomous AI agents for your business",
+  title: "MianX.ai — AI-Powered Industry Operating Systems",
   description:
-    "Mianx.ai designs, builds, and deploys autonomous AI agents that qualify leads, handle support, and grow revenue around the clock.",
+    "MianX.ai builds AI-powered Industry Operating Systems for restaurants, poultry, hospitals, schools and more. One platform, every industry.",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
-        <AmbientField />
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

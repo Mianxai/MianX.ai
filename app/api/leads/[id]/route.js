@@ -19,3 +19,13 @@ export async function PATCH(req, { params }) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }
+
+export async function DELETE(req, { params }) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const { error } = await supabaseAdmin.from("leads").delete().eq("id", params.id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
+}

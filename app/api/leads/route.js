@@ -18,6 +18,8 @@ export async function POST(req) {
         name: body.name,
         email: body.email,
         company: body.company,
+        phone: body.phone,
+        industry: body.industry,
         budget: body.budget,
         need: body.need,
       },

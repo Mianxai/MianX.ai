@@ -18,14 +18,10 @@ export default function AdminLoginPage() {
     setError("");
     try {
       const supabase = getSupabase();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       const token = data.session?.access_token;
       if (!token) throw new Error("No session returned");
-      // Store the access token so middleware + API routes can read it.
       const maxAge = data.session.expires_in || 3600;
       document.cookie = `sb-access-token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
       router.push("/admin");
@@ -38,56 +34,35 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main className="container">
-      <nav className="nav">
-        <Link href="/" className="brand">
-          <span className="brand-dot" />
-          Mianx<span style={{ color: "var(--accent-2)" }}>.ai</span>
+    <div className="login-page">
+      <form className="login-card" onSubmit={onSubmit}>
+        <Link href="/" className="login-logo logo">
+          <div className="logo-icon">M</div>
+          <span className="logo-text">MianX.ai</span>
         </Link>
-      </nav>
+        <h2>Admin sign in</h2>
+        <p className="muted">Access your submissions dashboard.</p>
 
-      <div className="login-wrap">
-        <form className="panel login-card" onSubmit={onSubmit}>
-          <h2 style={{ margin: "0 0 6px" }}>Admin sign in</h2>
-          <p className="muted" style={{ marginTop: 0 }}>
-            Access your lead intelligence dashboard.
-          </p>
+        <div className="login-field">
+          <label htmlFor="email">Email</label>
+          <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@mianx.ai" required />
+        </div>
+        <div className="login-field">
+          <label htmlFor="password">Password</label>
+          <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+        </div>
 
-          <div className="field" style={{ marginTop: 16 }}>
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@mianx.ai"
-              required
-            />
-          </div>
-          <div className="field" style={{ marginTop: 12 }}>
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
-          </div>
+        {error && <div className="form-message error" style={{ display: "flex", marginBottom: "1rem" }}>{error}</div>}
 
-          {error && <div className="notice err" style={{ marginTop: 14 }}>{error}</div>}
-
-          <button
-            className="btn btn-primary"
-            type="submit"
-            disabled={loading}
-            style={{ width: "100%", marginTop: 18 }}
-          >
-            {loading ? (<><span className="spin" /> Signing in…</>) : "Sign in"}
-          </button>
-        </form>
-      </div>
-    </main>
+        <button type="submit" className="form-submit" disabled={loading} style={{ width: "100%" }}>
+          {loading ? (
+            <>
+              <svg className="spin" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+              Signing in…
+            </>
+          ) : "Sign in"}
+        </button>
+      </form>
+    </div>
   );
 }
