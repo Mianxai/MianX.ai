@@ -1,11 +1,21 @@
-# MianX.ai
+# Mianx.ai
 
-**AI-Powered Industry Operating Systems**
-> Transforming Industries with AI.
+**The AI-Native Business Operating System, AI Workforce Platform, and Project Factory**
+> Design the system before the product.
 
-MianX.ai is not a software house and not a single product — it is a **Platform Company** building reusable, AI-native "Industry Operating Systems" (Industry OS) on top of one shared core. Every vertical (restaurant, poultry, hospital, school, logistics, construction, retail) ships as its own OS, but all of them stand on the same foundation: **MianX Core**.
+Mianx.ai is not a software house and not a single product — it is a
+**Platform Company**. Mianx Core is built once and reused everywhere: an AI
+Runtime routes work to a governed AI workforce, a Project Factory turns
+approved ideas into running projects on top of that core, and a Founder
+Workspace is where it is all directed and approved.
 
-> **Core idea:** Design the *system* before the *product*. Every new Industry OS reuses 40–90% of what came before it, because the foundation already exists.
+> **Locked build order:** Mianx Core → AI Runtime → Project Factory →
+> Founder Workspace → 10–12 Core Runtime Agents → End-to-end Beta →
+> Telepizza and Poultry later, as "Powered by Mianx.ai" products.
+> This order is locked for the current phase and is not to be changed or
+> expanded without Founder approval. See
+> [`execution/EXECUTION-BOARD.md`](execution/EXECUTION-BOARD.md) for the
+> live phase status.
 
 ---
 
@@ -15,6 +25,7 @@ MianX.ai is not a software house and not a single product — it is a **Platform
 - [What We're Not Building](#what-were-not-building)
 - [Platform Architecture](#platform-architecture)
 - [Product Line (Locked Order)](#product-line-locked-order)
+- [Current Application (Phase A)](#current-application-phase-a)
 - [Company Principles](#company-principles)
 - [Reusability Rule](#reusability-rule)
 - [Repository Structure](#repository-structure)
@@ -38,38 +49,48 @@ MianX.ai is not a software house and not a single product — it is a **Platform
 
 ## What We're Not Building
 
-| ❌ We don't sell | ✅ We sell |
+| ❌ We don't sell (right now) | ✅ We are building |
 |---|---|
-| A website | A Business Operating System |
-| A standalone ERP | An Industry Intelligence Platform |
-| A standalone CRM | An AI-Powered Ecosystem |
-| A standalone mobile app | Reusable Core + Industry Modules |
+| A website | An AI-native Business Operating System |
+| A generic "AI agent agency" | An AI Workforce platform |
+| An industry-specific ERP | A Project Factory that stands up new projects on Mianx Core |
+| A standalone mobile app | A Founder Workspace that directs and approves AI work |
 
-Client projects (e.g. **Telepizza.pk**, **Al Hamdu Lillah Poultry Traders**) are **Founding Design Partners**, not just customers — they shape the product (RestaurantOS, PoultryOS) and become its first live deployment.
+**Telepizza.pk** and **Al Hamdu Lillah Poultry Traders** are real,
+Founder-relevant projects, but per the locked build order they are **later**
+milestones — they will ship as "Powered by Mianx.ai" products only after
+Mianx Core, the AI Runtime, the Project Factory, the Founder Workspace, the
+Core Runtime Agents, and an end-to-end beta exist. They are not the current
+product and must not be treated as such by contributors or AI agents working
+in this repository.
 
 ---
 
 ## Platform Architecture
 
 ```text
-                         MianX.ai
-                  Industry Intelligence Platform
+                         Mianx.ai
+        AI-Native Business Operating System · AI Workforce · Project Factory
                                │
 ────────────────────────────────────────────────
-                  MianX Core Platform
+                  Mianx Core Platform
 ────────────────────────────────────────────────
 Identity · Security · Communication · Automation
 Intelligence (Analytics/AI Gateway) · Infrastructure
 ────────────────────────────────────────────────
-              Industry Business Modules
-RestaurantOS · PoultryOS · HospitalOS · SchoolOS
-LogisticsOS · RetailOS · ConstructionOS · ClinicOS
+                    AI Runtime
+Task routing · Model routing · Policy enforcement · Evidence
 ────────────────────────────────────────────────
-                 AI Workforce Layer
-CEO · Operations · Marketing · Sales · Finance
-HR · Customer Success · Inventory · Analytics
+                 Project Factory
+Turns an approved idea into a running project on Mianx Core
 ────────────────────────────────────────────────
-   Website · Mobile Apps · Admin · POS · Dashboards
+                Founder Workspace
+Direct the AI workforce · review work · approve what ships
+────────────────────────────────────────────────
+              Core Runtime Agents (10–12)
+Sales · Support · Ops · Research · Marketing · Content · Data · QA
+────────────────────────────────────────────────
+   Website · Admin Dashboard · APIs · Future Delivery Surfaces
 ```
 
 ### MianX Core Modules
@@ -87,17 +108,23 @@ HR · Customer Success · Inventory · Analytics
 
 ## Product Line (Locked Order)
 
-Rule: **one product is completed before the next one starts.** After each Industry OS, the Core is upgraded before the next vertical begins.
+Rule: **one stage is completed, and Founder-approved, before the next one
+starts.** This order is locked for the current phase; it is not to be
+changed or expanded without explicit Founder approval, and no future vertical
+should be treated as the current product ahead of its turn.
 
-1. **RestaurantOS** — Launch Partner: Telepizza.pk *(current priority)*
-2. MianX Core v1.0 upgrade
-3. **PoultryOS** — Launch Partner: Al Hamdu Lillah Poultry Traders
-4. MianX Core v2.0 upgrade
-5. **HospitalOS** (~80% reuse)
-6. **SchoolOS** (~85% reuse)
-7. **LogisticsOS** (~90% reuse)
-8. **ConstructionOS**
-9. **MianX Marketplace** — third-party plugins, extensions, AI agents
+1. **Mianx Core** — identity, security, communication, automation, intelligence, infrastructure *(current priority — Phase A/B)*
+2. **AI Runtime** — governed task/model routing, policy enforcement, evidence
+3. **Project Factory** — turns an approved idea into a running project on Mianx Core
+4. **Founder Workspace** — directs and approves AI workforce output
+5. **10–12 Core Runtime Agents** — the first activated AI Workforce roles
+6. **End-to-end Beta** — the full loop proven with a real workflow
+7. **Telepizza** — "Powered by Mianx.ai" (RestaurantOS), *later*
+8. **Poultry** (Al Hamdu Lillah Poultry Traders) — "Powered by Mianx.ai" (PoultryOS), *later*
+
+Additional verticals (Hospital, School, Logistics, Construction, Retail,
+Marketplace) remain long-term direction captured in `doc/` and the Master
+Plan documents, but are out of scope until the steps above are delivered.
 
 ---
 
@@ -170,23 +197,24 @@ mianx/
 
 ## Roadmap
 
-| Phase | Focus | Duration |
-|---|---|---|
-| Phase 0 | Foundation — standards, Product Bible v1 | 30 days |
-| Phase 1 | MianX Core Platform | 45–60 days |
-| Phase 2 | RestaurantOS Discovery (no code) | 15 days |
-| Phase 3 | RestaurantOS v1 — Telepizza launch | 90 days |
-| Phase 4 | RestaurantOS Enterprise (Inventory, HR, Accounting) | 60 days |
-| Phase 5 | AI Workforce (Support, Marketing, Sales agents) | 60 days |
-| Phase 6 | RestaurantOS Marketplace (integrations) | — |
-| Phase 7 | RestaurantOS Global (i18n, white label) | — |
-| Phase 8 | PoultryOS | — |
-| Phase 9 | HospitalOS | — |
-| Phase 10 | SchoolOS | — |
-| Phase 11 | LogisticsOS | — |
-| Phase 12 | MianX Marketplace | — |
+Phase letters below track `execution/EXECUTION-BOARD.md`, which is the live,
+authoritative status. Historical Master Plan phase numbers/durations in
+`MianX_Master_Plan.docx` and `MianX_Master_Plan_v2.docx` remain useful
+background context but are superseded by this locked order for execution
+purposes.
 
-📄 Full details: see **MianX Master Plan** document (`/docs/MianX_Master_Plan.docx`).
+| Phase | Focus |
+|---|---|
+| Phase A | Website and Development Foundation — this repo's runnable Next.js app, quality gates, execution control *(current)* |
+| Phase B | Runtime Architecture ADR and Mianx Core foundation *(next, ready after Phase A)* |
+| Phase C | AI Runtime — task/model routing, policy enforcement, evidence |
+| Phase D | Project Factory |
+| Phase E | Founder Workspace |
+| Phase F | 10–12 Core Runtime Agents activated |
+| Phase G | End-to-end Beta |
+| Phase H+ | Telepizza and Poultry, "Powered by Mianx.ai" — later |
+
+📄 Deeper background: `MianX_Master_Plan.docx`, `MianX_Master_Plan_v2.docx`, and `doc/20-ai-operating-system/MASTER-BLUEPRINT.md`.
 
 ---
 
@@ -221,21 +249,43 @@ After every project completes, extract:
 
 ---
 
+## Current Application (Phase A)
+
+The repository root is a runnable **Next.js 14 (App Router)** application —
+the Phase A website and lead-capture foundation:
+
+- Public landing page (`app/page.jsx`) presenting the locked platform
+  positioning and a live lead-capture form.
+- `/api/leads` (public POST, protected GET) persists leads to Supabase.
+- `/admin` — Supabase-authenticated dashboard to triage leads and optionally
+  run a server-side AI analysis (`/api/analyze`, requires `ANTHROPIC_API_KEY`;
+  gracefully disabled without it).
+- `middleware.js` protects `/admin/*` and redirects unauthenticated users to
+  `/admin/login`.
+
+See [`AGENTS.md`](AGENTS.md) for local dev environment setup (including the
+Cursor Cloud / local Supabase workflow) and
+[`execution/EXECUTION-BOARD.md`](execution/EXECUTION-BOARD.md) for current
+phase status, acceptance criteria, and evidence.
+
+`mianx-ai-prototype.jsx` at the repo root is the Founder-provided design
+reference used to build the current homepage; it is kept for reference and is
+not imported by the app.
+
+---
+
 ## Getting Started
 
-> ⚠️ Setup instructions below are a placeholder — update once the Core repo, stack, and environment are finalized in Sprint 0/1.
-
 ```bash
-# clone the repo
-git clone <repo-url> mianx
-cd mianx
-
-# install dependencies (per module)
-# ...
-
-# run core services
-# ...
+git clone <repo-url> mianx.ai
+cd mianx.ai
+npm install
+cp .env.local.example .env.local   # fill in real values, or leave blank for a degraded/no-Supabase run
+npm run dev                        # http://localhost:3000
 ```
+
+See [`AGENTS.md`](AGENTS.md) for the full local Supabase / Cursor Cloud dev
+workflow, and the sections below for the longer-term multi-project vision.
 
 ---
 

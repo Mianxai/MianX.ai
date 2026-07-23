@@ -62,6 +62,9 @@ export default function AgentNetworkCanvas() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
+    const prefersReducedMotion =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
     let last = performance.now();
     function draw(now) {
       const dt = Math.min((now - last) / 1000, 0.05);
@@ -127,17 +130,17 @@ export default function AgentNetworkCanvas() {
         ctx.fill();
       }
 
-      raf = requestAnimationFrame(draw);
+      if (!prefersReducedMotion) raf = requestAnimationFrame(draw);
     }
 
     resize();
     build();
     window.addEventListener("resize", resize);
     raf = requestAnimationFrame(draw);
-    const spawner = setInterval(spawnPulse, 1400);
+    const spawner = prefersReducedMotion ? null : setInterval(spawnPulse, 1400);
     return () => {
       cancelAnimationFrame(raf);
-      clearInterval(spawner);
+      if (spawner) clearInterval(spawner);
       window.removeEventListener("resize", resize);
     };
   }, []);
@@ -145,6 +148,7 @@ export default function AgentNetworkCanvas() {
   return (
     <canvas
       ref={ref}
+      aria-hidden="true"
       style={{ width: "100%", height: "100%", display: "block" }}
     />
   );
