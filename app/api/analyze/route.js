@@ -22,11 +22,16 @@ export async function POST(req) {
     );
   }
 
-  const lead = await req.json();
-  const system = `You are an inbound intelligence agent for Mianx.ai, an AI-native Business Operating System and AI Workforce platform. Respond with ONLY valid JSON:
+  let lead;
+  try {
+    lead = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  const system = `You are an inbound intelligence agent for Mianx.ai, an AI-native Business Operating System, AI Workforce platform, and Autonomous Product Factory. Respond with ONLY valid JSON:
 {"score": <0-100>, "temperature": "hot"|"warm"|"cold", "summary": "<2-3 sentences>", "reply": "<4-6 sentence draft email, signed 'The Mianx.ai Team'>", "actions": ["...", "...", "..."]}`;
 
-  const userMsg = `Name: ${lead.name}\nCompany: ${lead.company || "N/A"}\nEmail: ${lead.email}\nBudget: ${lead.budget}\nNeed: ${lead.need}`;
+  const userMsg = `Name: ${lead.name}\nCompany: ${lead.company || "N/A"}\nEmail: ${lead.email}\nPhone: ${lead.phone || "N/A"}\nIndustry: ${lead.industry || "N/A"}\nMessage: ${lead.need || lead.message || ""}`;
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getSupabase } from "@/lib/supabase";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -11,6 +11,8 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const configured = isSupabaseConfigured();
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -23,14 +25,13 @@ export default function AdminLoginPage() {
           "Configuration error: this deployment has no Supabase environment variables set. Admin sign-in is unavailable until they are configured."
         );
       }
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      if (error) throw error;
+      if (signInError) throw signInError;
       const token = data.session?.access_token;
       if (!token) throw new Error("No session returned");
-      // Store the access token so middleware + API routes can read it.
       const maxAge = data.session.expires_in || 3600;
       document.cookie = `sb-access-token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
       router.push("/admin");
@@ -43,56 +44,61 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main className="container">
-      <nav className="nav">
-        <Link href="/" className="brand">
-          <span className="brand-dot" />
-          Mianx<span style={{ color: "var(--accent-2)" }}>.ai</span>
+    <main id="main-content" className="login-shell">
+      <form className="login-card" onSubmit={onSubmit} noValidate>
+        <Link href="/" className="logo" style={{ marginBottom: "1.5rem" }}>
+          <span className="logo-icon" aria-hidden="true">M</span>
+          <span className="logo-text">Mianx.ai</span>
         </Link>
-      </nav>
+        <h1>Admin sign in</h1>
+        <p className="section-desc">Access the lead intelligence dashboard.</p>
 
-      <div className="login-wrap">
-        <form className="panel login-card" onSubmit={onSubmit}>
-          <h2 style={{ margin: "0 0 6px" }}>Admin sign in</h2>
-          <p className="muted" style={{ marginTop: 0 }}>
-            Access your lead intelligence dashboard.
-          </p>
-
-          <div className="field" style={{ marginTop: 16 }}>
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@mianx.ai"
-              required
-            />
+        {!configured && (
+          <div className="admin-notice" role="alert" style={{ marginBottom: "1.25rem" }}>
+            Configuration error: Supabase environment variables are not set on this deployment.
+            Sign-in is unavailable until they are configured.
           </div>
-          <div className="field" style={{ marginTop: 12 }}>
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
+        )}
+
+        <div className="form-group" style={{ marginBottom: "1rem" }}>
+          <label htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@mianx.ai"
+            autoComplete="username"
+            required
+          />
+        </div>
+        <div className="form-group" style={{ marginBottom: "1.25rem" }}>
+          <label htmlFor="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            autoComplete="current-password"
+            required
+          />
+        </div>
+
+        {error && (
+          <div className="form-message error" role="alert" style={{ marginBottom: "1rem" }}>
+            {error}
           </div>
+        )}
 
-          {error && <div className="notice err" style={{ marginTop: 14 }}>{error}</div>}
+        <button className="form-submit" type="submit" disabled={loading || !configured}>
+          {loading ? (<><span className="spin" aria-hidden="true" /> Signing in…</>) : "Sign in"}
+        </button>
 
-          <button
-            className="btn btn-primary"
-            type="submit"
-            disabled={loading}
-            style={{ width: "100%", marginTop: 18 }}
-          >
-            {loading ? (<><span className="spin" /> Signing in…</>) : "Sign in"}
-          </button>
-        </form>
-      </div>
+        <Link href="/" className="login-back">
+          ← Back to site
+        </Link>
+      </form>
     </main>
   );
 }

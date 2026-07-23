@@ -327,10 +327,324 @@ Supabase — see §7); `/admin` correctly redirects to `/admin/login`.
 
 ---
 
-## 8. Next READY phase
+## 8. Phase A status at the time of the final UI replacement (§9)
+
+Phase B had not yet started when the Founder's final design decision (§9)
+arrived. Per direct instruction, Phase B work is **paused** until the final
+UI replacement is complete and Founder preview approval is granted (§9.9).
+
+---
+
+## 9. Final UI replacement — Founder-approved design (supersedes §5's interim design)
+
+### 9.1 Founder's final design decision
+
+The Founder rejected the JSX prototype used as the interim design reference
+in §5 (`mianx-ai-prototype.jsx`, already deleted from the repository by the
+Founder before this work began — **not restored, per instruction**) and
+approved two final HTML designs instead:
+
+| File | Repo path (final) | SHA-256 | Lines |
+|---|---|---|---|
+| Public website | `design/approved/final-website/mianx_website_public.html` | `0092f25c5931d939b7756d5487f63a826d39ea4f204d0445420a65239d5ad471` | 895 |
+| Admin dashboard | `design/approved/final-website/mianx_admin_dashboard.html` | `d972fc81c75461845f46040de60b51636fc9bdc6867ea057ff6c26ddc0813887` | 447 |
+
+**Where they were found**: uploaded directly to repo root on `main` (commit
+`51827da51a46daaeab36423ec8a371c57f660bb5`, "Add files via upload"),
+immediately after commit `fd247a1` deleted the JSX prototype. No other
+`.html`/`.htm` file exists anywhere in tracked history or any branch, so
+selection was unambiguous.
+
+**How they were preserved**: `git mv`'d into `design/approved/final-website/`
+in a dedicated commit (`1ad796c`), with SHA-256 verified identical before
+and after the move (table above) — original content preserved byte-for-byte.
+They are not served or imported by the app; they are the visual reference
+only, per instruction (no `dangerouslySetInnerHTML`, no raw HTML embedding).
+
+### 9.2 What the approved HTML actually specified vs. what shipped
+
+Both files were fully analyzed (structure, CSS, JS, forms, accessibility,
+security, CDN dependencies) before migration. Key findings and how they were
+handled:
+
+| Found in approved HTML | Decision | Why |
+|---|---|---|
+| CDN `<script>` tags for Three.js r128 and GSAP 3.12.2 | Three.js installed as a real npm dependency (`three@0.185.1`), loaded via `next/dynamic({ssr:false})` so it never touches SSR/`next build`. GSAP **not** installed. | GSAP's only use in the approved HTML is a fade-up-on-scroll `ScrollTrigger` effect, reproducible with a plain `IntersectionObserver` + CSS transition (`components/public/useReveal.js`) with no new dependency, smaller bundle, and no additional supply-chain surface. Three.js *is* genuinely required — the animated 3D wireframe hero is a named preserve-requirement with no lightweight equivalent. |
+| `localStorage.setItem('mianx_submissions', ...)` for both the contact form and the "admin dashboard" | Removed entirely. Real `POST /api/leads` → Supabase. | Explicit instruction: no `localStorage` for lead storage. |
+| Hero badge: "Trusted by Al Hamdu Lillah Poultry Traders"; hero stats "2+ Live Partners / 10+ Industries / 81+ Cities Covered / 500+ Active Users" | Replaced with truthful, verifiable counts: "7 Locked Roadmap Steps / 4 Platform Layers / 6 Platform Capabilities / 100% Server-side AI" (all counted directly from `lib/content.js`, asserted in tests). | Unverified live-partner and usage claims; no canonical repository evidence supports them. |
+| Industries grid: PoultryOS badge "⭐ LIVE", RestaurantOS "In Development", others "Coming Soon" | Unified to a single truthful **"Planned"** badge (`.status-planned`) for all six future products. | Per locked order, industry products are *all* future work — none is live or "in development" yet; the old badges implied a build status that doesn't exist. |
+| "Powered by MianX.ai" partners section: Al Hamdu Lillah "LIVE NOW" + "Visit Live Site" link + a 4-stat grid (81+ cities, 500+ farmers, 12+ years, 100% cash) | Folded into the Future Products cards as a one-line, non-clickable "Founding design partner: <name>" note, no live badge, no stats, no external link. | These are unverified business claims about a third party's operations, not evidence about this platform; "Visit Live Site" would have implied Mianx.ai already powers that site, which is exactly the "Telepizza/Poultry live status" claim the brief prohibits. |
+| Testimonials section (two fabricated quotes attributed to "Al Hamdu Lillah Team" and "Telepizza Management") | **Removed entirely** (and its nav link removed, so no dead `#testimonials` anchor remains). | No real testimonials exist; the brief explicitly disallows unverified customer testimonials, and inventing placeholder ones would violate the "no fake data" and "no dead links/placeholders" requirements simultaneously. |
+| Contact form success message: "Thank you! We will contact you within 24 hours." | Replaced with "Thank you — your message has been received." | Explicit instruction: no 24-hour response guarantees. |
+| Admin dashboard demo data (4 hardcoded fake leads seeded into `localStorage` on first load) | Removed. Empty state ("Waiting for new leads…") shown until real Supabase data arrives. | No fake/demo data in a real admin tool. |
+| Admin sidebar: `.sidebar { display: none }` below 768px with no way to reopen it | Real off-canvas drawer: `.admin-sidebar.open { transform: translateX(0) }` + a header hamburger button + overlay backdrop + close button, all keyboard/focus accessible. | Explicit instruction: "Mobile dashboard has a working navigation drawer" — the approved design did not actually have one. |
+| Admin sidebar "Analytics" and "Settings" links (fully non-functional in the prototype) | Rendered as visibly `disabled` buttons with a "Coming later" label; no route created. | Explicit instruction: mark as "Coming later" or remove; do not create fake pages. |
+| Admin delete button (hard `DELETE`, `confirm()` + array splice) | Replaced with **Archive** (soft delete): `PATCH {archived: true}` sets `archived_at`; the row is hidden from the default view but never destroyed. | Explicit instruction: no silent hard-delete of leads; the schema was extended (§9.4) specifically to support this safely. |
+| Admin row actions used inline `onclick="viewDetail(123)"` / `onclick="deleteSubmission(123)"` HTML attributes | React `onClick` handlers throughout; zero inline HTML event-handler attributes anywhere in the app. | Explicit instruction: no inline event handlers. |
+| Footer social icons linking to `href="#"`; footer "Careers" link to `href="#"` | Removed (no real destinations exist for either). | Explicit instruction: remove dead links and placeholders. |
+
+Everything else — the premium dark theme, indigo/violet/cyan palette,
+typography (Inter + Space Grotesk, now via `next/font/google` instead of
+the Google Fonts CDN `<link>` tags — same visual fonts, no runtime CDN
+dependency or render-blocking request), fixed/blurred nav on scroll, mobile
+hamburger menu, card borders/gradients/shadows/hover states, the contact
+form's visual layout, and the "How It Works" 3-step section — was preserved
+as closely as the conversion to React allows.
+
+### 9.3 Files added, changed, and deleted
+
+**Design reference preserved (moved, not deleted):**
+`design/approved/final-website/mianx_website_public.html`,
+`design/approved/final-website/mianx_admin_dashboard.html`.
+
+**New public-site components** (`components/public/`): `Navbar.jsx` (sticky
+nav + accessible mobile menu with focus trap), `Hero.jsx` +
+`HeroScene.jsx` (dynamically-imported Three.js wireframe scene, WebGL
+capability check, `prefers-reduced-motion` fallback), `useReveal.js` +
+`Reveal.jsx` (scroll-reveal, replaces GSAP — see §9.2), `HowItWorks.jsx`,
+`PlatformOrder.jsx` (the locked 7-step order, see §2), `Capabilities.jsx`,
+`FutureProducts.jsx`, `LeadForm.jsx` + `ContactSection.jsx`, `Footer.jsx`,
+`ScrollTop.jsx`. Content centralized in `lib/content.js` so the locked order
+is a single source of truth (and directly testable).
+
+**New admin components** (`components/admin/`): `Sidebar.jsx` (with the new
+mobile drawer), `StatsGrid.jsx`, `FiltersBar.jsx`, `LeadTable.jsx`,
+`LeadDetailModal.jsx` (focus-trapped, Escape-to-close, AI analysis
+preserved, Archive action, status `<select>`).
+
+**Shared**: `components/shared/useFocusTrap.js` (Tab-trap + Escape +
+focus-restore, used by both the mobile menu and the admin modal).
+
+**Backend/security** (`lib/`): `lib/leads.js` (validation, `LEAD_STATUSES`
+allowlist, `buildLeadPatch()` mass-assignment guard), `lib/csv.js` (pure,
+independently-testable CSV builder for the export button).
+
+**Rewritten**: `app/page.jsx`, `app/admin/page.jsx`,
+`app/admin/login/page.jsx`, `app/layout.jsx` (now uses `next/font/google`
++ Open Graph metadata), `app/globals.css` (full replacement with the
+approved design's tokens/classes), `app/api/leads/route.js`,
+`app/api/leads/[id]/route.js` (new allowlist-based PATCH), `app/api/analyze/route.js`
+(field names updated to phone/industry/message; still gated on
+`ANTHROPIC_API_KEY`).
+
+**New**: `app/admin/admin.css` (admin-only styles, imported via new
+`app/admin/layout.jsx`).
+
+**Deleted** (confirmed with `grep` for remaining imports before deletion —
+zero references found — and reconfirmed via `git diff --name-status`
+against `origin/main` at delivery time): `components/AgentNetworkCanvas.jsx`,
+`components/AmbientField.jsx` (both superseded by `Hero`/`HeroScene`),
+`components/AdminLeadList.jsx`, `components/AdminLeadDetail.jsx` (superseded
+by `components/admin/*`), root-level `components/LeadForm.jsx` (superseded
+by `components/public/LeadForm.jsx`). `mianx-ai-prototype.jsx` was **not**
+touched by this work — it was already deleted by the Founder before this
+task started, and stays deleted per instruction.
+
+**No documentation, backend, auth, Supabase config, middleware, migration,
+test, or CI file was deleted.** `middleware.js`, `lib/auth.js`, the
+Phase A `lib/supabase.js` guard, `doc/`, `AGENTS.md`'s dev-workflow section,
+and the CI workflow are all unchanged in behavior (only field names/imports
+updated where the new lead schema required it).
+
+### 9.4 Schema change (additive only, per instruction)
+
+Inspected before changing: the existing `leads` table
+(`supabase/migrations/20260721000000_create_leads.sql`) had `id, name,
+email, company, budget, need, status, analysis, created_at` — no `phone`,
+no `industry`, no soft-delete flag, and no `status` CHECK constraint.
+
+New migration `supabase/migrations/20260723190000_leads_phone_industry_status_archive.sql`:
+
+```sql
+alter table leads add column if not exists phone text;
+alter table leads add column if not exists industry text;
+alter table leads add column if not exists archived_at timestamptz;
+update leads set status = 'converted' where status = 'qualified';
+update leads set status = 'new' where status is null;
+alter table leads add constraint leads_status_check
+  check (status in ('new', 'contacted', 'converted', 'closed'));
+alter table leads alter column status set default 'new';
+```
+
+- **Additive only**: two new nullable columns (`phone`, `industry`) plus one
+  new nullable timestamp (`archived_at`) for soft delete. No column is
+  dropped (`budget` and `analysis` remain, simply unused by the new form).
+- **No data loss**: the one `UPDATE` is a corrective backfill of a legacy
+  status label (`'qualified'`, used only by the now-deleted prototype admin
+  UI) to its closest equivalent in the locked set (`'converted'`) — it
+  renames a value, it does not delete rows. This repository has no
+  production traffic yet (see §7's Supabase-sandbox limitation — no real
+  leads have ever been written from this environment), so this is a safe,
+  reversible normalization, not a destructive migration.
+- The message field is still stored in the pre-existing `need` column (the
+  new form's `message` field maps to it in `app/api/leads/route.js`) —
+  chosen deliberately to avoid a column rename, keeping the migration
+  purely additive.
+
+### 9.5 Lead security (§6 of the task brief)
+
+- `LEAD_STATUSES = ["new", "contacted", "converted", "closed"]` is the only
+  allowed set, enforced in `lib/leads.js` `buildLeadPatch()` and asserted in
+  `lib/leads.test.js` and `app/api/leads/[id]/route.test.js` (including a
+  test that `"qualified"` — the old prototype's value — is now rejected).
+- `buildLeadPatch()` is an **explicit allowlist**: only `status`, `archived`
+  (converted server-side into a real `archived_at` timestamp — the client
+  cannot set an arbitrary timestamp), and a shape-validated `analysis`
+  object are ever passed to Supabase's `.update()`. A dedicated test
+  (`"ignores unknown/mass-assignment fields..."`) POSTs `id`, `created_at`,
+  and `email` alongside a valid `status` and asserts only `status` reaches
+  the database call.
+- Lead content is **never** rendered via `dangerouslySetInnerHTML` or raw
+  `innerHTML` anywhere in the app (confirmed by `grep` across `app/` and
+  `components/` — zero matches). `components/admin/LeadDetailModal.test.jsx`
+  and `components/admin/LeadTable.test.jsx` render a lead whose `message`/
+  `name` field literally contains `<script>window.__xss = true;</script>`
+  and `<img src=x onerror=...>`, then assert: the raw tag text is visible
+  as plain text in the document, `document.querySelector("script"/"img")`
+  finds nothing, and the `window.__xss` flags were never set — i.e. it is
+  demonstrably inert, not just "probably safe by convention."
+- Archive replaces hard delete (§9.2); the schema supports it safely (§9.4).
+- `SUPABASE_SERVICE_ROLE_KEY` is read only in `lib/supabase.js`'s
+  server-only `getSupabaseAdmin()`, never in a `"use client"` file, never
+  sent to the browser, and RLS remains enabled on `leads` with no public
+  policies (grants are scoped to `service_role` only, from the original
+  Phase A migration).
+
+### 9.6 AI analysis (§7 of the task brief)
+
+Preserved as-is from Phase A, inside the new `LeadDetailModal`: server-side
+only (`app/api/analyze/route.js`), never requires `ANTHROPIC_API_KEY`
+(build and every other feature work without it), returns the same
+`503 {code: "ANTHROPIC_NOT_CONFIGURED"}` contract, and the modal shows the
+same category of inline notice ("AI analysis is unavailable on this
+deployment…") rather than a hard error — verified by
+`components/admin/LeadDetailModal.test.jsx`'s
+`"shows an inline notice ... when AI analysis is not configured"` test and
+`app/api/analyze/route.test.js`.
+
+### 9.7 Test and build evidence
+
+```text
+$ npm run lint
+✔ No ESLint warnings or errors
+
+$ npm run test
+ Test Files  13 passed (13)
+      Tests  70 passed (70)
+
+$ env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_ANON_KEY \
+  -u SUPABASE_SERVICE_ROLE_KEY -u ANTHROPIC_API_KEY npm run build
+...
+ ✓ Compiled successfully
+ ✓ Generating static pages (6/6)
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    5.12 kB         101 kB
+├ ○ /_not-found                          873 B          88.3 kB
+├ ○ /admin                               6.2 kB          156 kB
+├ ○ /admin/login                         1.46 kB         160 kB
+├ ƒ /api/analyze                         0 B                0 B
+├ ƒ /api/leads                           0 B                0 B
+└ ƒ /api/leads/[id]                      0 B                0 B
+```
+
+The 70 tests include (per the task's required coverage list): public
+homepage rendering (`app/page.test.jsx`), the exact locked platform order
+(`components/public/PlatformOrder.test.jsx`), lead validation success/
+failure/missing-Supabase (`lib/leads.test.js`, `app/api/leads/route.test.js`,
+`components/public/LeadForm.test.jsx`), admin auth redirect + authenticated
+loading + search/filtering (`app/admin/page.test.jsx`), valid/invalid status
+updates and mass-assignment prevention (`app/api/leads/[id]/route.test.js`),
+safe malicious-text rendering (`LeadDetailModal.test.jsx`,
+`LeadTable.test.jsx`), CSV export correctness (`lib/csv.test.js`), missing
+`ANTHROPIC_API_KEY` (`app/api/analyze/route.test.js`,
+`LeadDetailModal.test.jsx`), keyboard/focus-trap modal behavior
+(`LeadDetailModal.test.jsx`: Escape closes + restores focus, Tab is
+trapped), and reduced-motion (`components/public/useReveal.test.jsx`).
+
+**Local smoke test** (`npm start`, all four env vars unset):
+
+```text
+GET  /                 → 200
+GET  /admin             → 307 → /admin/login
+POST /api/leads         → 503 {"error":"Configuration error: ..."}
+```
+
+**Manual GUI walkthrough** (`computerUse`, desktop 1440×900 / mobile 390×844
+/ tablet 768×1024): dark indigo/violet/cyan theme with animated 3D hero
+confirmed; "The Platform, In Order" shows all 7 cards in the locked
+sequence; "Future Industry Products" shows all six as "Planned" (no "LIVE"
+badges anywhere, confirmed via `Ctrl+F` returning 0 matches for "agent
+agency" and "LIVE NOW"); empty-form submission shows inline per-field
+errors without calling the API; filled-form submission shows the
+configuration-error notice (Supabase unconfigured in this sandbox — not a
+crash, not a fake success, no "24 hours" promise); mobile hamburger menu
+opens a full-screen menu with a working close button, Escape closes it, no
+horizontal overflow; tablet layout has no overlap; `/admin` redirects to
+`/admin/login`, which matches the same dark design system and shows a
+configuration notice with sign-in disabled. Zero console errors other than
+expected WebGL GPU-stall informational messages (from the 3D scene) and the
+expected 503 from the unconfigured-Supabase form submission.
+
+Screenshots: `final_homepage_desktop.webp`, `final_platform_order_section.webp`,
+`final_future_products_section.webp`, `final_form_validation_errors.webp`,
+`final_form_config_error.webp`, `final_mobile_menu.webp`,
+`final_tablet_layout.webp`, `final_admin_login.webp` (in the PR body / task
+artifacts).
+
+### 9.8 Known limitations (this section)
+
+- **Full authenticated admin-dashboard flow (real leads → table → modal →
+  status/archive/CSV against a live Supabase project) still could not be
+  exercised end-to-end in this sandbox**, for the same Docker
+  container-networking limitation already documented in §7 — unchanged
+  since Phase A. What *is* new and does mitigate this: `app/admin/page.test.jsx`
+  exercises the same data-loading/search/filter/stats logic against a
+  mocked `fetch`, and `LeadDetailModal.test.jsx` exercises status-update/
+  archive/AI-analysis against a mocked `fetch`, so the client-side logic
+  paths are proven even without a reachable database.
+- GSAP was not installed (§9.2) — the scroll-reveal effect is visually
+  equivalent but implemented via `IntersectionObserver`, not GSAP's
+  `ScrollTrigger`. If a future requirement needs GSAP-specific timeline
+  features (not just fade-up-on-scroll), it isn't installed yet.
+- `npm audit`'s 5 pre-existing high-severity `next@14.2.35` advisories
+  (§4/§7) are unchanged by this work — still deferred, same reasoning.
+- A GPU/WebGL "GL_CLOSE_PATH_NV" informational stall message appears in the
+  console during the hero animation in this VM's software-rendered Chrome;
+  this is an environment/driver characteristic of the sandbox's virtual
+  GPU, not a code defect (the hero still renders and animates correctly).
+
+### 9.9 Branch correction
+
+PR #2 (`cursor/mianx-phase-a-website-foundation-9170`) — open at the start
+of this task — was merged into `main` by the Founder partway through this
+session (visible as merge commit `5697413`, "Merge pull request #2 from
+Mianxai/cursor/mianx-phase-a-website-foundation-9170"). All of this
+section's work had already been committed to that same branch before the
+merge was noticed (PR checks stopped updating because a merged PR's tracked
+head no longer follows new pushes to its source branch). Per instruction
+("If PR #2 is merged, create `cursor/mianx-final-ui-replacement`"), the
+work was moved to a new branch, **`cursor/mianx-final-ui-replacement-9170`**
+(cut from the same commit, verified as a clean 58-file diff against the new
+`main`), pushed, and a new draft PR (**#3**) opened against `main`. No
+commits were lost, no force-push or `main` merge was performed by this
+agent.
+
+### 9.10 Founder approval gate
+
+No production deploy, domain change, or `main` merge was performed or
+attempted. **One approval is required from the Founder**: review the Vercel
+preview for this branch/PR and explicitly approve promotion to production
+(or request changes). Phase B (Runtime Architecture ADR and Mianx Core
+foundation) remains paused until that approval, per instruction.
+
+---
+
+## 10. Next READY phase
 
 **Phase B — Runtime Architecture ADR and Mianx Core foundation.**
 
 Not started. Per instruction, no Telepizza/Poultry work and no bulk agent
 generation begins until Phase B (and subsequent phases) are explicitly
-approved and executed.
+approved and executed, and not before the Founder approval gate in §9.9 is
+cleared.
