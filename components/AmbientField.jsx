@@ -29,6 +29,9 @@ export default function AmbientField() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
+    const prefersReducedMotion =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
     function draw(t) {
       ctx.clearRect(0, 0, w, h);
       ctx.globalCompositeOperation = "lighter";
@@ -45,7 +48,9 @@ export default function AmbientField() {
         ctx.fill();
       }
       ctx.globalCompositeOperation = "source-over";
-      raf = requestAnimationFrame(draw);
+      // Respect prefers-reduced-motion: paint one static frame instead of
+      // an endless requestAnimationFrame loop.
+      if (!prefersReducedMotion) raf = requestAnimationFrame(draw);
     }
 
     resize();

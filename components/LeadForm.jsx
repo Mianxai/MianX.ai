@@ -25,7 +25,7 @@ export default function LeadForm() {
       if (!res.ok) throw new Error(data.error || "Something went wrong");
       setStatus({
         state: "ok",
-        msg: "Thanks — your request is in. Our agents are already on it.",
+        msg: "Thanks — your request is in the founder workspace.",
       });
       setForm(EMPTY);
     } catch (err) {
@@ -86,7 +86,7 @@ export default function LeadForm() {
             id="lf-need"
             value={form.need}
             onChange={(e) => update("need", e.target.value)}
-            placeholder="We want AI agents to handle inbound support and qualify leads 24/7…"
+            placeholder="We want to run inbound support and lead qualification through Mianx.ai…"
             required
           />
         </div>
@@ -110,7 +110,7 @@ export default function LeadForm() {
               <span className="spin" /> Sending…
             </>
           ) : (
-            "Deploy my agents →"
+            "Send request →"
           )}
         </button>
       </div>
