@@ -20,6 +20,12 @@ export async function PATCH(req, { params }) {
 
   const body = await req.json();
   const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return NextResponse.json(
+      { error: SUPABASE_NOT_CONFIGURED_MESSAGE },
+      { status: 503 }
+    );
+  }
   const { data, error } = await supabaseAdmin
     .from("leads")
     .update(body)

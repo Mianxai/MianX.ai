@@ -23,6 +23,12 @@ export async function POST(req) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
   const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return NextResponse.json(
+      { error: SUPABASE_NOT_CONFIGURED_MESSAGE },
+      { status: 503 }
+    );
+  }
   const { data, error } = await supabaseAdmin
     .from("leads")
     .insert([
@@ -52,6 +58,12 @@ export async function GET(req) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return NextResponse.json(
+      { error: SUPABASE_NOT_CONFIGURED_MESSAGE },
+      { status: 503 }
+    );
+  }
   const { data, error } = await supabaseAdmin
     .from("leads")
     .select("*")

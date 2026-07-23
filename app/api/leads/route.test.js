@@ -50,6 +50,24 @@ describe("POST /api/leads", () => {
     const data = await res.json();
     expect(data.error).toMatch(/missing required fields/i);
   });
+
+  it("returns a controlled 503 (not a crash) if the Supabase client fails to construct even though env vars look present", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example-project.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
+
+    vi.doMock("@/lib/supabase", async () => {
+      const actual = await vi.importActual("@/lib/supabase");
+      return { ...actual, getSupabaseAdmin: () => null };
+    });
+
+    const { POST } = await import("./route.js");
+    const res = await POST(
+      fakeRequest({ name: "Jane", email: "jane@example.com", need: "Help" })
+    );
+    expect(res.status).toBe(503);
+    vi.doUnmock("@/lib/supabase");
+  });
 });
 
 describe("GET /api/leads", () => {
