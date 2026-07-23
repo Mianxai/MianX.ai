@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import HeroCanvas from "./HeroCanvas";
+import BrandLogo from "./BrandLogo";
 
 const EMPTY = { name: "", email: "", company: "", industry: "", phone: "", message: "" };
 
@@ -155,7 +156,7 @@ export default function PublicSite() {
       <nav className={`navbar${scrolled ? " scrolled" : ""}`}>
         <div className="nav-container">
           <a href="#" className="logo">
-            <div className="logo-icon">M</div>
+            <BrandLogo size={40} />
             <span className="logo-text">MianX.ai</span>
           </a>
           <ul className="nav-links">
@@ -400,7 +401,7 @@ export default function PublicSite() {
       <footer className="footer">
         <div className="footer-container">
           <div className="footer-brand">
-            <a href="#" className="logo"><div className="logo-icon">M</div><span className="logo-text">MianX.ai</span></a>
+            <a href="#" className="logo"><BrandLogo size={40} /><span className="logo-text">MianX.ai</span></a>
             <p>AI-powered Industry Operating Systems that help businesses operate, automate, analyze, and grow from a single platform.</p>
           </div>
           <div className="footer-links">

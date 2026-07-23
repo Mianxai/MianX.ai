@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
+import BrandLogo from "@/components/BrandLogo";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function AdminLoginPage() {
     <div className="login-page">
       <form className="login-card" onSubmit={onSubmit}>
         <Link href="/" className="login-logo logo">
-          <div className="logo-icon">M</div>
+          <BrandLogo size={40} />
           <span className="logo-text">MianX.ai</span>
         </Link>
         <h2>Admin sign in</h2>

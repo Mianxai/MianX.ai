@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
+import BrandLogo from "@/components/BrandLogo";
 
 const STATUS_CYCLE = ["new", "contacted", "converted", "closed"];
 const FILTERS = ["all", "new", "contacted", "converted", "closed"];
@@ -132,7 +133,7 @@ export default function AdminDashboard() {
     <div className="app">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">M</div>
+          <BrandLogo size={36} />
           <span className="sidebar-logo-text">MianX.ai</span>
         </div>
         <ul className="sidebar-nav">
