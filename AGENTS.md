@@ -1,6 +1,6 @@
 # Mianx.ai
 
-Next.js 14 (App Router, JavaScript) app. Public landing page captures inbound
+Next.js 15 (App Router, JavaScript) app. Public landing page captures inbound
 leads into Supabase Postgres; a protected admin dashboard triages them; an
 optional server-side Anthropic call scores leads and drafts replies.
 

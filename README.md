@@ -251,7 +251,7 @@ After every project completes, extract:
 
 ## Current Application (Phase A)
 
-The repository root is a runnable **Next.js 14 (App Router)** application —
+The repository root is a runnable **Next.js 15 (App Router)** application —
 the Phase A website and lead-capture foundation:
 
 - Public landing page (`app/page.jsx`) presenting the locked platform

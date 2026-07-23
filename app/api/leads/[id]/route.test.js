@@ -55,7 +55,7 @@ describe("PATCH /api/leads/[id]", () => {
 
   it("returns 503 when Supabase is not configured", async () => {
     const { PATCH } = await import("./route.js");
-    const res = await PATCH(fakeRequest({ status: "contacted" }), { params: { id: "1" } });
+    const res = await PATCH(fakeRequest({ status: "contacted" }), { params: Promise.resolve({ id: "1" }) });
     expect(res.status).toBe(503);
   });
 
@@ -63,7 +63,7 @@ describe("PATCH /api/leads/[id]", () => {
     setSupabaseEnv();
     vi.doMock("@/lib/auth", () => ({ getSessionUser: vi.fn(async () => null) }));
     const { PATCH } = await import("./route.js");
-    const res = await PATCH(fakeRequest({ status: "contacted" }), { params: { id: "1" } });
+    const res = await PATCH(fakeRequest({ status: "contacted" }), { params: Promise.resolve({ id: "1" }) });
     expect(res.status).toBe(401);
   });
 
@@ -72,7 +72,7 @@ describe("PATCH /api/leads/[id]", () => {
     mockAuthed();
     const { update } = mockSupabaseUpdate({ id: "1", status: "contacted" });
     const { PATCH } = await import("./route.js");
-    const res = await PATCH(fakeRequest({ status: "contacted" }), { params: { id: "1" } });
+    const res = await PATCH(fakeRequest({ status: "contacted" }), { params: Promise.resolve({ id: "1" }) });
     expect(res.status).toBe(200);
     expect(update).toHaveBeenCalledWith({ status: "contacted" });
   });
@@ -82,7 +82,7 @@ describe("PATCH /api/leads/[id]", () => {
     mockAuthed();
     mockSupabaseUpdate({ id: "1" });
     const { PATCH } = await import("./route.js");
-    const res = await PATCH(fakeRequest({ status: "qualified" }), { params: { id: "1" } });
+    const res = await PATCH(fakeRequest({ status: "qualified" }), { params: Promise.resolve({ id: "1" }) });
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.fieldErrors.status).toBeTruthy();
@@ -95,7 +95,7 @@ describe("PATCH /api/leads/[id]", () => {
     const { PATCH } = await import("./route.js");
     const res = await PATCH(
       fakeRequest({ status: "contacted", id: "attacker-id", created_at: "2000-01-01", email: "hijack@example.com" }),
-      { params: { id: "1" } }
+      { params: Promise.resolve({ id: "1" }) }
     );
     expect(res.status).toBe(200);
     expect(update).toHaveBeenCalledWith({ status: "contacted" });
@@ -107,7 +107,7 @@ describe("PATCH /api/leads/[id]", () => {
     mockAuthed();
     const { update } = mockSupabaseUpdate({ id: "1", archived_at: "2026-01-01T00:00:00.000Z" });
     const { PATCH } = await import("./route.js");
-    const res = await PATCH(fakeRequest({ archived: true }), { params: { id: "1" } });
+    const res = await PATCH(fakeRequest({ archived: true }), { params: Promise.resolve({ id: "1" }) });
     expect(res.status).toBe(200);
     const call = update.mock.calls[0][0];
     expect(typeof call.archived_at).toBe("string");
@@ -120,7 +120,7 @@ describe("PATCH /api/leads/[id]", () => {
     const { PATCH } = await import("./route.js");
     const res = await PATCH(
       fakeRequest({ analysis: { score: "not-a-number" } }),
-      { params: { id: "1" } }
+      { params: Promise.resolve({ id: "1" }) }
     );
     expect(res.status).toBe(400);
   });
@@ -130,7 +130,7 @@ describe("PATCH /api/leads/[id]", () => {
     mockAuthed();
     mockSupabaseUpdate({ id: "1" });
     const { PATCH } = await import("./route.js");
-    const res = await PATCH(fakeRequest({ foo: "bar" }), { params: { id: "1" } });
+    const res = await PATCH(fakeRequest({ foo: "bar" }), { params: Promise.resolve({ id: "1" }) });
     expect(res.status).toBe(400);
   });
 });

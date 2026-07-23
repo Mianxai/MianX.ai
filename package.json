@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
-    "next": "^14.2.5",
+    "next": "^15.5.21",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.185.1"
@@ -24,8 +24,12 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "eslint": "^8.57.0",
-    "eslint-config-next": "^14.2.5",
+    "eslint-config-next": "^15.5.21",
     "jsdom": "^29.1.1",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "postcss": "^8.5.12",
+    "sharp": "^0.35.0"
   }
 }

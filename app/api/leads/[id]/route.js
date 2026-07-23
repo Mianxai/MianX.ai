@@ -12,7 +12,11 @@ export const dynamic = "force-dynamic";
 // PROTECTED: status changes, archiving (soft delete), and saving AI analysis
 // results. Uses an explicit field allowlist (see lib/leads.js) so a client
 // can never mass-assign arbitrary columns (id, created_at, email, etc.).
+//
+// Next.js 15: dynamic route `params` is now a Promise and must be awaited
+// (https://nextjs.org/docs/messages/sync-dynamic-apis).
 export async function PATCH(req, { params }) {
+  const { id } = await params;
   if (!isSupabaseConfigured()) {
     return NextResponse.json(
       { error: SUPABASE_NOT_CONFIGURED_MESSAGE },
@@ -48,7 +52,7 @@ export async function PATCH(req, { params }) {
   const { data, error } = await supabaseAdmin
     .from("leads")
     .update(patch)
-    .eq("id", params.id)
+    .eq("id", id)
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
