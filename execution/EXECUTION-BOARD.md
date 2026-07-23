@@ -144,6 +144,18 @@ test in §6.
   severity advisories against `next@14.2.35` — the fix is a major version
   bump with breaking changes, out of Phase A's "reconcile, don't replace the
   stack" scope. Recorded as a follow-up recommendation, not silently done.
+- **CI caught a real portability bug after the first push**: the CI
+  workflow (Node 20) failed 2 of 10 tests with `Error: Node.js detected but
+  native WebSocket not found.` `@supabase/supabase-js` unconditionally
+  constructs a Realtime client inside `createClient()`, which needs a
+  global `WebSocket` — native only on Node 22+. This local sandbox runs
+  Node 22.14 so it wasn't visible there. Fixed by pinning
+  `engines.node >= 22` in `package.json` (so Vercel/CI pick a runtime with
+  native WebSocket), moving CI to Node 22, and wrapping client construction
+  in `lib/supabase.js` in try/catch plus explicit null-checks in the API
+  routes as a second line of defense. This is exactly why the required "run
+  the tests, run the build, show the output" gates matter — see the CI run
+  history on the PR.
 
 ## 5. HTML/design source (§3 detail)
 
