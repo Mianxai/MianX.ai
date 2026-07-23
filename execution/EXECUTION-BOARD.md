@@ -614,7 +614,23 @@ artifacts).
   this is an environment/driver characteristic of the sandbox's virtual
   GPU, not a code defect (the hero still renders and animates correctly).
 
-### 9.9 Founder approval gate
+### 9.9 Branch correction
+
+PR #2 (`cursor/mianx-phase-a-website-foundation-9170`) — open at the start
+of this task — was merged into `main` by the Founder partway through this
+session (visible as merge commit `5697413`, "Merge pull request #2 from
+Mianxai/cursor/mianx-phase-a-website-foundation-9170"). All of this
+section's work had already been committed to that same branch before the
+merge was noticed (PR checks stopped updating because a merged PR's tracked
+head no longer follows new pushes to its source branch). Per instruction
+("If PR #2 is merged, create `cursor/mianx-final-ui-replacement`"), the
+work was moved to a new branch, **`cursor/mianx-final-ui-replacement-9170`**
+(cut from the same commit, verified as a clean 58-file diff against the new
+`main`), pushed, and a new draft PR (**#3**) opened against `main`. No
+commits were lost, no force-push or `main` merge was performed by this
+agent.
+
+### 9.10 Founder approval gate
 
 No production deploy, domain change, or `main` merge was performed or
 attempted. **One approval is required from the Founder**: review the Vercel
