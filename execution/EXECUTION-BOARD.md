@@ -640,11 +640,350 @@ foundation) remains paused until that approval, per instruction.
 
 ---
 
-## 10. Next READY phase
+## 11. Release-readiness gate (post Founder visual approval)
+
+The Founder visually reviewed the Vercel preview for PR #3 and approved the
+new public website and admin dashboard design. This section is the
+release-readiness gate requested before any Founder merge decision. **No
+merge or production deploy was performed.**
+
+### 11.1 Branch correction (repeat pattern from §9.9)
+
+PR #3 (`cursor/mianx-final-ui-replacement-9170`) was, like PR #2 before it,
+merged into `main` before this task began (merge commit `61a88af`). Per the
+same reasoning as §9.9, this gate's work was done on a fresh branch cut from
+the current `main`: **`cursor/mianx-release-gate-9170`**. No commits were
+lost; no force-push or `main` merge was performed by this agent.
+
+### 11.2 Dependency security gate
+
+**Versions found at the start of this gate** (before any change):
+
+```text
+next:       14.2.35
+react:      18.3.1
+react-dom:  18.3.1
+node:       v22.14.0
+```
+
+**`npm audit --omit=dev`** (production dependencies only), before any fix:
+
+```text
+next  9.3.4-canary.0 - 16.3.0-canary.5   Severity: high
+  → 20 distinct GHSA advisories (DoS via Image Optimizer, RSC deserialization
+    DoS, HTTP request smuggling in rewrites, unbounded image-cache growth,
+    Server Components DoS x2, middleware/proxy cache poisoning, CSP-nonce
+    XSS, RSC cache-busting poisoning, beforeInteractive-script XSS, Image
+    Optimization DoS, WebSocket-upgrade SSRF, RSC response cache poisoning,
+    i18n middleware/proxy bypass, Server Actions DoS, custom-server Server
+    Action SSRF, response-body cache confusion x2, Edge unbounded Server
+    Action payload, rewrites SSRF, internal Server Function disclosure).
+  All ranges have an upper bound in the 15.0.x–15.5.x line (patched), i.e.
+  every one of them genuinely applies to the installed 14.2.35 — confirmed
+  by checking each advisory's specific version range, not just the
+  aggregate summary range.
+postcss  <=8.5.11   Severity: high (transitive, bundled inside `next`)
+2 high-severity advisories total in the `npm audit --omit=dev` report at
+that point (the report groups the ~20 Next.js GHSAs under one `next` entry).
+```
+
+**`npm audit`** (including devDependencies) showed the same 2 grouped
+high-severity entries — no additional dev-only advisory beyond what's in
+§11.2's "after" state below.
+
+**Disposition — does each advisory affect this application?**
+
+- **Next.js GHSAs**: Yes, applicable. This app is a self-hosted-on-Vercel
+  App Router application using Route Handlers, middleware, and the App
+  Router request pipeline that most of these advisories target (Server
+  Components, rewrites, middleware, Server Actions path even though this
+  app doesn't use Server Actions directly — the shared request-handling
+  code is still in the dependency graph). Not something to describe as
+  "acceptable" — it required a real upgrade, not a documentation footnote.
+- **postcss**: Bundled as a direct dependency *inside* `next`'s own
+  `package.json` (not something this repo chose), used only for Next's
+  internal, build-time CSS pipeline processing this repo's own static
+  `.css` files — not reachable with attacker-controlled input at runtime.
+  Still flagged as a production advisory by `npm audit` because it's an
+  unconditional dependency of `next`, so it was fixed anyway (§11.2's
+  "after" state) rather than argued away.
+
+**Official guidance followed**: Next.js's July 2026 security release
+(`nextjs.org/blog/july-2026-security-release`) patches all of the above in
+`15.5.21` (Maintenance LTS for the 15.x line) and `16.2.11` (Active LTS for
+16.x). Per instruction ("smallest controlled upgrade... prefer the
+lowest-risk supported line"), **`next@15.5.21`** was chosen over `16.2.11` —
+one major version instead of two, still a currently-supported, fully
+patched release line.
+
+**Upgrade performed**:
+
+```text
+npm install next@15.5.21 eslint-config-next@15.5.21
+```
+
+React/React DOM were **kept at 18.3.1** — `next@15.5.21`'s own published
+`peerDependencies` explicitly allow `react`/`react-dom` `^18.2.0` (in
+addition to `^19.0.0`), and this app is 100% App Router with no Server
+Actions/`useFormState`/`useFormStatus` usage, so there was no code-level
+need to also take on a React 18→19 upgrade — a materially larger, separate
+risk surface (removed APIs, ref-as-prop changes, etc.) that the "smallest
+controlled upgrade" instruction argues against taking on unprompted.
+
+**Migration requirements reviewed and applied** (Next.js 15 upgrade guide,
+"Async Request APIs" breaking change): `params` passed to Route Handlers is
+now a `Promise` and must be `await`ed. This repo has exactly one dynamic
+Route Handler — `app/api/leads/[id]/route.js` — updated from
+`.eq("id", params.id)` (synchronous) to `const { id } = await params;` /
+`.eq("id", id)`, with its test file (`route.test.js`) updated to pass
+`{ params: Promise.resolve({ id: "1" }) }` instead of a plain object. No
+other Next 15 breaking change applies to this codebase: no `next/headers`
+`cookies()`/`headers()`/`draftMode()` usage anywhere (`middleware.js` and
+the API routes read cookies directly off the request object, which stayed
+synchronous), no `fetch()` calls relying on the old default-cached
+behavior, no `next/image` usage (relevant to the `sharp` finding below), no
+custom server.
+
+**Remaining `postcss`/`sharp` findings after the Next.js upgrade**, and how
+they were resolved *without* `npm audit fix --force`:
+
+```text
+$ npm audit --omit=dev   (after next@15.5.21)
+postcss  <=8.5.11  high  (still bundled inside next@15.5.21, pinned to 8.4.31)
+sharp    <0.35.0   high  (next's optional next/image dependency, pinned to 0.34.5)
+3 high severity vulnerabilities
+```
+
+`sharp` is Next's optional image-optimizer backend for `next/image` — **this
+app never imports `next/image` or `<Image>`** (confirmed via `grep`, zero
+matches), so the vulnerable code path is not reachable at runtime even
+though the package is present. `postcss` is Next's internal build-time CSS
+dependency (§11.2 disposition above). Rather than describe either as
+"acceptable" and leave them, both were pinned to patched versions using
+npm's `overrides` field (not `npm audit fix --force`, which was explicitly
+disallowed and which would have suggested downgrading `next` to `9.3.3`):
+
+```json
+"overrides": {
+  "postcss": "^8.5.12",
+  "sharp": "^0.35.0"
+}
+```
+
+**Final state — `npm audit --omit=dev` and `npm audit`, both**:
+
+```text
+found 0 vulnerabilities
+```
+
+Confirmed via `npm ls postcss sharp next react react-dom`: `next@15.5.21`
+now resolves `postcss@8.5.22 overridden` and `sharp@0.35.3 overridden`;
+`react@18.3.1` / `react-dom@18.3.1` unchanged, deduped everywhere (single
+copy in the tree, no version split between `next` and the app).
+
+### 11.3 Re-verification after the upgrade
+
+```text
+$ npm run lint
+✔ No ESLint warnings or errors
+(next lint itself prints a deprecation notice — it is being replaced by a
+ plain ESLint CLI in Next.js 16; not applicable yet on the 15.x line used
+ here, not a functional issue)
+
+$ npm run test
+ Test Files  13 passed (13)
+      Tests  70 passed (70)
+
+$ env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_ANON_KEY \
+  -u SUPABASE_SERVICE_ROLE_KEY -u ANTHROPIC_API_KEY npm run build
+   ▲ Next.js 15.5.21
+ ✓ Compiled successfully in 6.9s
+ ✓ Generating static pages (6/6)
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                    5.23 kB         111 kB
+├ ○ /_not-found                            992 B         104 kB
+├ ○ /admin                               6.18 kB         170 kB
+├ ○ /admin/login                         1.45 kB         169 kB
+├ ƒ /api/analyze                           131 B         103 kB
+├ ƒ /api/leads                             131 B         103 kB
+└ ƒ /api/leads/[id]                        131 B         103 kB
+ƒ Middleware                             34.2 kB
+```
+
+Manual browser re-verification (local `npm start`, same env-vars-removed
+state, via `computerUse`): homepage visually unchanged (dark theme, 3D hero,
+all sections); **3 consecutive reloads showed zero hydration warnings**
+("Hydration failed", "Text content does not match", etc. — none present);
+no 404s on JS/CSS/font assets; `/admin` still redirects to `/admin/login`;
+contact form still shows the controlled configuration-error message, not a
+crash; mobile hamburger menu and `prefers-reduced-motion` still work
+identically to before the upgrade. Middleware/auth behavior unchanged —
+confirmed via the same `307 → /admin/login` redirect and the PATCH route's
+controlled `503` (proving the `await params` fix is exercised, not just
+present in source).
+
+### 11.4 Hosted Supabase release test — **BLOCKED**
+
+No non-production hosted Supabase project or correctly-configured preview
+environment was reachable from this agent. Concretely, every avenue was
+attempted:
+
+- **Cloud Agent environment variables**: `env | grep -iE "supabase|anthropic"`
+  returns nothing — no Supabase secret was injected into this run.
+- **Cursor Cloud secrets/environment metadata**: queried via the
+  `cursor-cloud` MCP server (`environment-info`) — no environment.json is
+  exposed for this personal environment and no secret material is
+  surfaced by that tool by design; nothing indicates a hosted Supabase
+  project is configured for this repo/environment.
+- **The deployed Vercel preview**
+  (`https://mian-x-ai-git-cursor-mianx-final-ui-re-6809fa-mianxais-projects.vercel.app`):
+  a first attempt via `computerUse` appeared to load the homepage — this
+  was later found to be a **stale local `localhost:3000` browser tab**, not
+  the real deployment (the giveaway: the failed `/api/leads` request's
+  `Referrer` header was `http://localhost:3000/`). A deliberate, fresh,
+  typed-URL navigation to the preview correctly redirected to
+  `vercel.com/login?...&suri=<preview-url>` — **Vercel account
+  authentication is required** and this agent has no way to complete SSO
+  login. `curl` against the same URL independently returned
+  `{"error":{"code":"401","message":"Protected deployment"}}`.
+- **Local Supabase (Docker)**: available as a *local* dev option per
+  `AGENTS.md`, but (a) it is not "hosted" and would not satisfy the "existing
+  lead records preserved" check (a fresh local instance has no pre-existing
+  data to preserve), and (b) this sandbox's Docker networking was already
+  established as broken in an earlier phase (container-to-container bridge
+  networking non-functional; see this file's Phase A §7) — not re-attempted
+  here since it wouldn't satisfy the "hosted" requirement even if it worked.
+- **No linked hosted project reference** exists anywhere in the repo:
+  `supabase/config.toml`'s `project_id = "workspace"` is just the local CLI
+  project name (from `supabase init`), not a real project ref; no
+  `.env.local` or credentials file exists (correctly — none should); no
+  Supabase access token or linked-project file exists under `~/.supabase`.
+
+Per instruction, stopping this specific check with:
+
+```text
+HOSTED SUPABASE TEST ENVIRONMENT REQUIRED
+```
+
+**What this blocks**: direct confirmation that the
+`20260723190000_leads_phone_industry_status_archive.sql` migration has been
+applied to a real hosted database, that `phone`/`industry`/`archived_at`
+exist with the right constraint, that pre-existing `qualified` rows were
+correctly backfilled to `converted`, that existing lead rows were
+preserved, and that RLS is enabled as intended on that real instance.
+
+**What is not blocked**: the migration file itself, its SQL correctness,
+and the application code's handling of the resulting schema are unchanged
+from §9.4/§9.5 and remain fully covered by the automated test suite (which
+exercises the exact same allowlist/validation/status-enum logic against a
+mocked Supabase client, run 70/70 green in this same session — §11.3).
+
+**To unblock**: the Founder (or someone with Supabase project access) needs
+to either (a) provide a non-production Supabase project's URL/anon/
+service-role keys as Cursor Cloud secrets for this repository/environment,
+or (b) confirm the Vercel project's own environment variables are pointing
+at a real Supabase project and grant this agent's browser session access
+past Vercel's deployment protection (e.g. a temporary protection bypass
+token), or (c) run the migration and the checks in §3 of the task brief
+directly and report the result back.
+
+### 11.5 Real end-to-end flow — partially blocked by §11.4
+
+Items from the task's 20-step E2E checklist that do **not** require a
+reachable Supabase project were re-verified in this session (all via the
+local build on the upgraded Next.js 15.5.21, since the hosted preview itself
+is unreachable per §11.4):
+
+- Open the public homepage → **done**, 200, visually unchanged.
+- Submit a test lead → **done** (locally): client validation runs, then the
+  API is called; without a reachable Supabase it correctly returns the
+  controlled configuration error, never a fake success — this proves the
+  "success only after persistence" contract holds (no code path returns
+  200 without a real insert), but does not prove an actual row was written
+  to a hosted table (that requires §11.4).
+- Open `/admin` while logged out → redirects to `/admin/login` — **done**.
+- Log in with a real Supabase test admin → **blocked**, no such account is
+  reachable (§11.4).
+- Lead appears / search / filter / detail modal / status transitions
+  (`new`→`contacted`→`converted`→`closed`) / refresh-persists / CSV export /
+  Archive / logout / re-protection → **blocked** for the *hosted, real*
+  version of this check (§11.4), but the identical logic is independently
+  covered by `app/admin/page.test.jsx` (load/search/filter/stats against a
+  mocked API) and `components/admin/LeadDetailModal.test.jsx`
+  (status-update, archive, AI-analysis, malicious-text-safety) with a
+  mocked `fetch` — 70/70 tests green, unchanged by this gate's work.
+- Malicious lead text renders as plain text → **confirmed** (again) via the
+  existing `LeadDetailModal.test.jsx`/`LeadTable.test.jsx` script/img-payload
+  tests, which still pass unchanged after the Next.js upgrade.
+- Missing Anthropic key does not break any core feature → **confirmed**:
+  `app/api/analyze/route.test.js` and the local build/smoke test both show
+  the rest of the app (homepage, lead form, admin login, `/admin`
+  protection) working normally with `ANTHROPIC_API_KEY` absent.
+
+No test data was created against any real database in this session (there
+was none reachable to create it against), so there is nothing to delete or
+label from this gate specifically.
+
+### 11.6 Browser and accessibility gate
+
+Re-verified via `computerUse` against the local build (upgraded Next.js
+15.5.21) — the actual Vercel preview could not be reached per §11.4, so this
+is the same code that would be deployed, exercised locally rather than on
+the live preview URL:
+
+- Desktop (1440×900): homepage visual design unchanged from the
+  Founder-approved design — **pass**.
+- `prefers-reduced-motion: reduce` emulated in DevTools: page still renders
+  correctly (static hero frame, no crash, reveal sections appear without
+  animation) — **pass**.
+- Keyboard navigation: visible focus outlines on skip-link, logo, nav
+  links, buttons, and form fields — **pass**.
+- Mobile (390×844): hamburger menu opens as a full-screen overlay, Tab
+  stays on reasonable elements, Escape closes it — **pass**.
+- Tablet (768×1024): no horizontal overflow, no visual overlap — **pass**.
+- `/admin/login`: renders correctly with a configuration notice; keyboard
+  focus outlines visible on email/password/submit — **pass**.
+- Console: zero errors, zero warnings, zero hydration issues, zero failed
+  network requests across 3 reloads — **pass**.
+- **Not verified this session** (blocked by §11.4, no authenticated admin
+  session reachable): the admin dashboard's own mobile drawer and the
+  `LeadDetailModal`'s focus-trap/Escape/focus-restore *in a live browser*.
+  These remain covered at the component level by
+  `components/admin/LeadDetailModal.test.jsx` (Tab-trap, Escape-closes,
+  focus-restored-to-trigger, all asserted programmatically) and are
+  unchanged by this gate's dependency work — they were not touched.
+
+### 11.7 Files changed this gate
+
+`package.json` / `package-lock.json` (Next.js `14.2.35` → `15.5.21`,
+`eslint-config-next` matched, `overrides` added for `postcss`/`sharp`),
+`app/api/leads/[id]/route.js` (async `params` per Next 15), its test file
+`app/api/leads/[id]/route.test.js` (mock `params` as a resolved `Promise`),
+`README.md`/`AGENTS.md` (one-line "Next.js 14" → "Next.js 15" correction —
+no setup steps or dev workflow changed), and this file. No approved design,
+component, migration, API route behavior, test, or documentation was
+deleted; nothing was redesigned.
+
+### 11.8 Remaining blockers
+
+1. **`HOSTED SUPABASE TEST ENVIRONMENT REQUIRED`** (§11.4) — the only open
+   item preventing a full pass of this gate. Everything else in the task's
+   checklist that does not require a reachable hosted database has passed.
+2. Vercel's deployment protection prevents this agent from independently
+   confirming the live preview deployment itself builds/serves correctly
+   on Vercel's infrastructure with `next@15.5.21` (the GitHub Actions CI
+   build, which mirrors the production build command, does confirm this —
+   see the PR's checks — but a live preview visual confirmation on Vercel
+   itself was not repeated this session because of the auth block).
+
+---
+
+## 12. Next READY phase
 
 **Phase B — Runtime Architecture ADR and Mianx Core foundation.**
 
 Not started. Per instruction, no Telepizza/Poultry work and no bulk agent
 generation begins until Phase B (and subsequent phases) are explicitly
-approved and executed, and not before the Founder approval gate in §9.9 is
-cleared.
+approved and executed, and not before both the §9.10 and this gate's
+Founder decisions are resolved.
