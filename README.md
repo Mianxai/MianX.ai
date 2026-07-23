@@ -268,9 +268,14 @@ Cursor Cloud / local Supabase workflow) and
 [`execution/EXECUTION-BOARD.md`](execution/EXECUTION-BOARD.md) for current
 phase status, acceptance criteria, and evidence.
 
-`mianx-ai-prototype.jsx` at the repo root is the Founder-provided design
-reference used to build the current homepage; it is kept for reference and is
-not imported by the app.
+The Founder-approved final visual designs live in
+[`design/approved/final-website/`](design/approved/final-website/)
+(`mianx_website_public.html` for `/`, `mianx_admin_dashboard.html` for
+`/admin`). They are the visual reference only — kept for reference, not
+served or imported by the app — migrated into the React components under
+`components/public/` and `components/admin/`. An earlier JSX prototype
+(`mianx-ai-prototype.jsx`) was superseded by these and removed; do not
+restore it.
 
 ---
 

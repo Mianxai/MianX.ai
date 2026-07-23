@@ -80,9 +80,12 @@ Gotchas:
 
 ## Repository map
 
-- `app/`, `components/`, `lib/`, `middleware.js` — the Next.js app (Phase A).
-- `mianx-ai-prototype.jsx` — Founder-provided design reference (not imported
-  by the app); keep it, do not delete it.
+- `app/`, `components/`, `lib/`, `middleware.js` — the Next.js app.
+- `design/approved/final-website/` — the Founder-approved final HTML designs
+  (`mianx_website_public.html` for `/`, `mianx_admin_dashboard.html` for
+  `/admin`). Visual reference only — not imported by the app, do not delete
+  or restore any older/rejected design in its place (an earlier
+  `mianx-ai-prototype.jsx` was superseded by these and removed).
 - `doc/` — canonical long-form enterprise documentation (governance,
   architecture, product, engineering, etc.). Most of it is `status: Draft`,
   `canonical: false` planning material, not proof of a built system — read
