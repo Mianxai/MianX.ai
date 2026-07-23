@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import AdminLeadList from "@/components/AdminLeadList";
 import AdminLeadDetail from "@/components/AdminLeadDetail";
 
@@ -43,7 +43,8 @@ export default function AdminDashboard() {
   }
 
   async function logout() {
-    await supabase.auth.signOut();
+    const supabase = getSupabase();
+    if (supabase) await supabase.auth.signOut();
     document.cookie = "sb-access-token=; path=/; max-age=0; SameSite=Lax";
     router.push("/admin/login");
     router.refresh();

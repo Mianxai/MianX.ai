@@ -1,12 +1,25 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import {
+  getSupabaseAdmin,
+  isSupabaseConfigured,
+  SUPABASE_NOT_CONFIGURED_MESSAGE,
+} from "@/lib/supabase";
 import { getSessionUser } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export async function PATCH(req, { params }) {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json(
+      { error: SUPABASE_NOT_CONFIGURED_MESSAGE },
+      { status: 503 }
+    );
+  }
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
+  const supabaseAdmin = getSupabaseAdmin();
   const { data, error } = await supabaseAdmin
     .from("leads")
     .update(body)

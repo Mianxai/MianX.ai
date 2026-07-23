@@ -8,6 +8,7 @@ export default function AdminLeadDetail({ lead, onUpdated }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
   const [error, setError] = useState("");
+  const [aiUnavailable, setAiUnavailable] = useState(false);
 
   if (!lead) {
     return (
@@ -29,7 +30,13 @@ export default function AdminLeadDetail({ lead, onUpdated }) {
         body: JSON.stringify(lead),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Analysis failed");
+      if (!res.ok) {
+        if (data.code === "ANTHROPIC_NOT_CONFIGURED") {
+          setAiUnavailable(true);
+          return;
+        }
+        throw new Error(data.error || "Analysis failed");
+      }
       // Persist the analysis on the lead.
       const patch = await fetch(`/api/leads/${lead.id}`, {
         method: "PATCH",
@@ -81,7 +88,12 @@ export default function AdminLeadDetail({ lead, onUpdated }) {
       </div>
 
       <div className="status-row">
-        <button className="btn btn-primary" onClick={runAgent} disabled={analyzing}>
+        <button
+          className="btn btn-primary"
+          onClick={runAgent}
+          disabled={analyzing || aiUnavailable}
+          title={aiUnavailable ? "AI analysis is not configured on this deployment" : undefined}
+        >
           {analyzing ? (<><span className="spin" /> Running AI agent…</>) : "Run AI agent"}
         </button>
         <span className="muted">Status:</span>
@@ -99,6 +111,12 @@ export default function AdminLeadDetail({ lead, onUpdated }) {
       </div>
 
       {error && <div className="notice err" style={{ marginTop: 14 }}>{error}</div>}
+      {aiUnavailable && (
+        <div className="notice info" style={{ marginTop: 14 }}>
+          AI analysis is unavailable on this deployment (no <code>ANTHROPIC_API_KEY</code> configured).
+          Everything else — lead capture, status, and notes — still works normally.
+        </div>
+      )}
 
       {analysis && (
         <div style={{ marginTop: 22 }}>
