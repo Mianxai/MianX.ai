@@ -8,6 +8,7 @@ import StatsGrid from "@/components/admin/StatsGrid";
 import FiltersBar from "@/components/admin/FiltersBar";
 import LeadTable from "@/components/admin/LeadTable";
 import LeadDetailModal from "@/components/admin/LeadDetailModal";
+import MianxLoader from "@/components/shared/MianxLoader";
 
 function SubmissionsContent() {
   const router = useRouter();
@@ -143,8 +144,8 @@ function SubmissionsContent() {
           >
             Export CSV
           </button>
-          <button type="button" className="header-btn-ghost" onClick={loadLeads}>
-            Refresh
+          <button type="button" className="header-btn-ghost" onClick={loadLeads} disabled={loading}>
+            {loading ? <MianxLoader variant="inline" label="Refreshing submissions…" /> : "Refresh"}
           </button>
         </>
       }
@@ -167,20 +168,24 @@ function SubmissionsContent() {
         <>
           <StatsGrid stats={stats} />
           <FiltersBar active={filter} onChange={onFilterChange} />
-          <div aria-live="polite" className="sr-only">
-            {loading ? "Loading submissions…" : `${visibleLeads.length} submissions shown`}
-          </div>
-          <LeadTable
-            leads={visibleLeads}
-            onSelect={setSelected}
-            emptyMessage={
-              loading
-                ? "Loading…"
-                : filter === "all" && !search
-                  ? "Waiting for new leads…"
-                  : "No submissions match this filter or search."
-            }
-          />
+          {loading && leads.length === 0 ? (
+            <MianxLoader variant="section" label="Loading submissions…" />
+          ) : (
+            <>
+              <div aria-live="polite" className="sr-only">
+                {`${visibleLeads.length} submissions shown`}
+              </div>
+              <LeadTable
+                leads={visibleLeads}
+                onSelect={setSelected}
+                emptyMessage={
+                  filter === "all" && !search
+                    ? "Waiting for new leads…"
+                    : "No submissions match this filter or search."
+                }
+              />
+            </>
+          )}
         </>
       )}
 
@@ -201,7 +206,7 @@ export default function SubmissionsPage() {
     <Suspense
       fallback={
         <AdminShell title="Submissions">
-          <p className="runtime-muted">Loading submissions…</p>
+          <MianxLoader variant="section" label="Loading submissions…" />
         </AdminShell>
       }
     >

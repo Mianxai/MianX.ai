@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RUNTIME_TAB_PATHS } from "@/components/admin/nav";
+import MianxLoader from "@/components/shared/MianxLoader";
 
 const TABS = [
   ["overview", "Overview"],
@@ -91,13 +92,23 @@ export default function RuntimeWorkspace({
     if (preferredProject) setProjectId(preferredProject);
   }, [preferredProject]);
 
+  // Guards against a superseded load overwriting current state (stale response).
+  const loadSeqRef = useRef(0);
+
   const loadProjects = useCallback(async () => {
+    const seq = ++loadSeqRef.current;
     setLoading(true);
     setError("");
     setNotConfigured(false);
-    const healthRes = await call("/api/core/health");
+    // Health and projects are independent — fetch concurrently to keep the
+    // Refresh interaction responsive (previously a serial await chain).
+    const [healthRes, res] = await Promise.all([
+      call("/api/core/health"),
+      call("/api/core/projects"),
+    ]);
+    // A newer load started; discard this stale result.
+    if (seq !== loadSeqRef.current) return;
     setHealth(healthRes.data);
-    const res = await call("/api/core/projects");
     if (res.status === 503) {
       setNotConfigured(true);
       setProjects([]);
@@ -147,8 +158,8 @@ export default function RuntimeWorkspace({
             <h1>Mianx Core Runtime</h1>
           </div>
           <div className="header-actions">
-            <button type="button" className="header-btn-ghost" onClick={loadProjects}>
-              Refresh
+            <button type="button" className="header-btn-ghost" onClick={loadProjects} disabled={loading}>
+              {loading ? <MianxLoader variant="inline" label="Refreshing runtime…" /> : "Refresh"}
             </button>
           </div>
         </div>
@@ -187,8 +198,8 @@ export default function RuntimeWorkspace({
         </select>
         <ProjectCreator disabled={notConfigured} call={call} onCreated={loadProjects} />
         {!showChrome && (
-          <button type="button" className="header-btn-ghost" onClick={loadProjects}>
-            Refresh
+          <button type="button" className="header-btn-ghost" onClick={loadProjects} disabled={loading}>
+            {loading ? <MianxLoader variant="inline" label="Refreshing runtime…" /> : "Refresh"}
           </button>
         )}
       </div>
@@ -225,7 +236,7 @@ export default function RuntimeWorkspace({
         className="runtime-panel"
       >
         {loading ? (
-          <p className="runtime-muted">Loading runtime…</p>
+          <MianxLoader variant="section" label="Loading runtime…" />
         ) : notConfigured ? (
           <p className="runtime-muted">
             Runtime data is unavailable until Supabase is configured.
@@ -300,7 +311,7 @@ function ProjectCreator({ disabled, call, onCreated }) {
         autoFocus
       />
       <button className="header-btn" type="submit" disabled={busy}>
-        {busy ? "Creating…" : "Create"}
+        {busy ? <MianxLoader variant="inline" label="Creating project…" /> : "Create"}
       </button>
       <button
         className="header-btn-ghost"
@@ -375,14 +386,18 @@ function AgentsPanel({ call, projectId }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    const cat = await call("/api/core/agents");
+    // Catalog and project instances are independent — fetch concurrently.
+    const [cat, inst] = await Promise.all([
+      call("/api/core/agents"),
+      projectId ? call(`/api/core/agents?project_id=${projectId}`) : Promise.resolve(null),
+    ]);
     if (cat.ok) setCatalog(cat.data?.catalog || []);
-    if (projectId) {
-      const inst = await call(`/api/core/agents?project_id=${projectId}`);
-      if (inst.ok) setInstances(inst.data?.instances || []);
-      else setError(errorMessage(inst.data, "Failed to load agents."));
-    } else {
+    if (!projectId) {
       setInstances([]);
+    } else if (inst.ok) {
+      setInstances(inst.data?.instances || []);
+    } else {
+      setError(errorMessage(inst.data, "Failed to load agents."));
     }
     setLoading(false);
   }, [call, projectId]);
@@ -412,7 +427,7 @@ function AgentsPanel({ call, projectId }) {
     load();
   }
 
-  if (loading) return <p className="runtime-muted">Loading agents…</p>;
+  if (loading) return <MianxLoader variant="section" label="Loading agents…" />;
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
 
   return (
@@ -453,7 +468,11 @@ function AgentsPanel({ call, projectId }) {
                 disabled={!projectId || busySlug === a.slug}
                 onClick={() => register(a.slug)}
               >
-                {busySlug === a.slug ? "Registering…" : "Register"}
+                {busySlug === a.slug ? (
+                  <MianxLoader variant="inline" label="Registering agent…" />
+                ) : (
+                  "Register"
+                )}
               </button>
             </li>
           ))}
@@ -534,10 +553,13 @@ function TasksPanel({ call, projectId }) {
     }
     setLoading(true);
     setError("");
-    const t = await call(`/api/core/tasks?project_id=${projectId}`);
+    // Tasks and agent instances are independent — fetch concurrently.
+    const [t, inst] = await Promise.all([
+      call(`/api/core/tasks?project_id=${projectId}`),
+      call(`/api/core/agents?project_id=${projectId}`),
+    ]);
     if (t.ok) setTasks(t.data?.tasks || []);
     else setError(errorMessage(t.data, "Failed to load tasks."));
-    const inst = await call(`/api/core/agents?project_id=${projectId}`);
     if (inst.ok) setInstances(inst.data?.instances || []);
     setLoading(false);
   }, [call, projectId]);
@@ -555,7 +577,7 @@ function TasksPanel({ call, projectId }) {
   );
 
   if (!projectId) return <p className="runtime-muted">Select or create a project first.</p>;
-  if (loading) return <p className="runtime-muted">Loading tasks…</p>;
+  if (loading) return <MianxLoader variant="section" label="Loading tasks…" />;
 
   return (
     <div>
@@ -686,7 +708,7 @@ function TaskCreator({ call, projectId, onCreated }) {
       </div>
       {err && <p className="runtime-error-text" role="alert">{err}</p>}
       <button className="header-btn" type="submit" disabled={busy}>
-        {busy ? "Creating…" : "Create Task"}
+        {busy ? <MianxLoader variant="inline" label="Creating task…" /> : "Create Task"}
       </button>
     </form>
   );
@@ -773,7 +795,7 @@ function RunsPanel({ call, projectId }) {
   }, [call, projectId]);
 
   if (!projectId) return <p className="runtime-muted">Select a project first.</p>;
-  if (loading) return <p className="runtime-muted">Loading runs…</p>;
+  if (loading) return <MianxLoader variant="section" label="Loading runs…" />;
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
   if (items.length === 0) return <p className="runtime-muted">No runs yet.</p>;
 
@@ -846,7 +868,7 @@ function ApprovalsPanel({ call, projectId }) {
   }
 
   if (!projectId) return <p className="runtime-muted">Select a project first.</p>;
-  if (loading) return <p className="runtime-muted">Loading approvals…</p>;
+  if (loading) return <MianxLoader variant="section" label="Loading approvals…" />;
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
   if (items.length === 0) return <p className="runtime-muted">No approval requests.</p>;
 
@@ -899,7 +921,7 @@ function AuditPanel({ call, projectId }) {
   }, [call, projectId]);
 
   if (!projectId) return <p className="runtime-muted">Select a project first.</p>;
-  if (loading) return <p className="runtime-muted">Loading audit log…</p>;
+  if (loading) return <MianxLoader variant="section" label="Loading audit log…" />;
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
   if (items.length === 0) return <p className="runtime-muted">No audit entries yet.</p>;
 

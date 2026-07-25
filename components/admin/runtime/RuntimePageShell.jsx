@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import AdminShell from "@/components/admin/AdminShell";
 import RuntimeWorkspace from "@/components/admin/runtime/RuntimeWorkspace";
+import MianxLoader from "@/components/shared/MianxLoader";
 
 const TITLES = {
   overview: "Runtime",
@@ -25,7 +26,7 @@ export default function RuntimePageShell({ initialTab = "overview" }) {
 
   return (
     <AdminShell title={title} breadcrumbs={breadcrumbs}>
-      <Suspense fallback={<p className="runtime-muted">Loading runtime…</p>}>
+      <Suspense fallback={<MianxLoader variant="section" label="Loading runtime…" />}>
         <RuntimeWorkspace initialTab={initialTab} />
       </Suspense>
     </AdminShell>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
+import MianxLoader from "@/components/shared/MianxLoader";
 
 function yesNo(value) {
   if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -104,7 +105,7 @@ export default function SettingsPage() {
       title="Settings"
       actions={
         <button type="button" className="header-btn-ghost" onClick={load} disabled={loading}>
-          Refresh
+          {loading ? <MianxLoader variant="inline" label="Refreshing settings…" /> : "Refresh"}
         </button>
       }
     >
@@ -118,7 +119,7 @@ export default function SettingsPage() {
           {error}
         </div>
       )}
-      {loading && <p className="runtime-muted">Loading settings…</p>}
+      {loading && <MianxLoader variant="section" label="Loading settings…" />}
 
       {!loading && rows.length > 0 && (
         <section className="settings-section" aria-labelledby="settings-config-h">

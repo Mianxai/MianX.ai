@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
+import MianxLoader from "@/components/shared/MianxLoader";
 
 function errorMessage(data, fallback) {
   return data?.error?.message || data?.error || fallback;
@@ -90,7 +91,7 @@ export default function ProjectDetailPage() {
           {error}
         </div>
       )}
-      {loading && <p className="runtime-muted">Loading project…</p>}
+      {loading && <MianxLoader variant="section" label="Loading project…" />}
 
       {!loading && project && (
         <div className="project-detail">
