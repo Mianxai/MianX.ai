@@ -2,20 +2,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import AdminDashboard from "./page";
+import AdminOverviewPage from "./page";
 
 const push = vi.fn();
 const refresh = vi.fn();
-// Real Next.js `useRouter()` returns a stable object reference across
-// renders — mock it the same way, otherwise a `useCallback` depending on
-// `router` (as AdminDashboard's loadLeads does) would get a new function
-// identity every render and loop its effect forever.
-const routerStub = { push, refresh };
+const routerStub = { push, refresh, replace: vi.fn() };
+
 vi.mock("next/navigation", () => ({
   useRouter: () => routerStub,
+  usePathname: () => "/admin",
 }));
 
-describe("AdminDashboard", () => {
+vi.mock("@/lib/supabase", () => ({
+  getSupabase: () => null,
+}));
+
+describe("Admin Overview page", () => {
   beforeEach(() => {
     global.fetch = vi.fn();
     push.mockClear();
@@ -24,63 +26,64 @@ describe("AdminDashboard", () => {
     vi.restoreAllMocks();
   });
 
-  it("shows a controlled setup notice when Supabase is not configured (503), instead of crashing", async () => {
+  it("shows a configuration notice on 503 instead of crashing", async () => {
     global.fetch.mockResolvedValueOnce({
       status: 503,
       ok: false,
       json: async () => ({ error: "Configuration error" }),
     });
-    render(<AdminDashboard />);
+    render(<AdminOverviewPage />);
 
-    expect(await screen.findByText(/Configuration error/i)).toBeInTheDocument();
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(await screen.findByText(/Configuration unavailable/i)).toBeInTheDocument();
   });
 
-  it("redirects to /admin/login on a 401 from the API", async () => {
+  it("redirects to /admin/login on a 401 from the overview API", async () => {
     global.fetch.mockResolvedValueOnce({ status: 401, ok: false, json: async () => ({}) });
-    render(<AdminDashboard />);
+    render(<AdminOverviewPage />);
 
     await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/login"));
   });
 
-  it("loads and displays real leads, with working search and status filtering", async () => {
-    const leads = [
-      { id: "1", name: "Jane Doe", email: "jane@example.com", industry: "restaurant", status: "new", created_at: "2026-01-01T00:00:00.000Z" },
-      { id: "2", name: "Bob Smith", email: "bob@example.com", industry: "poultry", status: "contacted", created_at: "2026-01-02T00:00:00.000Z" },
-    ];
-    global.fetch.mockResolvedValueOnce({ status: 200, ok: true, json: async () => leads });
-    render(<AdminDashboard />);
+  it("renders truthful overview cards from the API (no fake metrics)", async () => {
+    global.fetch.mockResolvedValueOnce({
+      status: 200,
+      ok: true,
+      json: async () => ({
+        submissions: { total: 4, new: 2, contacted: 1, converted: 1 },
+        projects: { active: 3 },
+        tasks: { queued: 5, in_progress: 1, blocked: 0 },
+        approvals: { pending: 2 },
+        runs: { failed: 1 },
+        runtime: { ok: true, service: "mianx-core" },
+        config: { supabase: true, providers: { anthropic: false } },
+      }),
+    });
+    render(<AdminOverviewPage />);
 
-    expect(await screen.findByText("Jane Doe")).toBeInTheDocument();
-    expect(screen.getByText("Bob Smith")).toBeInTheDocument();
-
-    const user = userEvent.setup();
-
-    // Search narrows the visible list.
-    await user.type(screen.getByLabelText(/search submissions/i), "bob");
-    expect(screen.queryByText("Jane Doe")).not.toBeInTheDocument();
-    expect(screen.getByText("Bob Smith")).toBeInTheDocument();
-
-    await user.clear(screen.getByLabelText(/search submissions/i));
-
-    // Status filter narrows the visible list.
-    await user.click(screen.getByRole("button", { name: /^new$/i }));
-    expect(screen.getByText("Jane Doe")).toBeInTheDocument();
-    expect(screen.queryByText("Bob Smith")).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Overview" })).toBeInTheDocument();
+    expect(screen.getByText("Total submissions").closest("a")).toHaveAttribute(
+      "href",
+      "/admin/submissions"
+    );
+    expect(screen.getByText("4")).toBeInTheDocument();
+    expect(screen.getByText("New leads").closest("a")).toHaveAttribute(
+      "href",
+      "/admin/submissions?status=new"
+    );
+    expect(screen.getByText("Pending approvals")).toBeInTheDocument();
+    expect(screen.getByText("Failed runs")).toBeInTheDocument();
+    // Boolean config cards show Yes/No, never invent extra counts
+    expect(screen.getByText("Supabase").closest("a")).toHaveTextContent("Yes");
+    expect(screen.getByText("AI provider").closest("a")).toHaveTextContent("No");
   });
 
-  it("shows accurate stats derived from the real loaded leads", async () => {
-    const leads = [
-      { id: "1", name: "A", email: "a@x.com", status: "new", created_at: "2026-01-01" },
-      { id: "2", name: "B", email: "b@x.com", status: "new", created_at: "2026-01-01" },
-      { id: "3", name: "C", email: "c@x.com", status: "converted", created_at: "2026-01-01" },
-    ];
-    global.fetch.mockResolvedValueOnce({ status: 200, ok: true, json: async () => leads });
-    render(<AdminDashboard />);
-
-    await screen.findByText("A");
-    expect(screen.getByText("Total Submissions").closest(".stat-card")).toHaveTextContent("3");
-    expect(screen.getByText("New Leads").closest(".stat-card")).toHaveTextContent("2");
-    expect(screen.getByText("Converted", { selector: ".stat-card-label" }).closest(".stat-card")).toHaveTextContent("1");
+  it("shows an error state when the overview API fails", async () => {
+    global.fetch.mockResolvedValueOnce({
+      status: 500,
+      ok: false,
+      json: async () => ({ error: { message: "boom" } }),
+    });
+    render(<AdminOverviewPage />);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/boom/i);
   });
 });

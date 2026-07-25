@@ -51,7 +51,7 @@ export default function AdminLoginPage() {
           <span className="logo-text">Mianx.ai</span>
         </Link>
         <h1>Admin sign in</h1>
-        <p className="section-desc">Access the lead intelligence dashboard.</p>
+        <p className="section-desc">Access the Mianx.ai Admin Control Center.</p>
 
         {!configured && (
           <div className="admin-notice" role="alert" style={{ marginBottom: "1.25rem" }}>
