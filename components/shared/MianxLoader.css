@@ -1,0 +1,170 @@
+/* Mianx.ai branded loading system.
+   Pure CSS transforms/opacity — no WebGL, no external animation library.
+   Palette pulled from globals.css tokens (indigo #4f7cff → cyan #22d3ee). */
+
+.mx-loader {
+  --mx-size: 96px;
+  --mx-ring-r: calc(var(--mx-size) * 0.42);
+  --mx-dot: calc(var(--mx-size) * 0.09);
+  --mx-dur: 2.4s;
+  --mx-glow-a: rgba(79, 124, 255, 0.9); /* indigo */
+  --mx-glow-b: rgba(34, 211, 238, 0.9); /* cyan */
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  color: var(--text-secondary, #b6c0d8);
+}
+
+/* Variant sizing */
+.mx-loader-page { --mx-size: 148px; width: 100%; padding: 2.5rem 1rem; }
+.mx-loader-overlay { --mx-size: 124px; }
+.mx-loader-section { --mx-size: 96px; width: 100%; padding: 1.5rem 1rem; }
+.mx-loader-inline { --mx-size: 20px; --mx-dur: 1.6s; gap: 0; flex-direction: row; vertical-align: middle; }
+
+/* Stage: platform + ring + centered logo */
+.mx-loader-stage {
+  position: relative;
+  width: var(--mx-size);
+  height: var(--mx-size);
+  flex-shrink: 0;
+}
+
+.mx-loader-platform {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(79, 124, 255, 0.16), transparent 62%),
+    radial-gradient(circle at 50% 60%, rgba(34, 211, 238, 0.1), transparent 70%);
+  border: 1px solid rgba(148, 163, 214, 0.12);
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.45);
+}
+.mx-loader-inline .mx-loader-platform { display: none; }
+
+.mx-loader-ring { position: absolute; inset: 0; }
+
+.mx-loader-node {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform: rotate(calc(var(--i) * (360deg / var(--n))));
+}
+
+.mx-loader-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--mx-dot);
+  height: var(--mx-dot);
+  margin-left: calc(var(--mx-dot) / -2);
+  margin-top: calc(var(--mx-ring-r) * -1);
+  border-radius: 50%;
+  background: var(--mx-glow-a);
+  will-change: transform, opacity;
+  animation: mx-pulse var(--mx-dur) ease-in-out infinite;
+  /* Sequential activation around the ring. */
+  animation-delay: calc(var(--i) / var(--n) * var(--mx-dur) * -1);
+}
+
+@keyframes mx-pulse {
+  0%, 68%, 100% {
+    transform: scale(0.5);
+    opacity: 0.28;
+    background: var(--mx-glow-a);
+    box-shadow: none;
+  }
+  34% {
+    transform: scale(1.25);
+    opacity: 1;
+    background: var(--mx-glow-b);
+    box-shadow: 0 0 10px 2px var(--mx-glow-b);
+  }
+}
+
+.mx-loader-logo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 42%;
+  height: 42%;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+  animation: mx-breathe 3.2s ease-in-out infinite;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.mx-loader-inline .mx-loader-logo { display: none; }
+
+@keyframes mx-breathe {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(0.96);
+    filter: drop-shadow(0 0 5px rgba(79, 124, 255, 0.35));
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.03);
+    filter: drop-shadow(0 0 11px rgba(34, 211, 238, 0.5));
+  }
+}
+
+.mx-loader-label {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary, #b6c0d8);
+  text-align: center;
+}
+.mx-loader-inline .mx-loader-label { font-size: 0.85rem; margin-left: 0.5rem; }
+
+/* Overlay: pause interaction over a panel/form while an operation runs. */
+.mx-loader-overlay-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 14, 28, 0.72);
+  backdrop-filter: blur(2px);
+  border-radius: inherit;
+}
+
+/* Screen-reader-only status text (single announcement source). */
+.mx-loader .mx-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mx-loader-dot {
+    animation: none;
+    opacity: 0.55;
+    background: var(--mx-glow-a);
+    transform: scale(0.7);
+  }
+  .mx-loader-logo {
+    animation: none;
+    transform: translate(-50%, -50%);
+    filter: drop-shadow(0 0 6px rgba(79, 124, 255, 0.35));
+  }
+  /* One calm, non-rotating breath on the whole stage. */
+  .mx-loader-platform {
+    animation: mx-reduced-pulse 3.5s ease-in-out infinite;
+  }
+}
+
+@keyframes mx-reduced-pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}

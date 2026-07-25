@@ -349,6 +349,22 @@
 .admin-error-page { max-width: 640px; margin: 0 auto; padding: 2rem; }
 .admin-notice a { color: inherit; font-weight: 700; }
 
+/* Branded loading states */
+.admin-route-loading {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+.runtime-panel { position: relative; }
+.runtime-inline-form { position: relative; }
+/* Helper text + inline validation for the project slug field */
+.runtime-form-hint { color: var(--text-muted); font-size: 0.75rem; margin: 0.15rem 0 0; }
+.runtime-form-row input[aria-invalid="true"],
+.runtime-form-row textarea[aria-invalid="true"] { border-color: var(--danger); }
+.modal-body .runtime-error-text { margin: 0; }
+
 @media (max-width: 900px) {
   .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

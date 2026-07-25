@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import OverviewCards from "@/components/admin/OverviewCards";
+import MianxLoader from "@/components/shared/MianxLoader";
 
 export default function AdminOverviewPage() {
   const router = useRouter();
@@ -59,7 +60,7 @@ export default function AdminOverviewPage() {
             </span>
           )}
           <button type="button" className="header-btn-ghost" onClick={load} disabled={loading}>
-            {loading ? "Refreshing…" : "Refresh"}
+            {loading ? <MianxLoader variant="inline" label="Refreshing overview…" /> : "Refresh"}
           </button>
         </>
       }
@@ -76,9 +77,7 @@ export default function AdminOverviewPage() {
         </div>
       )}
       {loading && !data && !error && !notConfigured && (
-        <p className="runtime-muted" role="status">
-          Loading overview…
-        </p>
+        <MianxLoader variant="section" label="Loading overview…" />
       )}
       {!loading && !error && !notConfigured && !data && (
         <div className="empty-state">

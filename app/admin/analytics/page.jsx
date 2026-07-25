@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
+import MianxLoader from "@/components/shared/MianxLoader";
 
 function toEntries(dist) {
   if (!dist || typeof dist !== "object") return [];
@@ -119,7 +120,7 @@ export default function AnalyticsPage() {
       title="Analytics"
       actions={
         <button type="button" className="header-btn-ghost" onClick={load} disabled={loading}>
-          Refresh
+          {loading ? <MianxLoader variant="inline" label="Refreshing analytics…" /> : "Refresh"}
         </button>
       }
     >
@@ -133,7 +134,7 @@ export default function AnalyticsPage() {
           {error}
         </div>
       )}
-      {loading && <p className="runtime-muted">Loading analytics…</p>}
+      {loading && <MianxLoader variant="section" label="Loading analytics…" />}
       {empty && (
         <div className="empty-state">
           <h3>No analytics yet</h3>
