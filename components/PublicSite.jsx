@@ -17,12 +17,120 @@ export default function PublicSite() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const particlesRef = useRef(null);
 
+  // GSAP scroll reveal (one-shot). Content stays visible if GSAP fails,
+  // IntersectionObserver is missing, JS is off, or reduced-motion is set.
+  useEffect(() => {
+    let ctx;
+    let cancelled = false;
+    const reveals = () => Array.from(document.querySelectorAll(".reveal"));
+
+    const prefersReduced =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+    if (prefersReduced) {
+      reveals().forEach((el) => el.classList.add("active"));
+      return;
+    }
+
+    (async () => {
+      try {
+        const gsapMod = await import("gsap");
+        const stMod = await import("gsap/ScrollTrigger");
+        if (cancelled) return;
+        const gsap = gsapMod.default || gsapMod.gsap;
+        const ScrollTrigger = stMod.ScrollTrigger;
+        gsap.registerPlugin(ScrollTrigger);
+
+        reveals().forEach((el) => el.setAttribute("data-reveal", "pending"));
+
+        ctx = gsap.context(() => {
+          const groups = [
+            ".steps-grid .reveal",
+            ".services-grid .reveal",
+            ".industries-grid .reveal",
+            ".partners-grid .reveal",
+            ".testimonials-grid .reveal",
+            ".contact-section .reveal",
+          ];
+
+          groups.forEach((selector) => {
+            const nodes = gsap.utils.toArray(selector);
+            if (!nodes.length) return;
+            gsap.fromTo(
+              nodes,
+              { opacity: 0, y: 16 },
+              {
+                opacity: 1,
+                y: 0,
+                duration: 0.65,
+                ease: "power2.out",
+                stagger: 0.07,
+                overwrite: "auto",
+                scrollTrigger: {
+                  trigger: nodes[0].parentElement || nodes[0],
+                  start: "top 88%",
+                  once: true,
+                },
+                onComplete: () => {
+                  nodes.forEach((el) => {
+                    el.classList.add("active");
+                    el.removeAttribute("data-reveal");
+                  });
+                },
+              }
+            );
+          });
+
+          // Any remaining .reveal nodes (e.g. partner stat row).
+          reveals()
+            .filter((el) => el.getAttribute("data-reveal") === "pending" && !el.classList.contains("active"))
+            .forEach((el) => {
+              gsap.fromTo(
+                el,
+                { opacity: 0, y: 16 },
+                {
+                  opacity: 1,
+                  y: 0,
+                  duration: 0.65,
+                  ease: "power2.out",
+                  scrollTrigger: {
+                    trigger: el,
+                    start: "top 88%",
+                    once: true,
+                  },
+                  onComplete: () => {
+                    el.classList.add("active");
+                    el.removeAttribute("data-reveal");
+                  },
+                }
+              );
+            });
+        });
+      } catch {
+        reveals().forEach((el) => {
+          el.classList.add("active");
+          el.removeAttribute("data-reveal");
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (ctx) ctx.revert();
+      reveals().forEach((el) => {
+        el.classList.add("active");
+        el.removeAttribute("data-reveal");
+        el.style.opacity = "";
+        el.style.transform = "";
+      });
+    };
+  }, []);
+
   useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 100);
       setShowTop(window.scrollY > 500);
     };
-    window.addEventListener("scroll", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -31,6 +139,10 @@ export default function PublicSite() {
   useEffect(() => {
     const container = particlesRef.current;
     if (!container) return;
+    const prefersReduced =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+    if (prefersReduced) return;
+
     const nodes = [];
     for (let i = 0; i < 30; i++) {
       const p = document.createElement("div");
@@ -45,43 +157,6 @@ export default function PublicSite() {
       nodes.push(p);
     }
     return () => nodes.forEach((n) => n.remove());
-  }, []);
-
-  // GSAP scroll reveal animations (fallback: reveal everything if it fails).
-  useEffect(() => {
-    let ctx;
-    let cancelled = false;
-    (async () => {
-      try {
-        const gsapMod = await import("gsap");
-        const stMod = await import("gsap/ScrollTrigger");
-        if (cancelled) return;
-        const gsap = gsapMod.default || gsapMod.gsap;
-        const ScrollTrigger = stMod.ScrollTrigger;
-        gsap.registerPlugin(ScrollTrigger);
-        ctx = gsap.context(() => {
-          document.querySelectorAll(".reveal").forEach((el) => {
-            gsap.fromTo(
-              el,
-              { opacity: 0, y: 40 },
-              {
-                opacity: 1,
-                y: 0,
-                duration: 0.8,
-                ease: "power3.out",
-                scrollTrigger: { trigger: el, start: "top 85%", toggleActions: "play none none none" },
-              }
-            );
-          });
-        });
-      } catch {
-        document.querySelectorAll(".reveal").forEach((el) => el.classList.add("active"));
-      }
-    })();
-    return () => {
-      cancelled = true;
-      if (ctx) ctx.revert();
-    };
   }, []);
 
   function update(key, value) {

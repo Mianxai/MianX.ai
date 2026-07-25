@@ -1,47 +1,103 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import LandingPage from "./page";
 
-// The hero mounts a dynamically-imported Three.js scene; stub it out so the
-// test focuses on page structure/content rather than WebGL.
-vi.mock("@/components/public/HeroScene", () => ({
+// HeroCanvas is covered by its own WebGL tests; stub it here so page tests
+// lock content/structure without needing a GPU.
+vi.mock("@/components/HeroCanvas", () => ({
   default: () => null,
 }));
 
-describe("Public homepage", () => {
-  it("renders without crashing and shows the locked positioning, not 'AI agent agency'", () => {
+vi.mock("gsap", () => ({
+  default: {
+    registerPlugin: () => {},
+    context: () => ({ revert: () => {} }),
+    utils: { toArray: () => [] },
+    fromTo: () => {},
+  },
+}));
+
+vi.mock("gsap/ScrollTrigger", () => ({
+  ScrollTrigger: {},
+}));
+
+describe("Founder-approved Industry OS homepage", () => {
+  it("keeps the metallic MX logo asset path", () => {
     render(<LandingPage />);
-    expect(screen.getAllByText(/AI-native Business Operating System/i).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/AI agent agency/i)).not.toBeInTheDocument();
+    const logo = document.querySelector('img[src="/mianx-logo.png"]');
+    expect(logo).toBeTruthy();
+    expect(logo).toHaveAttribute("width", "40");
+    expect(logo).toHaveAttribute("height", "40");
   });
 
-  it("has exactly one h1 and a logical section heading structure", () => {
+  it("shows the exact Industry Operating Systems hero", () => {
     render(<LandingPage />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      /AI-Powered\s*Industry Operating Systems/i
+    );
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getAllByRole("heading", { level: 2 }).length).toBeGreaterThan(0);
   });
 
-  it("has a skip-to-content target and main landmark", () => {
+  it("keeps the approved navigation labels and Get a Demo CTA", () => {
     render(<LandingPage />);
-    expect(document.getElementById("main-content")).toBeTruthy();
-    expect(screen.getByRole("main")).toBeInTheDocument();
+    const nav = document.querySelector("nav.navbar");
+    expect(nav).toBeTruthy();
+    for (const label of ["Services", "Industries", "Partners", "Testimonials", "Contact"]) {
+      expect(within(nav).getByRole("link", { name: label })).toBeInTheDocument();
+    }
+    expect(within(nav).getByRole("link", { name: /get a demo/i })).toHaveAttribute(
+      "href",
+      "#contact"
+    );
   });
 
-  it("does not publish unsupported claims (live partner status, active-user counts, testimonials)", () => {
+  it("preserves section order and approved statistics", () => {
     render(<LandingPage />);
-    expect(screen.queryByText(/live now/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/active users/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/within 24 hours/i)).not.toBeInTheDocument();
+    expect(
+      ["hero", "how-it-works", "services", "industries", "partners", "testimonials", "contact"].map(
+        (id) => document.getElementById(id)?.id
+      )
+    ).toEqual([
+      "hero",
+      "how-it-works",
+      "services",
+      "industries",
+      "partners",
+      "testimonials",
+      "contact",
+    ]);
+    const heroStats = document.querySelector(".hero-stats");
+    expect(heroStats).toBeTruthy();
+    expect(within(heroStats).getByText("Live Partners")).toBeInTheDocument();
+    expect(within(heroStats).getByText("Industries")).toBeInTheDocument();
+    expect(within(heroStats).getByText("Cities Covered")).toBeInTheDocument();
+    expect(within(heroStats).getByText("Active Users")).toBeInTheDocument();
+    expect(within(heroStats).getByText("2+")).toBeInTheDocument();
+    expect(within(heroStats).getByText("10+")).toBeInTheDocument();
+    expect(within(heroStats).getByText("81+")).toBeInTheDocument();
+    expect(within(heroStats).getByText("500+")).toBeInTheDocument();
   });
 
-  it("renders the lead-capture form with the required fields", () => {
+  it("keeps the contact form present and interactive", async () => {
     render(<LandingPage />);
-    expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
+    const name = screen.getByLabelText(/full name/i);
+    await userEvent.type(name, "Ada Lovelace");
+    expect(name).toHaveValue("Ada Lovelace");
     expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/company name/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/phone number/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^industry$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^industry/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/tell us about your needs/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /request free demo/i })).toBeEnabled();
+  });
+
+  it("homepage remains usable when the 3D canvas is absent", () => {
+    render(<LandingPage />);
+    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /get a free demo/i })).toHaveAttribute(
+      "href",
+      "#contact"
+    );
+    expect(document.getElementById("hero-canvas")).toBeNull();
   });
 });
