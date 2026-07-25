@@ -987,3 +987,127 @@ Not started. Per instruction, no Telepizza/Poultry work and no bulk agent
 generation begins until Phase B (and subsequent phases) are explicitly
 approved and executed, and not before both the §9.10 and this gate's
 Founder decisions are resolved.
+
+---
+
+## 13. Brand-experience Phase 1 — production stability + brand foundation
+
+Branch `cursor/mianx-brand-experience`. Scope was deliberately limited to the
+production WebGL defect and the design-token foundation. **No homepage
+redesign was performed**; nothing was pushed, merged, or deployed.
+
+### 13.1 Production defect — root cause
+
+The live homepage threw a full client-side application error
+(`THREE.WebGLRenderer: Error creating WebGL context.`) on any device without
+WebGL 2. Three independent causes, all in `components/public/HeroScene.jsx`:
+
+1. **The capability check tested the wrong API.** It probed
+   `window.WebGLRenderingContext` and `canvas.getContext("webgl")` — WebGL **1**
+   — but three.js removed its WebGL1 fallback in r163, and the installed
+   `three@0.185.1` requests `webgl2` only. Any WebGL1-only device (older
+   Safari/iOS, Android WebView, virtualised or blocklisted GPUs) passed the
+   probe and then failed inside the renderer.
+2. **The throw had nowhere to land.** `new THREE.WebGLRenderer()` was called
+   inside an un-awaited `async` IIFE in `useEffect`, so three.js's rethrow
+   became an unhandled promise rejection that bypassed React entirely and
+   surfaced as a page-level crash. There was no error boundary around the
+   scene.
+3. **The probe leaked a live WebGL context** (never released via
+   `WEBGL_lose_context`), counting against the browser's ~16-context budget.
+
+### 13.2 Implementation
+
+| Area | Change |
+|---|---|
+| `components/public/webgl.js` (new) | `detectWebGL2Support()` probes `webgl2` with three.js's own attributes and releases the probe context; `createWebGL2Context()` creates and validates the context on the real canvas; `getSceneBudget()` sizes the scene per device; `prefersReducedMotion()`. |
+| `components/public/HeroScene.jsx` | Rewritten. Owns context creation and passes it to three.js via `{ context }` — three.js skips its own creation, so "Error creating WebGL context." can no longer be thrown. Every async path terminates in `.catch()`. Fresh canvas per effect run; one memoised module import; full teardown; `webglcontextlost` → fallback; loop gated on `IntersectionObserver` + `visibilitychange`; reduced motion → one static frame; colours read from the `--mx-*` tokens. |
+| `components/public/SceneBoundary.jsx` (new) | Error boundary scoped to the scene subtree only — not a global crash suppressor. |
+| `components/public/Hero.jsx` | Server-renders the static composition (`.hero-atmosphere`, `.hero-lattice`, orbits, nodes) and exposes `data-scene="static" / "enhanced" / "fallback"`. The static layers are never unmounted, only CSS-dimmed when WebGL is live. |
+| `app/globals.css` | `--mx-*` brand token block; hero fallback composition; `--gradient-action` applied to the six white-text/icon surfaces. |
+| `app/admin/admin.css` | Same `--gradient-action` swap on three white-text controls (contrast follow-through only). |
+| `app/layout.jsx` | `themeColor` → `#050914`. |
+| `design/MIANX-BRAND-SYSTEM.md` (new) | Canonical brand system, including the binding 3D/WebGL progressive-enhancement rules and tool guidance. |
+
+Lead capture, `/api/leads`, `/api/leads/[id]`, `/api/analyze`, `lib/`,
+`middleware.js`, auth, the admin dashboard, and all migrations are unchanged.
+`app/page.test.jsx` is the only pre-existing test touched (its `HeroScene`
+stub now simulates an unavailable scene).
+
+### 13.3 Brand decisions requiring Founder awareness
+
+- **Two gradients, not one.** The approved bright gradient reaches only
+  ~2.9:1 against white, so white text/icons use a deeper sapphire
+  `--mx-gradient-action` (≥4.5:1 at every stop). Without this, adopting the
+  approved gradient would have *reduced* button contrast from ~4.2:1 to
+  ~2.9:1.
+- **Purple removed** from `--gradient-1` (`#8b5cf6`) and `--primary-light`
+  (`#818cf8`). No purple hex remains in the built CSS.
+- `--text-muted` `#64748b` → `#7d8ca3`, fixing a pre-existing 4.18:1 AA
+  failure on `.stat-label`, `.industry-tag`, `.service-feature`, and the
+  footer.
+- The legacy indigo `--primary` / `--accent` aliases and the inline
+  `rgba(99, 102, 241, …)` glows were **left in place** — a full palette
+  migration is redesign scope, not this phase.
+
+### 13.4 Evidence
+
+Baseline before any edit (branch clean at `aaf9953`): lint clean, 70/70 tests,
+build succeeds with all four env vars unset. Final:
+
+```text
+$ npm run lint
+✔ No ESLint warnings or errors
+
+$ npm run test
+ Test Files  16 passed (16)
+      Tests  99 passed (99)          (70 baseline + 29 new)
+
+$ env -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_ANON_KEY \
+  -u SUPABASE_SERVICE_ROLE_KEY -u ANTHROPIC_API_KEY npm run build
+ ✓ Compiled successfully
+ ✓ Generating static pages (6/6)
+ /  5.55 kB / 112 kB First Load JS
+```
+
+New tests: `components/public/webgl.test.js` (12),
+`components/public/HeroScene.test.jsx` (9),
+`components/public/Hero.test.jsx` (5), plus 3 added to `app/page.test.jsx`.
+
+**Browser verification** (Playwright + system Chrome, against
+`npm start` with all four env vars unset — 62/63 automated checks):
+
+| Scenario | Result |
+|---|---|
+| Normal WebGL | `data-scene="enhanced"`, canvas mounted, animating (1440 draw calls/1.5s) |
+| WebGL absent (`getContext` → null) | `data-scene="fallback"`, no canvas, one `console.warn`, no page error |
+| Context creation fails after the probe passes | `data-scene="fallback"`; **no** `THREE.WebGLRenderer` console error (the error class is gone, not muted) |
+| Reduced motion | Exactly one static frame, 0 draw calls over 1.5s, `matchMedia` confirmed true |
+| Reduced motion + no WebGL | Fallback, no crash |
+| Mobile 390×844, no WebGL | Fallback, no horizontal overflow, no crash |
+| Hero scrolled off-screen | Loop paused, 0 draw calls over 1.5s |
+
+Every scenario: no client-side application error, no hydration error, no
+uncaught page error, all five sections present, nav links and both hero CTAs
+functional, lead form interactive. `GET /admin` → 307 → `/admin/login` (200);
+`POST /api/leads` → controlled 503; SSR HTML contains the full hero copy and
+all static fallback layers with no `#hero-canvas`.
+
+### 13.5 Open items
+
+1. **`/favicon.ico` returns 404** — the single remaining console error in the
+   browser run. Pre-existing: no icon asset is tracked in the repository. Not
+   fixed here because fabricating logo/icon artwork is explicitly out of scope
+   for this phase; it needs the logo family in
+   `design/MIANX-BRAND-SYSTEM.md` §11 to be produced and approved.
+2. **`npm audit` now reports 13 high-severity advisories, all
+   devDependencies-only** (`npm audit --omit=dev` still reports
+   `found 0 vulnerabilities`, so nothing ships to production). They all trace
+   to one root cause: a `brace-expansion`/`minimatch` ReDoS advisory reaching
+   the tree through `eslint@8` and `eslint-config-next`. New since the §11.2
+   gate, which closed at 0. Out of scope for this phase — the fix is an
+   ESLint 8 → 9 migration (flat config), which belongs in its own dependency
+   gate, not in a brand/stability change.
+3. **Full palette migration** of the legacy indigo/teal aliases (§13.3) is
+   deferred to the redesign phase.
+4. Founder approval is still required before any push, PR, merge, or deploy.
