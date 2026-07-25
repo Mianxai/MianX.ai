@@ -1,39 +1,17 @@
 "use client";
 
-import { useCallback, useState } from "react";
 import dynamic from "next/dynamic";
-import SceneBoundary from "./SceneBoundary";
 
 // Three.js touches the DOM/WebGL directly and must never run during SSR or
 // `next build`'s static generation — ssr:false guarantees it only mounts in
 // the browser, after hydration.
 const HeroScene = dynamic(() => import("./HeroScene"), { ssr: false });
 
-// Scene states: "static" until a WebGL frame actually renders ("enhanced"), or
-// "fallback" once the enhancement is known to be unavailable. The static
-// composition below is server-rendered and never removed, so the hero is
-// complete with no JavaScript, no WebGL, and during hydration.
 export default function Hero() {
-  const [sceneState, setSceneState] = useState("static");
-
-  const handleUnavailable = useCallback(() => setSceneState("fallback"), []);
-  const handleReady = useCallback(() => setSceneState("enhanced"), []);
-
   return (
-    <section className="hero" id="hero" data-scene={sceneState}>
-      <div className="hero-atmosphere" aria-hidden="true" />
-      <div className="hero-lattice" aria-hidden="true">
-        <span className="hero-orbit hero-orbit-outer" />
-        <span className="hero-orbit hero-orbit-mid" />
-        <span className="hero-orbit hero-orbit-inner" />
-        <span className="hero-node hero-node-1" />
-        <span className="hero-node hero-node-2" />
-        <span className="hero-node hero-node-3" />
-        <span className="hero-node hero-node-4" />
-      </div>
-      <SceneBoundary onError={handleUnavailable}>
-        <HeroScene onUnavailable={handleUnavailable} onReady={handleReady} />
-      </SceneBoundary>
+    <section className="hero" id="hero">
+      <div className="hero-fallback-bg" aria-hidden="true" />
+      <HeroScene />
       <div className="hero-content">
         <div className="hero-badge">
           <span className="pulse" aria-hidden="true" />
