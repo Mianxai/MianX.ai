@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
-import AdminLoadingRegion from "@/components/admin/AdminLoadingRegion";
 import MianxLoader from "@/components/shared/MianxLoader";
+import DelayedLoader from "@/components/shared/DelayedLoader";
 import { slugFromName, evaluateSlugInput } from "@/lib/slug";
 
 function errorMessage(data, fallback) {
@@ -101,11 +101,11 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {loading && projects.length === 0 && (
-        <AdminLoadingRegion>
-          <MianxLoader variant="section" label="Loading projects…" />
-        </AdminLoadingRegion>
-      )}
+      <DelayedLoader
+        active={loading && projects.length === 0}
+        variant="section"
+        label="Loading projects…"
+      />
 
       {!loading && !notConfigured && projects.length === 0 && !error && (
         <div className="empty-state">

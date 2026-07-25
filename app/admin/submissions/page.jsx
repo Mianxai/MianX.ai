@@ -10,6 +10,7 @@ import LeadTable from "@/components/admin/LeadTable";
 import LeadDetailModal from "@/components/admin/LeadDetailModal";
 import AdminLoadingRegion from "@/components/admin/AdminLoadingRegion";
 import MianxLoader from "@/components/shared/MianxLoader";
+import DelayedLoader from "@/components/shared/DelayedLoader";
 
 function SubmissionsContent() {
   const router = useRouter();
@@ -170,9 +171,11 @@ function SubmissionsContent() {
           <StatsGrid stats={stats} />
           <FiltersBar active={filter} onChange={onFilterChange} />
           {loading && leads.length === 0 ? (
-            <AdminLoadingRegion>
-              <MianxLoader variant="section" label="Loading submissions…" />
-            </AdminLoadingRegion>
+            <DelayedLoader
+              active
+              variant="section"
+              label="Loading submissions…"
+            />
           ) : (
             <>
               <div aria-live="polite" className="sr-only">

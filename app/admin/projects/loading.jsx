@@ -1,9 +1,5 @@
-import MianxLoader from "@/components/shared/MianxLoader";
+import RouteLoading from "@/components/admin/RouteLoading";
 
 export default function ProjectsLoading() {
-  return (
-    <div className="admin-route-loading">
-      <MianxLoader variant="page" label="Loading projects…" />
-    </div>
-  );
+  return <RouteLoading label="Loading projects…" />;
 }
