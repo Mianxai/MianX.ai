@@ -10,7 +10,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify:navbar": "node scripts/verify-navbar-geometry.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
