@@ -186,13 +186,18 @@ export default function PublicSite() {
       const link = id ? linkRefs.current[id] : null;
       if (!link) {
         indicator.style.opacity = "0";
+        indicator.style.width = "0px";
         return;
       }
       const tabsRect = tabs.getBoundingClientRect();
       const linkRect = link.getBoundingClientRect();
       indicator.style.opacity = "1";
       indicator.style.width = `${linkRect.width}px`;
-      indicator.style.transform = `translateX(${linkRect.left - tabsRect.left}px)`;
+      // Absolutely positioned children use the track's padding box as their
+      // origin. Subtract the border so the pill matches the link rectangle.
+      indicator.style.transform = `translateX(${
+        linkRect.left - tabsRect.left - tabs.clientLeft
+      }px)`;
     }
 
     place();

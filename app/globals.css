@@ -54,38 +54,132 @@ html { scroll-padding-top: 88px; }
   border-bottom-color: rgba(99, 102, 241, 0.18);
   box-shadow: none;
 }
-.nav-container { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
-.logo { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
+.nav-container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+}
+.logo { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; justify-self: start; }
 .logo-icon { width: 40px; height: 40px; background: var(--gradient-1); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem; color: white; box-shadow: 0 0 30px rgba(99,102,241,0.4); transition: transform 0.3s ease; }
 .logo:hover .logo-icon { transform: rotate(10deg) scale(1.05); }
 .logo-text { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 700; background: var(--gradient-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 
-/* Premium glowing tabs (desktop) */
-.nav-links { display: flex; gap: 0.35rem; list-style: none; align-items: center; position: relative; }
+/*
+ * Stable liquid-glass tabs (desktop)
+ *
+ * ROOT CAUSE of the ~90px track expansion (live-proven at 1363px):
+ * `.nav-tabs > li { position: relative }` (0,1,1) overrode
+ * `.nav-tabs-indicator { position: absolute }` (0,1,0), so the shared
+ * pill stayed in flex flow. When JS set its width to the active link,
+ * the UL grew by exactly that width. Fix: absolute must win via
+ * `.nav-tabs > .nav-tabs-indicator` (0,2,0). Glow is ::before only.
+ * overflow clips the pill to the rounded track — it is not a width fix.
+ */
+.nav-links {
+  display: flex;
+  gap: 0.35rem;
+  list-style: none;
+  align-items: center;
+  position: relative;
+}
 .nav-tabs {
   --tab-glow-x: 50%;
   --tab-glow-y: 50%;
+  justify-self: center;
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  flex: none;
+  flex-grow: 0;
+  flex-shrink: 0;
   padding: 0.2rem;
   border-radius: 14px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.04);
+  /* Clip the active pill / specular to the rounded track only. */
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, rgba(32, 43, 76, 0.28), rgba(8, 12, 28, 0.2)),
+    rgba(8, 12, 28, 0.18);
+  border: 1px solid rgba(174, 197, 255, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(4, 7, 18, 0.28),
+    0 8px 20px rgba(2, 6, 23, 0.12);
+  backdrop-filter: blur(14px) saturate(1.18);
+  -webkit-backdrop-filter: blur(14px) saturate(1.18);
+  transition:
+    background 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+.navbar--scrolled .nav-tabs {
+  background:
+    linear-gradient(180deg, rgba(41, 54, 92, 0.34), rgba(8, 12, 28, 0.27)),
+    rgba(8, 12, 28, 0.24);
+  border-color: rgba(174, 197, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(4, 7, 18, 0.34),
+    0 9px 22px rgba(2, 6, 23, 0.16);
 }
 .nav-tabs::before {
   content: '';
-  position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
-  background: radial-gradient(120px circle at var(--tab-glow-x) var(--tab-glow-y), rgba(99,102,241,0.16), transparent 55%);
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(
+      130px circle at var(--tab-glow-x) var(--tab-glow-y),
+      rgba(125, 147, 255, 0.16),
+      rgba(34, 211, 238, 0.05) 38%,
+      transparent 68%
+    );
   transition: opacity 0.25s ease;
 }
 .nav-tabs[data-glow="1"]::before { opacity: 1; }
-.nav-tabs-indicator {
-  position: absolute; top: 0.2rem; bottom: 0.2rem; left: 0;
-  border-radius: 10px; opacity: 0; pointer-events: none; z-index: 0;
-  background: linear-gradient(135deg, rgba(99,102,241,0.28), rgba(6,182,212,0.18));
-  box-shadow: 0 0 18px rgba(99,102,241,0.22), inset 0 1px 0 rgba(255,255,255,0.12);
-  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1), width 0.35s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.25s ease;
+/* Specificity must beat `.nav-tabs > li` so the pill never enters layout. */
+.nav-tabs > .nav-tabs-indicator {
+  position: absolute;
+  top: 0.2rem;
+  bottom: 0.2rem;
+  left: 0;
+  z-index: 0;
+  margin: 0;
+  padding: 0;
+  flex: none;
+  list-style: none;
+  border-radius: 10px;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, width;
+  background:
+    linear-gradient(135deg, rgba(107, 114, 255, 0.3), rgba(34, 211, 238, 0.14)),
+    rgba(77, 101, 183, 0.11);
+  border: 1px solid rgba(191, 207, 255, 0.13);
+  box-shadow:
+    0 5px 14px rgba(18, 33, 94, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(15, 23, 58, 0.2);
+  transition:
+    transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1),
+    width 0.35s cubic-bezier(0.2, 0.7, 0.2, 1),
+    opacity 0.2s ease;
 }
-.nav-tabs > li { position: relative; z-index: 1; }
-.nav-tabs > li.nav-tabs-indicator { z-index: 0; }
+.nav-tabs > .nav-tabs-indicator::after {
+  content: '';
+  position: absolute;
+  inset: 1px 8px auto;
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.34), transparent);
+}
+.nav-tabs > li:not(.nav-tabs-indicator) { position: relative; z-index: 1; flex: none; }
 .nav-links a {
   color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; font-weight: 500;
   display: inline-flex; align-items: center; padding: 0.5rem 0.9rem; border-radius: 10px;
@@ -104,10 +198,12 @@ html { scroll-padding-top: 88px; }
 }
 .nav-links a.active {
   color: var(--text-primary);
+  /* Keep weight identical so active state cannot change link metrics. */
+  font-weight: 500;
   text-shadow: 0 0 18px rgba(99,102,241,0.35);
 }
 
-.nav-cta { background: var(--gradient-1); color: white; padding: 0.6rem 1.5rem; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: all 0.3s ease; border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(99,102,241,0.3); position: relative; overflow: hidden; }
+.nav-cta { background: var(--gradient-1); color: white; padding: 0.6rem 1.5rem; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: all 0.3s ease; border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(99,102,241,0.3); position: relative; overflow: hidden; justify-self: end; }
 .nav-cta::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition: left 0.5s ease; }
 .nav-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(99,102,241,0.5); }
 .nav-cta:hover::before { left: 100%; }
@@ -384,9 +480,12 @@ section { padding: 6rem 2rem; position: relative; }
 
 /* Responsive */
 @media (max-width: 1024px) { .footer-container { grid-template-columns: 1fr 1fr; } .sidebar { width: 200px; } .main { margin-left: 200px; } .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 768px) {
-  .nav-links { display: none; }
+@media (max-width: 900px) {
+  .nav-container { display: flex; justify-content: space-between; }
+  .nav-tabs { display: none; }
   .mobile-menu-btn { display: block; }
+}
+@media (max-width: 768px) {
   .hero-stats { gap: 2rem; }
   .form-row { grid-template-columns: 1fr; }
   .footer-container { grid-template-columns: 1fr; gap: 2rem; }
