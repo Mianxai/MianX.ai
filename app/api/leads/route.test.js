@@ -17,10 +17,19 @@ function setSupabaseEnv() {
 }
 
 function fakeRequest(body, headers = {}) {
+  const payload = body === undefined ? "" : JSON.stringify(body);
+  const merged = {
+    "content-type": "application/json",
+    "content-length": String(Buffer.byteLength(payload)),
+    ...Object.fromEntries(
+      Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v])
+    ),
+  };
   return {
     json: async () => body,
+    text: async () => payload,
     cookies: { get: () => undefined },
-    headers: { get: (k) => headers[k.toLowerCase()] },
+    headers: { get: (k) => merged[k.toLowerCase()] },
     nextUrl: { searchParams: new URLSearchParams() },
   };
 }
@@ -113,7 +122,7 @@ describe("POST /api/leads", () => {
     );
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data).toEqual(insertedRow);
+    expect(data).toEqual({ ok: true, id: "1" });
     expect(from).toHaveBeenCalledWith("leads");
     vi.doUnmock("@/lib/supabase");
   });
@@ -132,11 +141,17 @@ describe("POST /api/leads", () => {
 
     const { POST } = await import("./route.js");
     const res = await POST(
-      fakeRequest({ name: "Jane", email: "jane@example.com", message: "Help" })
+      fakeRequest({
+        name: "Jane",
+        email: "jane@example.com",
+        industry: "restaurant",
+        message: "Help",
+      })
     );
     expect(res.status).toBe(500);
     const data = await res.json();
-    expect(data.error).toBe("db down");
+    expect(data.error).toMatch(/Unable to save your request/i);
+    expect(data.error).not.toMatch(/db down/i);
     vi.doUnmock("@/lib/supabase");
   });
 
@@ -149,10 +164,39 @@ describe("POST /api/leads", () => {
 
     const { POST } = await import("./route.js");
     const res = await POST(
-      fakeRequest({ name: "Jane", email: "jane@example.com", message: "Help" })
+      fakeRequest({
+        name: "Jane",
+        email: "jane@example.com",
+        industry: "restaurant",
+        message: "Help",
+      })
     );
     expect(res.status).toBe(503);
     vi.doUnmock("@/lib/supabase");
+  });
+
+  it("rejects non-JSON content types", async () => {
+    setSupabaseEnv();
+    const { POST } = await import("./route.js");
+    const res = await POST(
+      fakeRequest(
+        { name: "Jane", email: "jane@example.com", industry: "restaurant", message: "Help" },
+        { "content-type": "text/plain" }
+      )
+    );
+    expect(res.status).toBe(415);
+  });
+
+  it("rejects oversized request bodies", async () => {
+    setSupabaseEnv();
+    const { POST } = await import("./route.js");
+    const res = await POST(
+      fakeRequest(
+        { name: "Jane", email: "jane@example.com", industry: "restaurant", message: "Help" },
+        { "content-length": "999999" }
+      )
+    );
+    expect(res.status).toBe(413);
   });
 
   it("rate-limits rapid repeated submissions from the same client", async () => {
@@ -169,7 +213,12 @@ describe("POST /api/leads", () => {
     const { POST } = await import("./route.js");
     const req = () =>
       fakeRequest(
-        { name: "Jane", email: "jane@example.com", message: "Help" },
+        {
+          name: "Jane",
+          email: "jane@example.com",
+          industry: "restaurant",
+          message: "Help",
+        },
         { "x-forwarded-for": "203.0.113.5" }
       );
     let lastStatus;

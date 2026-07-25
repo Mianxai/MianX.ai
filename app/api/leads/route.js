@@ -11,9 +11,11 @@ import { validateLeadSubmission } from "@/lib/leads";
 // never be statically evaluated.
 export const dynamic = "force-dynamic";
 
+const MAX_BODY_BYTES = 32_768;
+
 // Best-effort in-memory rate limit: not durable across cold starts or
-// multiple serverless instances, but stops naive rapid-fire bot submissions
-// within a single warm instance without adding an external dependency.
+// multiple serverless instances. Documented as a warm-instance throttle only;
+// durable production rate limiting requires Vercel Firewall / Upstash / similar.
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 5;
 const submissionLog = new Map();
@@ -34,6 +36,20 @@ function clientKey(req) {
   );
 }
 
+function bodyTooLarge(req) {
+  const raw = req.headers?.get?.("content-length");
+  if (!raw) return false;
+  const size = Number(raw);
+  return Number.isFinite(size) && size > MAX_BODY_BYTES;
+}
+
+function publicServerError() {
+  return NextResponse.json(
+    { error: "Unable to save your request right now. Please try again shortly." },
+    { status: 500 }
+  );
+}
+
 // PUBLIC: anyone can submit a lead from the site.
 export async function POST(req) {
   if (!isSupabaseConfigured()) {
@@ -43,9 +59,37 @@ export async function POST(req) {
     );
   }
 
+  // Prefer an explicit Content-Type when present (production Request objects).
+  // Test fakes may omit the header; real browsers always send it for JSON POSTs.
+  const contentType = req.headers?.get?.("content-type");
+  if (contentType && !contentType.toLowerCase().includes("application/json")) {
+    return NextResponse.json(
+      { error: "Content-Type must be application/json." },
+      { status: 415 }
+    );
+  }
+
+  if (bodyTooLarge(req)) {
+    return NextResponse.json(
+      { error: "Request body is too large." },
+      { status: 413 }
+    );
+  }
+
   let body;
   try {
-    body = await req.json();
+    if (typeof req.text === "function") {
+      const text = await req.text();
+      if (text.length > MAX_BODY_BYTES) {
+        return NextResponse.json(
+          { error: "Request body is too large." },
+          { status: 413 }
+        );
+      }
+      body = text ? JSON.parse(text) : {};
+    } else {
+      body = await req.json();
+    }
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -92,9 +136,9 @@ export async function POST(req) {
     .select()
     .single();
 
-  // Never report success if the write itself failed.
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(row);
+  // Never report success if the write itself failed. Never expose raw DB errors.
+  if (error) return publicServerError();
+  return NextResponse.json({ ok: true, id: row?.id });
 }
 
 // PROTECTED: only a logged-in admin can list leads.
@@ -124,6 +168,6 @@ export async function GET(req) {
   query = query.order("created_at", { ascending: false });
 
   const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return publicServerError();
   return NextResponse.json(data);
 }

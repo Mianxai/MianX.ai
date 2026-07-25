@@ -88,6 +88,22 @@ describe("glowing glass navbar", () => {
     expect(scrollRemoves.length).toBeGreaterThan(0);
   });
 
+  it("keeps a skip link and main landmark for keyboard users", () => {
+    render(<PublicSite />);
+    expect(screen.getByRole("link", { name: /skip to main content/i })).toHaveAttribute(
+      "href",
+      "#main-content"
+    );
+    expect(document.getElementById("main-content")?.tagName).toBe("MAIN");
+  });
+
+  it("includes a honeypot field that stays out of the accessibility tree", () => {
+    render(<PublicSite />);
+    const honeypot = document.querySelector(".form-honeypot input#website");
+    expect(honeypot).toBeTruthy();
+    expect(honeypot.getAttribute("tabIndex")).toBe("-1");
+  });
+
   it("keeps the five original nav hrefs and Get a Demo CTA", () => {
     render(<PublicSite />);
     const nav = document.querySelector("nav.navbar");

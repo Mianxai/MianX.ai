@@ -12,7 +12,7 @@ export default function BrandLogo({ size = 40 }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/mianx-logo.png"
-        alt="MianX.ai"
+        alt=""
         width={size}
         height={size}
         style={{ width: size, height: size, objectFit: "contain", display: "block" }}
