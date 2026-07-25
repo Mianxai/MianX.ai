@@ -6,9 +6,10 @@ import RuntimeWorkspace from "./RuntimeWorkspace";
 
 // Stable router instance — returning a fresh object each call would change the
 // useCallback identity every render and cause an infinite re-render loop.
-const routerMock = { push: vi.fn(), refresh: vi.fn() };
+const routerMock = { push: vi.fn(), refresh: vi.fn(), replace: vi.fn() };
 vi.mock("next/navigation", () => ({
   useRouter: () => routerMock,
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 const PROJECT = { id: "11111111-1111-4111-8111-111111111111", name: "Beta OS" };
@@ -38,6 +39,8 @@ const healthOk = () =>
 describe("RuntimeWorkspace", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    routerMock.push.mockClear();
+    routerMock.replace.mockClear();
   });
 
   it("shows a not-configured notice when Supabase is unavailable", async () => {
@@ -59,6 +62,22 @@ describe("RuntimeWorkspace", () => {
     const cards = screen.getByText("Registered agents").closest(".runtime-card");
     expect(within(cards).getByText("3")).toBeInTheDocument();
     expect(screen.getByRole("tablist", { name: /runtime sections/i })).toBeInTheDocument();
+  });
+
+  it("honors initialTab and deep-links tab changes via router.replace", async () => {
+    installFetch([
+      ["/api/core/health", healthOk],
+      ["/api/core/projects", () => jsonResponse(200, { projects: [PROJECT] })],
+      ["/api/core/agents", () => jsonResponse(200, { catalog: [], instances: [] })],
+    ]);
+    render(<RuntimeWorkspace initialTab="agents" />);
+    expect(await screen.findByRole("tab", { name: "Agents" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+
+    await userEvent.click(screen.getByRole("tab", { name: "Runs" }));
+    expect(routerMock.replace).toHaveBeenCalledWith("/admin/runtime/runs");
   });
 
   it("renders agent/run output as inert text (no script/handler execution)", async () => {

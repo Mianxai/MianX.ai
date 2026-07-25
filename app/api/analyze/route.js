@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,8 +8,15 @@ export const dynamic = "force-dynamic";
 // instead of calling out to Anthropic with an empty key — the rest of the
 // product (lead capture, admin auth, lead list/status) keeps working.
 export async function POST(req) {
-  const user = await getSessionUser(req);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    await requireAdmin(req);
+  } catch (err) {
+    const status = err?.status || 401;
+    return NextResponse.json(
+      { error: err?.message || "Unauthorized", code: err?.code || "UNAUTHORIZED" },
+      { status }
+    );
+  }
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(

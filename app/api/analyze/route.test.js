@@ -7,8 +7,8 @@ function fakeRequest(body) {
   };
 }
 
-vi.mock("@/lib/auth", () => ({
-  getSessionUser: vi.fn(async () => ({ id: "user-1" })),
+vi.mock("@/lib/admin-auth", () => ({
+  requireAdmin: vi.fn(async () => ({ id: "user-1", email: "admin@mianx.ai" })),
 }));
 
 describe("POST /api/analyze", () => {

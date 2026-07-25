@@ -4,8 +4,9 @@ import {
   isSupabaseConfigured,
   SUPABASE_NOT_CONFIGURED_MESSAGE,
 } from "@/lib/supabase";
-import { getSessionUser } from "@/lib/auth";
+import { requireAdmin, actorFromUser } from "@/lib/admin-auth";
 import { buildLeadPatch } from "@/lib/leads";
+import { recordAudit, buildAuditEntry } from "@/lib/core/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +24,16 @@ export async function PATCH(req, { params }) {
       { status: 503 }
     );
   }
-  const user = await getSessionUser(req);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let user;
+  try {
+    user = await requireAdmin(req);
+  } catch (err) {
+    const status = err?.status || 401;
+    return NextResponse.json(
+      { error: err?.message || "Unauthorized", code: err?.code || "UNAUTHORIZED" },
+      { status }
+    );
+  }
 
   let body;
   try {
@@ -55,6 +64,31 @@ export async function PATCH(req, { params }) {
     .eq("id", id)
     .select()
     .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    return NextResponse.json(
+      { error: "Unable to update this lead right now." },
+      { status: 500 }
+    );
+  }
+
+  try {
+    await recordAudit(
+      supabaseAdmin,
+      buildAuditEntry({
+        actor: actorFromUser(user),
+        action: patch.archived_at
+          ? "lead.archived"
+          : patch.archived_at === null
+            ? "lead.restored"
+            : "lead.updated",
+        resourceType: "lead",
+        resourceId: id,
+        metadata: { fields: Object.keys(patch) },
+      })
+    );
+  } catch {
+    // Audit is best-effort for leads; do not fail the mutation.
+  }
+
   return NextResponse.json(data);
 }

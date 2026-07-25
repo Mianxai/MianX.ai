@@ -36,12 +36,19 @@ export const POST = withErrorHandling(async (req) => {
   }
   if (!isSlug(slug)) throw badRequest("Invalid slug. Use lowercase letters, numbers and hyphens.");
 
+  const description = clip(body.description, 4000) || null;
+  const status = clip(body.status, 32) || "active";
+  if (!["active", "paused"].includes(status)) {
+    throw badRequest("Invalid project status. Use active or paused.");
+  }
+
   const org = await repo.getOrCreateDefaultOrg();
   const project = await repo.createProject({
     organization_id: org.id,
     name,
     slug,
-    status: "active",
+    description,
+    status,
   });
 
   await recordAudit(

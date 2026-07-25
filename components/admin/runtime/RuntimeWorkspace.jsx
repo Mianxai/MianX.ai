@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { RUNTIME_TAB_PATHS } from "@/components/admin/nav";
 
 const TABS = [
   ["overview", "Overview"],
@@ -12,6 +12,8 @@ const TABS = [
   ["approvals", "Approvals"],
   ["audit", "Audit"],
 ];
+
+const VALID_TABS = new Set(TABS.map(([id]) => id));
 
 // Small fetch wrapper: normalizes auth redirect + not-configured + error shape.
 async function api(path, options, router) {
@@ -36,11 +38,30 @@ function errorMessage(data, fallback) {
   return data?.error?.message || data?.error || fallback;
 }
 
-export default function RuntimeWorkspace() {
+function resolveTab(initialTab) {
+  return VALID_TABS.has(initialTab) ? initialTab : "overview";
+}
+
+/**
+ * @param {{ initialTab?: string, tab?: string, showChrome?: boolean }} props
+ * `initialTab` / `tab` select the active runtime section. Tab changes
+ * deep-link via router.replace to /admin/runtime[/section].
+ * When `showChrome` is true (default false under AdminShell), renders a local header.
+ */
+export default function RuntimeWorkspace({
+  initialTab = "overview",
+  tab: tabProp,
+  showChrome = false,
+  onRefreshReady,
+}) {
   const router = useRouter();
-  const [tab, setTab] = useState("overview");
+  const searchParams = useSearchParams();
+  const preferredProject = searchParams?.get("project_id") || "";
+  const controlledTab = tabProp !== undefined ? resolveTab(tabProp) : null;
+  const [tab, setTabState] = useState(() => resolveTab(initialTab));
+  const activeTab = controlledTab ?? tab;
   const [projects, setProjects] = useState([]);
-  const [projectId, setProjectId] = useState("");
+  const [projectId, setProjectId] = useState(preferredProject);
   const [health, setHealth] = useState(null);
   const [notConfigured, setNotConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -49,12 +70,33 @@ export default function RuntimeWorkspace() {
 
   const call = useCallback((path, options) => api(path, options, router), [router]);
 
+  const setTab = useCallback(
+    (nextId) => {
+      const id = resolveTab(nextId);
+      if (controlledTab === null) setTabState(id);
+      const path = RUNTIME_TAB_PATHS[id] || "/admin/runtime";
+      const qs = searchParams?.toString();
+      const href = qs ? `${path}?${qs}` : path;
+      router.replace(href);
+    },
+    [controlledTab, router, searchParams]
+  );
+
+  useEffect(() => {
+    if (controlledTab !== null) return;
+    setTabState(resolveTab(initialTab));
+  }, [initialTab, controlledTab]);
+
+  useEffect(() => {
+    if (preferredProject) setProjectId(preferredProject);
+  }, [preferredProject]);
+
   const loadProjects = useCallback(async () => {
     setLoading(true);
     setError("");
     setNotConfigured(false);
-    const health = await call("/api/core/health");
-    setHealth(health.data);
+    const healthRes = await call("/api/core/health");
+    setHealth(healthRes.data);
     const res = await call("/api/core/projects");
     if (res.status === 503) {
       setNotConfigured(true);
@@ -64,17 +106,27 @@ export default function RuntimeWorkspace() {
     } else {
       const list = res.data?.projects || [];
       setProjects(list);
-      setProjectId((cur) => cur || list[0]?.id || "");
+      setProjectId((cur) => {
+        if (cur && list.some((p) => p.id === cur)) return cur;
+        if (preferredProject && list.some((p) => p.id === preferredProject)) {
+          return preferredProject;
+        }
+        return list[0]?.id || "";
+      });
     }
     setLoading(false);
-  }, [call]);
+  }, [call, preferredProject]);
 
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
 
+  useEffect(() => {
+    onRefreshReady?.(loadProjects);
+  }, [onRefreshReady, loadProjects]);
+
   function onTabKeyDown(e) {
-    const idx = TABS.findIndex(([id]) => id === tab);
+    const idx = TABS.findIndex(([id]) => id === activeTab);
     if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
       e.preventDefault();
       const next =
@@ -88,107 +140,117 @@ export default function RuntimeWorkspace() {
   }
 
   return (
-    <div className="admin-app">
-      <main className="admin-main" id="main-content">
+    <div className="runtime-workspace">
+      {showChrome && (
         <div className="admin-header">
           <div className="admin-header-left">
             <h1>Mianx Core Runtime</h1>
           </div>
           <div className="header-actions">
-            <Link className="header-btn-ghost" href="/admin">
-              ← Dashboard
-            </Link>
-            <button className="header-btn-ghost" onClick={loadProjects}>
+            <button type="button" className="header-btn-ghost" onClick={loadProjects}>
               Refresh
             </button>
           </div>
         </div>
+      )}
 
-        {notConfigured && (
-          <div className="admin-notice" role="alert">
-            Configuration error: Supabase environment variables are not set on this
-            deployment, so the runtime cannot load projects or persist data. The
-            runtime health probe still works; set{" "}
-            <code>NEXT_PUBLIC_SUPABASE_URL</code>,{" "}
-            <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> and{" "}
-            <code>SUPABASE_SERVICE_ROLE_KEY</code> to enable it.
-          </div>
-        )}
-        {error && !notConfigured && (
-          <div className="admin-notice error" role="alert">
-            {error}
-          </div>
-        )}
-
-        <div className="runtime-projectbar">
-          <label htmlFor="runtime-project">Project</label>
-          <select
-            id="runtime-project"
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            disabled={notConfigured || projects.length === 0}
-          >
-            {projects.length === 0 && <option value="">No projects yet</option>}
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <ProjectCreator disabled={notConfigured} call={call} onCreated={loadProjects} />
+      {notConfigured && (
+        <div className="admin-notice" role="alert">
+          Configuration error: Supabase environment variables are not set on this
+          deployment, so the runtime cannot load projects or persist data. The
+          runtime health probe still works; set{" "}
+          <code>NEXT_PUBLIC_SUPABASE_URL</code>,{" "}
+          <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> and{" "}
+          <code>SUPABASE_SERVICE_ROLE_KEY</code> to enable it.
         </div>
+      )}
+      {error && !notConfigured && (
+        <div className="admin-notice error" role="alert">
+          {error}
+        </div>
+      )}
 
-        <div
-          className="runtime-tabs"
-          role="tablist"
-          aria-label="Runtime sections"
-          onKeyDown={onTabKeyDown}
+      <div className="runtime-projectbar">
+        <label htmlFor="runtime-project">Project</label>
+        <select
+          id="runtime-project"
+          value={projectId}
+          onChange={(e) => setProjectId(e.target.value)}
+          disabled={notConfigured || projects.length === 0}
         >
-          {TABS.map(([id, label]) => (
-            <button
-              key={id}
-              ref={(el) => (tabRefs.current[id] = el)}
-              role="tab"
-              id={`runtime-tab-${id}`}
-              aria-selected={tab === id}
-              aria-controls={`runtime-panel-${id}`}
-              tabIndex={tab === id ? 0 : -1}
-              className={`runtime-chip${tab === id ? " active" : ""}`}
-              onClick={() => setTab(id)}
-            >
-              {label}
-            </button>
+          {projects.length === 0 && <option value="">No projects yet</option>}
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
           ))}
-        </div>
+        </select>
+        <ProjectCreator disabled={notConfigured} call={call} onCreated={loadProjects} />
+        {!showChrome && (
+          <button type="button" className="header-btn-ghost" onClick={loadProjects}>
+            Refresh
+          </button>
+        )}
+      </div>
 
-        <div
-          role="tabpanel"
-          id={`runtime-panel-${tab}`}
-          aria-labelledby={`runtime-tab-${tab}`}
-          className="runtime-panel"
-        >
-          {loading ? (
-            <p className="runtime-muted">Loading runtime…</p>
-          ) : notConfigured ? (
-            <p className="runtime-muted">Runtime data is unavailable until Supabase is configured.</p>
-          ) : (
-            <>
-              {tab === "overview" && <OverviewPanel health={health} projects={projects} />}
-              {tab === "agents" && (
-                <AgentsPanel call={call} projectId={projectId} />
-              )}
-              {tab === "tasks" && (
-                <TasksPanel call={call} projectId={projectId} />
-              )}
-              {tab === "runs" && <RunsPanel call={call} projectId={projectId} />}
-              {tab === "approvals" && (
-                <ApprovalsPanel call={call} projectId={projectId} />
-              )}
-              {tab === "audit" && <AuditPanel call={call} projectId={projectId} />}
-            </>
-          )}
-        </div>
-      </main>
+      <div
+        className="runtime-tabs"
+        role="tablist"
+        aria-label="Runtime sections"
+        onKeyDown={onTabKeyDown}
+      >
+        {TABS.map(([id, label]) => (
+          <button
+            key={id}
+            ref={(el) => {
+              tabRefs.current[id] = el;
+            }}
+            role="tab"
+            id={`runtime-tab-${id}`}
+            aria-selected={activeTab === id}
+            aria-controls={`runtime-panel-${id}`}
+            tabIndex={activeTab === id ? 0 : -1}
+            className={`runtime-chip${activeTab === id ? " active" : ""}`}
+            onClick={() => setTab(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div
+        role="tabpanel"
+        id={`runtime-panel-${activeTab}`}
+        aria-labelledby={`runtime-tab-${activeTab}`}
+        className="runtime-panel"
+      >
+        {loading ? (
+          <p className="runtime-muted">Loading runtime…</p>
+        ) : notConfigured ? (
+          <p className="runtime-muted">
+            Runtime data is unavailable until Supabase is configured.
+          </p>
+        ) : (
+          <>
+            {activeTab === "overview" && (
+              <OverviewPanel health={health} projects={projects} />
+            )}
+            {activeTab === "agents" && (
+              <AgentsPanel call={call} projectId={projectId} />
+            )}
+            {activeTab === "tasks" && (
+              <TasksPanel call={call} projectId={projectId} />
+            )}
+            {activeTab === "runs" && <RunsPanel call={call} projectId={projectId} />}
+            {activeTab === "approvals" && (
+              <ApprovalsPanel call={call} projectId={projectId} />
+            )}
+            {activeTab === "audit" && (
+              <AuditPanel call={call} projectId={projectId} />
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -340,6 +402,16 @@ function AgentsPanel({ call, projectId }) {
     load();
   }
 
+  async function setInstanceStatus(id, status) {
+    setBusySlug(id);
+    await call(`/api/core/agents/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+    setBusySlug("");
+    load();
+  }
+
   if (loading) return <p className="runtime-muted">Loading agents…</p>;
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
 
@@ -352,12 +424,29 @@ function AgentsPanel({ call, projectId }) {
             <li key={a.slug} className="runtime-item">
               <div>
                 <strong>{a.name}</strong>
+                <p className="runtime-muted">
+                  {a.slug} · v{a.version || 1} · {a.lifecycleStatus || a.lifecycle_status || "active"}
+                </p>
                 <p className="runtime-muted">{a.purpose}</p>
+                <p className="runtime-muted">
+                  Provider: {a.defaultProvider || a.default_provider || "anthropic"}
+                  {(a.defaultModel || a.default_model) ? ` / ${a.defaultModel || a.default_model}` : ""}
+                  {(a.requiresHumanApproval || a.requires_human_approval) ? " · approval required" : ""}
+                </p>
                 <p className="runtime-tags">
                   {a.allowedCapabilities?.map((c) => (
                     <span key={c} className="runtime-tag">{c}</span>
                   ))}
                 </p>
+                {a.prohibitedCapabilities?.length > 0 && (
+                  <p className="runtime-tags" aria-label="Prohibited capabilities">
+                    {a.prohibitedCapabilities.map((c) => (
+                      <span key={c} className="runtime-tag" style={{ opacity: 0.7 }}>
+                        !{c}
+                      </span>
+                    ))}
+                  </p>
+                )}
               </div>
               <button
                 className="header-btn"
@@ -381,8 +470,45 @@ function AgentsPanel({ call, projectId }) {
                 <div>
                   <strong>{i.display_name || i.agent_definitions?.name}</strong>
                   <p className="runtime-muted">
-                    {i.agent_definitions?.slug} · {i.status}
+                    {i.agent_definitions?.slug} ·{" "}
+                    <span className={`runtime-status status-${i.status}`}>{i.status}</span>
                   </p>
+                </div>
+                <div className="runtime-item-actions">
+                  {i.status === "active" && (
+                    <button
+                      type="button"
+                      className="header-btn-ghost"
+                      disabled={busySlug === i.id}
+                      onClick={() => setInstanceStatus(i.id, "paused")}
+                    >
+                      Pause
+                    </button>
+                  )}
+                  {i.status === "paused" && (
+                    <button
+                      type="button"
+                      className="header-btn"
+                      disabled={busySlug === i.id}
+                      onClick={() => setInstanceStatus(i.id, "active")}
+                    >
+                      Activate
+                    </button>
+                  )}
+                  {i.status !== "retired" && (
+                    <button
+                      type="button"
+                      className="header-btn-ghost"
+                      disabled={busySlug === i.id}
+                      onClick={() => {
+                        if (window.confirm("Retire this agent instance? It cannot be reactivated.")) {
+                          setInstanceStatus(i.id, "retired");
+                        }
+                      }}
+                    >
+                      Retire
+                    </button>
+                  )}
                 </div>
               </li>
             ))}
