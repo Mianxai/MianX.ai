@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
-import AdminLoadingRegion from "@/components/admin/AdminLoadingRegion";
 import OverviewCards from "@/components/admin/OverviewCards";
 import MianxLoader from "@/components/shared/MianxLoader";
+import DelayedLoader from "@/components/shared/DelayedLoader";
 import { afterNextPaint } from "@/lib/after-paint";
 
 export default function AdminOverviewPage() {
@@ -118,11 +118,11 @@ export default function AdminOverviewPage() {
           {error}
         </div>
       )}
-      {bootstrapping && !data && !error && !notConfigured && (
-        <AdminLoadingRegion>
-          <MianxLoader variant="section" label="Loading overview…" />
-        </AdminLoadingRegion>
-      )}
+      <DelayedLoader
+        active={bootstrapping && !data && !error && !notConfigured}
+        variant="section"
+        label="Loading overview…"
+      />
       {!bootstrapping && !error && !notConfigured && !data && (
         <div className="empty-state">
           <h3>No overview data</h3>

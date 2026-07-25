@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
-import AdminLoadingRegion from "@/components/admin/AdminLoadingRegion";
 import MianxLoader from "@/components/shared/MianxLoader";
+import DelayedLoader from "@/components/shared/DelayedLoader";
 
 function toEntries(dist) {
   if (!dist || typeof dist !== "object") return [];
@@ -135,11 +135,11 @@ export default function AnalyticsPage() {
           {error}
         </div>
       )}
-      {loading && !data && (
-        <AdminLoadingRegion>
-          <MianxLoader variant="section" label="Loading analytics…" />
-        </AdminLoadingRegion>
-      )}
+      <DelayedLoader
+        active={loading && !data}
+        variant="section"
+        label="Loading analytics…"
+      />
       {empty && (
         <div className="empty-state">
           <h3>No analytics yet</h3>

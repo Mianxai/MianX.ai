@@ -1,9 +1,5 @@
-import MianxLoader from "@/components/shared/MianxLoader";
+import RouteLoading from "@/components/admin/RouteLoading";
 
-export default function RuntimeApprovalsLoading() {
-  return (
-    <div className="admin-route-loading">
-      <MianxLoader variant="page" label="Loading approvals…" />
-    </div>
-  );
+export default function ApprovalsLoading() {
+  return <RouteLoading label="Loading approvals…" />;
 }

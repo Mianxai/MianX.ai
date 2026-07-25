@@ -1,9 +1,5 @@
-import MianxLoader from "@/components/shared/MianxLoader";
+import RouteLoading from "@/components/admin/RouteLoading";
 
 export default function SettingsLoading() {
-  return (
-    <div className="admin-route-loading">
-      <MianxLoader variant="page" label="Loading settings…" />
-    </div>
-  );
+  return <RouteLoading label="Loading settings…" />;
 }

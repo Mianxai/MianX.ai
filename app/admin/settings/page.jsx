@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
-import AdminLoadingRegion from "@/components/admin/AdminLoadingRegion";
 import MianxLoader from "@/components/shared/MianxLoader";
+import DelayedLoader from "@/components/shared/DelayedLoader";
 
 function yesNo(value) {
   if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -120,11 +120,11 @@ export default function SettingsPage() {
           {error}
         </div>
       )}
-      {loading && !data && (
-        <AdminLoadingRegion>
-          <MianxLoader variant="section" label="Loading settings…" />
-        </AdminLoadingRegion>
-      )}
+      <DelayedLoader
+        active={loading && !data}
+        variant="section"
+        label="Loading settings…"
+      />
 
       {rows.length > 0 && (
         <section className="settings-section" aria-labelledby="settings-config-h">

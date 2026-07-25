@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RUNTIME_TAB_PATHS } from "@/components/admin/nav";
-import AdminLoadingRegion from "@/components/admin/AdminLoadingRegion";
 import MianxLoader from "@/components/shared/MianxLoader";
+import DelayedLoader from "@/components/shared/DelayedLoader";
 import { afterNextPaint } from "@/lib/after-paint";
 
 const TABS = [
@@ -277,9 +277,7 @@ export default function RuntimeWorkspace({
         className="runtime-panel"
       >
         {bootstrapping ? (
-          <AdminLoadingRegion>
-            <MianxLoader variant="section" label="Loading runtime…" />
-          </AdminLoadingRegion>
+          <DelayedLoader active variant="section" label="Loading runtime…" />
         ) : notConfigured ? (
           <p className="runtime-muted">
             Runtime data is unavailable until Supabase is configured.
@@ -471,11 +469,7 @@ function AgentsPanel({ call, projectId }) {
   }
 
   if (loading) {
-    return (
-      <AdminLoadingRegion>
-        <MianxLoader variant="section" label="Loading agents…" />
-      </AdminLoadingRegion>
-    );
+    return <DelayedLoader active variant="section" label="Loading agents…" />;
   }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
 
@@ -627,11 +621,7 @@ function TasksPanel({ call, projectId }) {
 
   if (!projectId) return <p className="runtime-muted">Select or create a project first.</p>;
   if (loading) {
-    return (
-      <AdminLoadingRegion>
-        <MianxLoader variant="section" label="Loading tasks…" />
-      </AdminLoadingRegion>
-    );
+    return <DelayedLoader active variant="section" label="Loading tasks…" />;
   }
 
   return (
@@ -851,11 +841,7 @@ function RunsPanel({ call, projectId }) {
 
   if (!projectId) return <p className="runtime-muted">Select a project first.</p>;
   if (loading) {
-    return (
-      <AdminLoadingRegion>
-        <MianxLoader variant="section" label="Loading runs…" />
-      </AdminLoadingRegion>
-    );
+    return <DelayedLoader active variant="section" label="Loading runs…" />;
   }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
   if (items.length === 0) return <p className="runtime-muted">No runs yet.</p>;
@@ -930,11 +916,7 @@ function ApprovalsPanel({ call, projectId }) {
 
   if (!projectId) return <p className="runtime-muted">Select a project first.</p>;
   if (loading) {
-    return (
-      <AdminLoadingRegion>
-        <MianxLoader variant="section" label="Loading approvals…" />
-      </AdminLoadingRegion>
-    );
+    return <DelayedLoader active variant="section" label="Loading approvals…" />;
   }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
   if (items.length === 0) return <p className="runtime-muted">No approval requests.</p>;
@@ -989,11 +971,7 @@ function AuditPanel({ call, projectId }) {
 
   if (!projectId) return <p className="runtime-muted">Select a project first.</p>;
   if (loading) {
-    return (
-      <AdminLoadingRegion>
-        <MianxLoader variant="section" label="Loading audit log…" />
-      </AdminLoadingRegion>
-    );
+    return <DelayedLoader active variant="section" label="Loading audit log…" />;
   }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
   if (items.length === 0) return <p className="runtime-muted">No audit entries yet.</p>;
