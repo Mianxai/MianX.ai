@@ -260,6 +260,31 @@
 .runtime-code-error { border-color: rgba(239,68,68,0.4); }
 .runtime-audit time { white-space: nowrap; }
 
+/* ---- Job queue panel ------------------------------------------------------ */
+.runtime-card-compact { padding: 0.75rem 1rem; }
+.runtime-card-compact h3 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.runtime-card-compact .runtime-metric { font-size: 1.3rem; }
+.runtime-queue-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.75rem; flex-wrap: wrap; margin: 1rem 0 0.5rem;
+}
+.runtime-queue-toolbar .runtime-filters { margin: 0; }
+.runtime-job-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 0.75rem; flex-wrap: wrap; min-width: 0;
+}
+.runtime-job-head > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+.runtime-job-detail { margin-top: 0.5rem; min-width: 0; }
+.runtime-pagination {
+  display: flex; align-items: center; gap: 0.75rem; margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .runtime-job-head { flex-direction: column; align-items: stretch; }
+  .runtime-job-head .runtime-item-actions { justify-content: flex-start; flex-wrap: wrap; }
+}
+
 @media (max-width: 768px) {
   .runtime-split { grid-template-columns: 1fr; }
   .runtime-item { flex-direction: column; align-items: stretch; }

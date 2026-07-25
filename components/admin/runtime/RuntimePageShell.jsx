@@ -10,6 +10,7 @@ const TITLES = {
   overview: "Runtime",
   agents: "Agents",
   tasks: "Tasks",
+  queue: "Job Queue",
   runs: "Runs",
   approvals: "Approvals",
   audit: "Audit",

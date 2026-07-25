@@ -5,12 +5,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { RUNTIME_TAB_PATHS } from "@/components/admin/nav";
 import MianxLoader from "@/components/shared/MianxLoader";
 import DelayedLoader from "@/components/shared/DelayedLoader";
+import QueuePanel from "@/components/admin/runtime/QueuePanel";
 import { afterNextPaint } from "@/lib/after-paint";
 
 const TABS = [
   ["overview", "Overview"],
   ["agents", "Agents"],
   ["tasks", "Tasks"],
+  ["queue", "Queue"],
   ["runs", "Runs"],
   ["approvals", "Approvals"],
   ["audit", "Audit"],
@@ -292,6 +294,9 @@ export default function RuntimeWorkspace({
             )}
             {activeTab === "tasks" && (
               <TasksPanel call={call} projectId={projectId} />
+            )}
+            {activeTab === "queue" && (
+              <QueuePanel call={call} projectId={projectId} />
             )}
             {activeTab === "runs" && <RunsPanel call={call} projectId={projectId} />}
             {activeTab === "approvals" && (

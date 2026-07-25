@@ -4,6 +4,7 @@ export const RUNTIME_TAB_PATHS = {
   overview: "/admin/runtime",
   agents: "/admin/runtime/agents",
   tasks: "/admin/runtime/tasks",
+  queue: "/admin/runtime/queue",
   runs: "/admin/runtime/runs",
   approvals: "/admin/runtime/approvals",
   audit: "/admin/runtime/audit",
@@ -41,6 +42,7 @@ export const ADMIN_NAV = [
     children: [
       { href: "/admin/runtime/agents", label: "Agents", match: "prefix" },
       { href: "/admin/runtime/tasks", label: "Tasks", match: "prefix" },
+      { href: "/admin/runtime/queue", label: "Queue", match: "prefix" },
       { href: "/admin/runtime/runs", label: "Runs", match: "prefix" },
       { href: "/admin/runtime/approvals", label: "Approvals", match: "prefix" },
       { href: "/admin/runtime/audit", label: "Audit", match: "prefix" },
