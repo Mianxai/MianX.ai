@@ -156,3 +156,61 @@
 @media (max-width: 480px) {
   .stats-grid { grid-template-columns: 1fr; }
 }
+
+/* ---- Mianx Core Runtime workspace ---------------------------------------- */
+.runtime-projectbar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.runtime-projectbar label { color: var(--text-secondary); font-size: 0.85rem; font-weight: 600; }
+.runtime-projectbar select, .runtime-inline-form input, .runtime-form input, .runtime-form select, .runtime-form textarea, .runtime-item-actions select {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.9rem; color: var(--text-primary); font-size: 0.9rem; outline: none; transition: border-color 0.2s ease;
+}
+.runtime-projectbar select:focus, .runtime-inline-form input:focus, .runtime-form input:focus, .runtime-form select:focus, .runtime-form textarea:focus, .runtime-item-actions select:focus { border-color: var(--primary); }
+.runtime-inline-form { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+
+.runtime-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1.5rem; }
+.runtime-chip { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 999px; padding: 0.45rem 1rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+.runtime-chip:hover { color: var(--text-primary); border-color: var(--border-hover); }
+.runtime-chip.active { background: var(--gradient-1); color: #fff; border-color: transparent; }
+.runtime-chip.small { padding: 0.3rem 0.7rem; font-size: 0.75rem; }
+.runtime-chip:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.runtime-filters { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 1rem 0; }
+
+.runtime-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+.runtime-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem; }
+.runtime-card h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 0.5rem; }
+.runtime-metric { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; }
+
+.runtime-split { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+.runtime-split h3 { font-size: 1rem; margin-bottom: 0.75rem; }
+
+.runtime-list { list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
+.runtime-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.runtime-item-block { flex-direction: column; align-items: stretch; }
+.runtime-item strong { font-size: 0.95rem; }
+.runtime-item-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.runtime-muted { color: var(--text-secondary); font-size: 0.85rem; }
+.runtime-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.4rem; }
+.runtime-tag { background: rgba(99,102,241,0.12); color: var(--primary-light); border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.72rem; }
+.runtime-error-text { color: var(--danger); font-size: 0.85rem; }
+.runtime-inline-msg { color: var(--accent); font-size: 0.82rem; margin-top: 0.35rem; }
+
+.runtime-status { text-transform: capitalize; font-weight: 600; }
+.status-completed, .status-succeeded, .status-approved { color: var(--success, #22c55e); }
+.status-failed, .status-cancelled, .status-rejected { color: var(--danger); }
+.status-running, .status-validated { color: var(--accent); }
+.status-awaiting_approval, .status-pending { color: var(--warning); }
+
+.runtime-form { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; max-width: 640px; }
+.runtime-form-row { display: flex; flex-direction: column; gap: 0.35rem; }
+.runtime-form-row label { font-size: 0.82rem; color: var(--text-secondary); font-weight: 600; }
+.runtime-checkbox { flex-direction: row; align-items: center; gap: 0.5rem; }
+.runtime-form textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical; }
+
+.runtime-code { background: rgba(0,0,0,0.35); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; margin-top: 0.5rem; }
+.runtime-code-error { border-color: rgba(239,68,68,0.4); }
+.runtime-audit time { white-space: nowrap; }
+
+@media (max-width: 768px) {
+  .runtime-split { grid-template-columns: 1fr; }
+  .runtime-item { flex-direction: column; align-items: stretch; }
+}
