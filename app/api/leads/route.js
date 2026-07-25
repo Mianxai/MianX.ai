@@ -4,7 +4,7 @@ import {
   isSupabaseConfigured,
   SUPABASE_NOT_CONFIGURED_MESSAGE,
 } from "@/lib/supabase";
-import { getSessionUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import { validateLeadSubmission } from "@/lib/leads";
 
 // Env vars are read at request time, not at build time, so this route must
@@ -149,8 +149,15 @@ export async function GET(req) {
       { status: 503 }
     );
   }
-  const user = await getSessionUser(req);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    await requireAdmin(req);
+  } catch (err) {
+    const status = err?.status || 401;
+    return NextResponse.json(
+      { error: err?.message || "Unauthorized", code: err?.code || "UNAUTHORIZED" },
+      { status }
+    );
+  }
 
   const supabaseAdmin = getSupabaseAdmin();
   if (!supabaseAdmin) {
