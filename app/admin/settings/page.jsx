@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
+import AdminLoadingRegion from "@/components/admin/AdminLoadingRegion";
 import MianxLoader from "@/components/shared/MianxLoader";
 
 function yesNo(value) {
@@ -119,9 +120,13 @@ export default function SettingsPage() {
           {error}
         </div>
       )}
-      {loading && <MianxLoader variant="section" label="Loading settings…" />}
+      {loading && !data && (
+        <AdminLoadingRegion>
+          <MianxLoader variant="section" label="Loading settings…" />
+        </AdminLoadingRegion>
+      )}
 
-      {!loading && rows.length > 0 && (
+      {rows.length > 0 && (
         <section className="settings-section" aria-labelledby="settings-config-h">
           <h2 id="settings-config-h">Configuration status</h2>
           <p className="runtime-muted">
@@ -145,7 +150,7 @@ export default function SettingsPage() {
         </section>
       )}
 
-      {!loading && !error && !notConfigured && rows.length === 0 && data && (
+      {!error && !notConfigured && rows.length === 0 && data && !loading && (
         <div className="empty-state">
           <h3>No configuration flags returned</h3>
           <p>The settings API did not include any yes/no status fields.</p>

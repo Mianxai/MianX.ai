@@ -268,7 +268,7 @@ export default function AdminShell({
           </div>
           {actions && <div className="header-actions">{actions}</div>}
         </div>
-        {children}
+        <div className="admin-body">{children}</div>
       </main>
     </div>
   );

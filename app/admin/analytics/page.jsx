@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
+import AdminLoadingRegion from "@/components/admin/AdminLoadingRegion";
 import MianxLoader from "@/components/shared/MianxLoader";
 
 function toEntries(dist) {
@@ -134,14 +135,18 @@ export default function AnalyticsPage() {
           {error}
         </div>
       )}
-      {loading && <MianxLoader variant="section" label="Loading analytics…" />}
+      {loading && !data && (
+        <AdminLoadingRegion>
+          <MianxLoader variant="section" label="Loading analytics…" />
+        </AdminLoadingRegion>
+      )}
       {empty && (
         <div className="empty-state">
           <h3>No analytics yet</h3>
           <p>Distributions appear once leads, tasks, runs, or projects exist.</p>
         </div>
       )}
-      {!loading && data && !empty && (
+      {data && !empty && (
         <div className="analytics-grid">
           <DistributionList title="Leads by status" id="analytics-leads" entries={leads} />
           <DistributionList title="Tasks by status" id="analytics-tasks" entries={tasks} />

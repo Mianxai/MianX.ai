@@ -17,10 +17,10 @@
   color: var(--text-secondary, #b6c0d8);
 }
 
-/* Variant sizing */
-.mx-loader-page { --mx-size: 148px; width: 100%; padding: 2.5rem 1rem; }
+/* Variant sizing — dimensions only; parent regions handle fill/centring. */
+.mx-loader-page { --mx-size: 148px; }
 .mx-loader-overlay { --mx-size: 124px; }
-.mx-loader-section { --mx-size: 96px; width: 100%; padding: 1.5rem 1rem; }
+.mx-loader-section { --mx-size: 96px; }
 .mx-loader-inline { --mx-size: 20px; --mx-dur: 1.6s; gap: 0; flex-direction: row; vertical-align: middle; }
 
 /* Stage: platform + ring + centered logo */
