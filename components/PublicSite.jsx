@@ -7,15 +7,22 @@ import BrandLogo from "./BrandLogo";
 
 const EMPTY = { name: "", email: "", company: "", industry: "", phone: "", message: "" };
 
+const NAV_SCROLL_THRESHOLD = 24;
+const SECTION_IDS = ["services", "industries", "partners", "testimonials", "contact"];
+
 export default function PublicSite() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [showTop, setShowTop] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
   const particlesRef = useRef(null);
+  const tabsRef = useRef(null);
+  const indicatorRef = useRef(null);
+  const linkRefs = useRef({});
 
   // GSAP scroll reveal (one-shot). Content stays visible if GSAP fails,
   // IntersectionObserver is missing, JS is off, or reduced-motion is set.
@@ -127,12 +134,98 @@ export default function PublicSite() {
 
   useEffect(() => {
     const onScroll = () => {
-      setScrolled(window.scrollY > 100);
+      setScrolled(window.scrollY > NAV_SCROLL_THRESHOLD);
       setShowTop(window.scrollY > 500);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Active-section tracking for glowing tabs (one observer, cleaned up).
+  useEffect(() => {
+    if (typeof IntersectionObserver !== "function") return undefined;
+    const nodes = SECTION_IDS.map((id) => document.getElementById(id)).filter(Boolean);
+    if (!nodes.length) return undefined;
+
+    const ratios = new Map();
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          ratios.set(entry.target.id, entry.isIntersecting ? entry.intersectionRatio : 0);
+        }
+        let best = "";
+        let bestRatio = 0;
+        for (const id of SECTION_IDS) {
+          const r = ratios.get(id) || 0;
+          if (r > bestRatio) {
+            bestRatio = r;
+            best = id;
+          }
+        }
+        setActiveSection(bestRatio > 0 ? best : "");
+      },
+      {
+        // Offset for the fixed navbar so the active tab matches visible content.
+        rootMargin: "-88px 0px -45% 0px",
+        threshold: [0, 0.2, 0.4, 0.6, 0.8],
+      }
+    );
+    nodes.forEach((n) => io.observe(n));
+    return () => io.disconnect();
+  }, []);
+
+  // Shared glowing-tab indicator: measure the active link and slide a pill under it.
+  useEffect(() => {
+    const tabs = tabsRef.current;
+    const indicator = indicatorRef.current;
+    if (!tabs || !indicator) return undefined;
+
+    function place() {
+      const id = activeSection;
+      const link = id ? linkRefs.current[id] : null;
+      if (!link) {
+        indicator.style.opacity = "0";
+        return;
+      }
+      const tabsRect = tabs.getBoundingClientRect();
+      const linkRect = link.getBoundingClientRect();
+      indicator.style.opacity = "1";
+      indicator.style.width = `${linkRect.width}px`;
+      indicator.style.transform = `translateX(${linkRect.left - tabsRect.left}px)`;
+    }
+
+    place();
+    window.addEventListener("resize", place, { passive: true });
+    return () => window.removeEventListener("resize", place);
+  }, [activeSection]);
+
+  // Subtle local pointer glow inside the desktop tab group (fine pointers only).
+  useEffect(() => {
+    const tabs = tabsRef.current;
+    if (!tabs) return undefined;
+    const fine = window.matchMedia?.("(pointer: fine)")?.matches ?? false;
+    const reduced =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+    if (!fine || reduced) return undefined;
+
+    const onMove = (e) => {
+      const rect = tabs.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      tabs.style.setProperty("--tab-glow-x", `${x}%`);
+      tabs.style.setProperty("--tab-glow-y", `${y}%`);
+      tabs.dataset.glow = "1";
+    };
+    const onLeave = () => {
+      tabs.dataset.glow = "0";
+    };
+    tabs.addEventListener("pointermove", onMove);
+    tabs.addEventListener("pointerleave", onLeave);
+    return () => {
+      tabs.removeEventListener("pointermove", onMove);
+      tabs.removeEventListener("pointerleave", onLeave);
+    };
   }, []);
 
   // Floating particles (created in-effect to avoid SSR/client hydration mismatch).
@@ -222,22 +315,51 @@ export default function PublicSite() {
           <button className="close-btn" onClick={() => setMobileOpen(false)} aria-label="Close menu">
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
-          {navLinks.map(([href, label]) => (
-            <a key={href} href={href} onClick={() => setMobileOpen(false)}>{label}</a>
-          ))}
+          {navLinks.map(([href, label]) => {
+            const id = href.slice(1);
+            return (
+              <a
+                key={href}
+                href={href}
+                className={activeSection === id ? "active" : undefined}
+                onClick={() => setMobileOpen(false)}
+              >
+                {label}
+              </a>
+            );
+          })}
         </div>
       )}
 
-      <nav className={`navbar${scrolled ? " scrolled" : ""}`}>
+      <nav
+        className={`navbar ${scrolled ? "navbar--scrolled" : "navbar--top"}`}
+        aria-label="Primary"
+      >
         <div className="nav-container">
           <a href="#" className="logo">
             <BrandLogo size={40} />
             <span className="logo-text">MianX.ai</span>
           </a>
-          <ul className="nav-links">
-            {navLinks.map(([href, label]) => (
-              <li key={href}><a href={href}>{label}</a></li>
-            ))}
+          <ul className="nav-links nav-tabs" ref={tabsRef} data-glow="0">
+            <li className="nav-tabs-indicator" ref={indicatorRef} aria-hidden="true" />
+            {navLinks.map(([href, label]) => {
+              const id = href.slice(1);
+              const isActive = activeSection === id;
+              return (
+                <li key={href}>
+                  <a
+                    href={href}
+                    ref={(el) => {
+                      linkRefs.current[id] = el;
+                    }}
+                    className={isActive ? "active" : undefined}
+                    aria-current={isActive ? "true" : undefined}
+                  >
+                    {label}
+                  </a>
+                </li>
+              );
+            })}
           </ul>
           <a href="#contact" className="nav-cta">Get a Demo</a>
           <button className="mobile-menu-btn" onClick={() => setMobileOpen(true)} aria-label="Open menu">

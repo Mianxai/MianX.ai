@@ -44,8 +44,16 @@ describe("Founder-approved Industry OS homepage", () => {
     render(<LandingPage />);
     const nav = document.querySelector("nav.navbar");
     expect(nav).toBeTruthy();
-    for (const label of ["Services", "Industries", "Partners", "Testimonials", "Contact"]) {
-      expect(within(nav).getByRole("link", { name: label })).toBeInTheDocument();
+    expect(nav.classList.contains("navbar--top")).toBe(true);
+    const hrefs = {
+      Services: "#services",
+      Industries: "#industries",
+      Partners: "#partners",
+      Testimonials: "#testimonials",
+      Contact: "#contact",
+    };
+    for (const [label, href] of Object.entries(hrefs)) {
+      expect(within(nav).getByRole("link", { name: label })).toHaveAttribute("href", href);
     }
     expect(within(nav).getByRole("link", { name: /get a demo/i })).toHaveAttribute(
       "href",
