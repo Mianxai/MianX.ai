@@ -100,6 +100,19 @@ describe("glowing glass navbar", () => {
     );
   });
 
+  it("keeps the shared tab indicator out of flex layout (absolute pill)", () => {
+    render(<PublicSite />);
+    const track = document.querySelector(".nav-tabs");
+    const indicator = document.querySelector(".nav-tabs-indicator");
+    expect(track).toBeTruthy();
+    expect(indicator).toBeTruthy();
+    expect(indicator.tagName).toBe("LI");
+    expect(track.firstElementChild).toBe(indicator);
+    // Class contract used by the CSS specificity fix
+    // `.nav-tabs > .nav-tabs-indicator { position: absolute }`.
+    expect(indicator.classList.contains("nav-tabs-indicator")).toBe(true);
+  });
+
   it("updates the active section through IntersectionObserver", () => {
     render(<PublicSite />);
     expect(ioCallback).toBeTypeOf("function");

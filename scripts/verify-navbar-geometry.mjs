@@ -117,6 +117,10 @@ function geometryExpression() {
       pillPosition: pillNode ? getComputedStyle(pillNode).position : "",
       mobileButtonDisplay: mobileButton ? getComputedStyle(mobileButton).display : "",
       scrollY: window.scrollY,
+      // Regression probe for the live root cause (in-flow indicator).
+      pillInFlow: pillNode
+        ? getComputedStyle(pillNode).position !== "absolute"
+        : true,
     };
   })()`;
 }
@@ -151,6 +155,7 @@ function assertDesktopGeometry(width, baseline, state) {
   if (state.track.left < state.logo.right - TOLERANCE) failures.push("track overlaps logo");
   if (state.track.right > state.cta.left + TOLERANCE) failures.push("track overlaps CTA");
   if (state.pillPosition !== "absolute") failures.push(`pill position is ${state.pillPosition}`);
+  if (state.pillInFlow) failures.push("pill participates in layout (root-cause regression)");
   if (state.pill) {
     if (state.pill.left < state.track.left - TOLERANCE) failures.push("pill exits track left");
     if (state.pill.right > state.track.right + TOLERANCE) failures.push("pill exits track right");

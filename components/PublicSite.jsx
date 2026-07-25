@@ -186,6 +186,7 @@ export default function PublicSite() {
       const link = id ? linkRefs.current[id] : null;
       if (!link) {
         indicator.style.opacity = "0";
+        indicator.style.width = "0px";
         return;
       }
       const tabsRect = tabs.getBoundingClientRect();

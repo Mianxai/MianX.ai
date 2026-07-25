@@ -67,7 +67,17 @@ html { scroll-padding-top: 88px; }
 .logo:hover .logo-icon { transform: rotate(10deg) scale(1.05); }
 .logo-text { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 700; background: var(--gradient-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 
-/* Stable liquid-glass tabs (desktop) */
+/*
+ * Stable liquid-glass tabs (desktop)
+ *
+ * ROOT CAUSE of the ~90px track expansion (live-proven at 1363px):
+ * `.nav-tabs > li { position: relative }` (0,1,1) overrode
+ * `.nav-tabs-indicator { position: absolute }` (0,1,0), so the shared
+ * pill stayed in flex flow. When JS set its width to the active link,
+ * the UL grew by exactly that width. Fix: absolute must win via
+ * `.nav-tabs > .nav-tabs-indicator` (0,2,0). Glow is ::before only.
+ * overflow clips the pill to the rounded track — it is not a width fix.
+ */
 .nav-links {
   display: flex;
   gap: 0.35rem;
@@ -81,9 +91,13 @@ html { scroll-padding-top: 88px; }
   justify-self: center;
   display: inline-flex;
   width: max-content;
+  max-width: 100%;
   flex: none;
+  flex-grow: 0;
+  flex-shrink: 0;
   padding: 0.2rem;
   border-radius: 14px;
+  /* Clip the active pill / specular to the rounded track only. */
   overflow: hidden;
   isolation: isolate;
   background:
@@ -129,6 +143,7 @@ html { scroll-padding-top: 88px; }
   transition: opacity 0.25s ease;
 }
 .nav-tabs[data-glow="1"]::before { opacity: 1; }
+/* Specificity must beat `.nav-tabs > li` so the pill never enters layout. */
 .nav-tabs > .nav-tabs-indicator {
   position: absolute;
   top: 0.2rem;
@@ -137,9 +152,12 @@ html { scroll-padding-top: 88px; }
   z-index: 0;
   margin: 0;
   padding: 0;
+  flex: none;
+  list-style: none;
   border-radius: 10px;
   opacity: 0;
   pointer-events: none;
+  will-change: transform, width;
   background:
     linear-gradient(135deg, rgba(107, 114, 255, 0.3), rgba(34, 211, 238, 0.14)),
     rgba(77, 101, 183, 0.11);
@@ -180,6 +198,8 @@ html { scroll-padding-top: 88px; }
 }
 .nav-links a.active {
   color: var(--text-primary);
+  /* Keep weight identical so active state cannot change link metrics. */
+  font-weight: 500;
   text-shadow: 0 0 18px rgba(99,102,241,0.35);
 }
 
