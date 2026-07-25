@@ -1,23 +1,73 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import LoginMachine from "@/components/admin/LoginMachine";
+import "./login.css";
+
+function isValidEmail(value) {
+  return /.+@.+\..+/.test(value.trim());
+}
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
+  const [focusField, setFocusField] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+  const errorRef = useRef(null);
 
   const configured = isSupabaseConfigured();
 
+  const emailValid = isValidEmail(email);
+  const passwordValid = password.length > 0;
+  const formValid = emailValid && passwordValid;
+
+  // Drives the mechanical scene without ever gating authentication.
+  const stage = useMemo(() => {
+    if (success) return "success";
+    if (submitting) return "submitting";
+    if (error) return "error";
+    if (formValid) return "ready";
+    if (focusField === "password") return "password";
+    if (focusField === "email") return "email";
+    return "idle";
+  }, [success, submitting, error, formValid, focusField]);
+
+  function focusFirstInvalid() {
+    if (!emailValid) {
+      emailRef.current?.focus();
+    } else if (!passwordValid) {
+      passwordRef.current?.focus();
+    }
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
-    setLoading(true);
+    if (submitting) return; // prevent double submit
+
     setError("");
+    if (!formValid) {
+      setError(
+        !emailValid
+          ? "Enter a valid email address."
+          : "Enter your password to continue."
+      );
+      // Return focus safely to the first invalid field.
+      focusFirstInvalid();
+      return;
+    }
+
+    setSubmitting(true);
     try {
       const supabase = getSupabase();
       if (!supabase) {
@@ -26,7 +76,7 @@ export default function AdminLoginPage() {
         );
       }
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       });
       if (signInError) throw signInError;
@@ -34,71 +84,146 @@ export default function AdminLoginPage() {
       if (!token) throw new Error("No session returned");
       const maxAge = data.session.expires_in || 3600;
       document.cookie = `sb-access-token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+      // Mark success and navigate immediately — the success animation plays out
+      // during navigation and never adds an artificial delay.
+      setSuccess(true);
       router.push("/admin");
       router.refresh();
     } catch (err) {
-      setError(err.message || "Login failed");
-    } finally {
-      setLoading(false);
+      setSubmitting(false);
+      setError(err.message || "Sign in failed. Check your credentials and try again.");
+      // Move focus to the alert so it is announced, then let the user retry.
+      requestAnimationFrame(() => errorRef.current?.focus());
+    }
+  }
+
+  function onPasswordKey(e) {
+    if (typeof e.getModifierState === "function") {
+      setCapsLock(e.getModifierState("CapsLock"));
     }
   }
 
   return (
     <main id="main-content" className="login-shell">
-      <form className="login-card" onSubmit={onSubmit} noValidate>
-        <Link href="/" className="logo" style={{ marginBottom: "1.5rem" }}>
-          <span className="logo-icon" aria-hidden="true">M</span>
-          <span className="logo-text">Mianx.ai</span>
-        </Link>
-        <h1>Admin sign in</h1>
-        <p className="section-desc">Access the Mianx.ai Admin Control Center.</p>
+      <div className="login-shell-bg" aria-hidden="true" />
+      <section className="login-card" aria-labelledby="login-heading">
+        <div className="login-stage">
+          <LoginMachine stage={stage} />
+        </div>
+
+        <div className="login-brand">
+          <span className="login-brand-name">MianX.ai</span>
+          <span className="login-brand-sub">Admin Control Center</span>
+        </div>
+
+        <h1 id="login-heading" className="login-title">
+          Sign in
+        </h1>
+        <p className="login-subtitle">
+          Secure access to the MianX.ai runtime and control plane.
+        </p>
 
         {!configured && (
-          <div className="admin-notice" role="alert" style={{ marginBottom: "1.25rem" }}>
-            Configuration error: Supabase environment variables are not set on this deployment.
-            Sign-in is unavailable until they are configured.
+          <div className="login-alert warning" role="alert">
+            Configuration error: Supabase environment variables are not set on
+            this deployment. Sign-in is unavailable until they are configured.
           </div>
         )}
 
-        <div className="form-group" style={{ marginBottom: "1rem" }}>
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@mianx.ai"
-            autoComplete="username"
-            required
-          />
-        </div>
-        <div className="form-group" style={{ marginBottom: "1.25rem" }}>
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            autoComplete="current-password"
-            required
-          />
-        </div>
-
-        {error && (
-          <div className="form-message error" role="alert" style={{ marginBottom: "1rem" }}>
-            {error}
+        <form className="login-form" onSubmit={onSubmit} noValidate>
+          <div className="login-field">
+            <label htmlFor="email">Email address</label>
+            <input
+              id="email"
+              ref={emailRef}
+              type="email"
+              name="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onFocus={() => setFocusField("email")}
+              onBlur={() => setFocusField(null)}
+              placeholder="you@mianx.ai"
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              inputMode="email"
+              required
+              aria-invalid={Boolean(error) && !emailValid}
+            />
           </div>
-        )}
 
-        <button className="form-submit" type="submit" disabled={loading || !configured}>
-          {loading ? (<><span className="spin" aria-hidden="true" /> Signing in…</>) : "Sign in"}
-        </button>
+          <div className="login-field">
+            <label htmlFor="password">Password</label>
+            <div className="login-password">
+              <input
+                id="password"
+                ref={passwordRef}
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onFocus={() => setFocusField("password")}
+                onBlur={() => {
+                  setFocusField(null);
+                  setCapsLock(false);
+                }}
+                onKeyDown={onPasswordKey}
+                onKeyUp={onPasswordKey}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+                aria-invalid={Boolean(error) && emailValid && !passwordValid}
+                aria-describedby={capsLock ? "caps-warning" : undefined}
+              />
+              <button
+                type="button"
+                className="login-password-toggle"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-pressed={showPassword}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+            {capsLock && (
+              <p id="caps-warning" className="login-caps" role="status">
+                Caps Lock is on.
+              </p>
+            )}
+          </div>
+
+          {error && (
+            <div
+              className="login-alert error"
+              role="alert"
+              tabIndex={-1}
+              ref={errorRef}
+            >
+              {error}
+            </div>
+          )}
+
+          <button
+            className="login-submit"
+            type="submit"
+            data-testid="login-submit"
+            disabled={submitting || !configured}
+          >
+            {submitting ? (
+              <>
+                <span className="login-submit-spinner" aria-hidden="true" />
+                Signing in…
+              </>
+            ) : (
+              "Sign in"
+            )}
+          </button>
+        </form>
 
         <Link href="/" className="login-back">
           ← Back to site
         </Link>
-      </form>
+      </section>
     </main>
   );
 }
