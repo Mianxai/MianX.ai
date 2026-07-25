@@ -7,6 +7,7 @@ import LeadForm from "./LeadForm";
 async function fillRequiredFields(user) {
   await user.type(screen.getByLabelText(/full name/i), "Jane Doe");
   await user.type(screen.getByLabelText(/email address/i), "jane@example.com");
+  await user.selectOptions(screen.getByLabelText(/industry/i), "restaurant");
   await user.type(screen.getByLabelText(/tell us about your needs/i), "We need help.");
 }
 
@@ -23,8 +24,9 @@ describe("LeadForm", () => {
     render(<LeadForm />);
     await user.click(screen.getByRole("button", { name: /send message/i }));
 
-    expect(await screen.findByText(/please enter your name/i)).toBeInTheDocument();
+    expect(screen.getByText(/please enter your name/i)).toBeInTheDocument();
     expect(screen.getByText(/please enter your email/i)).toBeInTheDocument();
+    expect(screen.getByText(/please select an industry/i)).toBeInTheDocument();
     expect(screen.getByText(/please tell us what you need/i)).toBeInTheDocument();
     expect(global.fetch).not.toHaveBeenCalled();
   });

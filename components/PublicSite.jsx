@@ -5,7 +5,15 @@ import Link from "next/link";
 import HeroCanvas from "./HeroCanvas";
 import BrandLogo from "./BrandLogo";
 
-const EMPTY = { name: "", email: "", company: "", industry: "", phone: "", message: "" };
+const EMPTY = {
+  name: "",
+  email: "",
+  company: "",
+  industry: "",
+  phone: "",
+  message: "",
+  website: "",
+};
 
 const NAV_SCROLL_THRESHOLD = 24;
 const SECTION_IDS = ["services", "industries", "partners", "testimonials", "contact"];
@@ -23,6 +31,9 @@ export default function PublicSite() {
   const tabsRef = useRef(null);
   const indicatorRef = useRef(null);
   const linkRefs = useRef({});
+  const mobileMenuRef = useRef(null);
+  const mobileBtnRef = useRef(null);
+  const submittingRef = useRef(false);
 
   // GSAP scroll reveal (one-shot). Content stays visible if GSAP fails,
   // IntersectionObserver is missing, JS is off, or reduced-motion is set.
@@ -257,6 +268,47 @@ export default function PublicSite() {
     return () => nodes.forEach((n) => n.remove());
   }, []);
 
+  // Mobile menu: Escape close + restore focus to the opener.
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const previouslyFocused = document.activeElement;
+    const menu = mobileMenuRef.current;
+    const opener = mobileBtnRef.current;
+    const focusable = menu?.querySelector(
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    focusable?.focus?.();
+
+    function onKeyDown(e) {
+      if (e.key === "Escape") {
+        setMobileOpen(false);
+        return;
+      }
+      if (e.key !== "Tab" || !menu) return;
+      const nodes = Array.from(
+        menu.querySelectorAll(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (!nodes.length) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      (opener || previouslyFocused)?.focus?.();
+    };
+  }, [mobileOpen]);
+
   function update(key, value) {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((e) => ({ ...e, [key]: false }));
@@ -268,6 +320,8 @@ export default function PublicSite() {
 
   async function onSubmit(e) {
     e.preventDefault();
+    if (submittingRef.current) return;
+
     const nextErrors = {
       name: !form.name.trim(),
       email: !form.email.trim() || !validateEmail(form.email),
@@ -277,6 +331,7 @@ export default function PublicSite() {
     setErrors(nextErrors);
     if (Object.values(nextErrors).some(Boolean)) return;
 
+    submittingRef.current = true;
     setSubmitting(true);
     setMessage({ type: "", text: "" });
     try {
@@ -290,15 +345,23 @@ export default function PublicSite() {
           phone: form.phone,
           industry: form.industry,
           need: form.message,
+          website: form.website,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Something went wrong");
       setMessage({ type: "success", text: "Thank you! We will contact you within 24 hours." });
       setForm(EMPTY);
     } catch (err) {
-      setMessage({ type: "error", text: err.message });
+      setMessage({
+        type: "error",
+        text:
+          err.message?.includes("Configuration error")
+            ? err.message
+            : err.message || "Something went wrong. Please try again.",
+      });
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }
@@ -313,10 +376,20 @@ export default function PublicSite() {
 
   return (
     <>
-      <div className="particles" ref={particlesRef} />
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+      <div className="particles" ref={particlesRef} aria-hidden="true" />
 
       {mobileOpen && (
-        <div className="mobile-menu active">
+        <div
+          className="mobile-menu active"
+          id="mobile-navigation"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Mobile navigation"
+          ref={mobileMenuRef}
+        >
           <button className="close-btn" onClick={() => setMobileOpen(false)} aria-label="Close menu">
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
@@ -367,11 +440,20 @@ export default function PublicSite() {
             })}
           </ul>
           <a href="#contact" className="nav-cta">Get a Demo</a>
-          <button className="mobile-menu-btn" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+          <button
+            className="mobile-menu-btn"
+            ref={mobileBtnRef}
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-navigation"
+          >
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
           </button>
         </div>
       </nav>
+
+      <main id="main-content">
 
       <section className="hero" id="hero">
         <HeroCanvas />
@@ -538,26 +620,73 @@ export default function PublicSite() {
         </div>
         <div className="contact-container">
           <form className="contact-form" onSubmit={onSubmit} noValidate>
+            <div className="form-honeypot" aria-hidden="true">
+              <label htmlFor="website">Company website</label>
+              <input
+                id="website"
+                name="website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                value={form.website}
+                onChange={(e) => update("website", e.target.value)}
+              />
+            </div>
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="name">Full Name *</label>
-                <input id="name" className={errors.name ? "error" : ""} value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Your Name" />
-                <span className={`form-error-msg${errors.name ? " show" : ""}`}>Please enter your name</span>
+                <input
+                  id="name"
+                  className={errors.name ? "error" : ""}
+                  value={form.name}
+                  onChange={(e) => update("name", e.target.value)}
+                  placeholder="Your Name"
+                  maxLength={200}
+                  autoComplete="name"
+                  aria-invalid={errors.name ? "true" : undefined}
+                  aria-describedby={errors.name ? "name-error" : undefined}
+                />
+                <span id="name-error" className={`form-error-msg${errors.name ? " show" : ""}`} role={errors.name ? "alert" : undefined}>Please enter your name</span>
               </div>
               <div className="form-group">
                 <label htmlFor="email">Email Address *</label>
-                <input id="email" type="email" className={errors.email ? "error" : ""} value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="you@company.com" />
-                <span className={`form-error-msg${errors.email ? " show" : ""}`}>Please enter a valid email</span>
+                <input
+                  id="email"
+                  type="email"
+                  className={errors.email ? "error" : ""}
+                  value={form.email}
+                  onChange={(e) => update("email", e.target.value)}
+                  placeholder="you@company.com"
+                  maxLength={254}
+                  autoComplete="email"
+                  aria-invalid={errors.email ? "true" : undefined}
+                  aria-describedby={errors.email ? "email-error" : undefined}
+                />
+                <span id="email-error" className={`form-error-msg${errors.email ? " show" : ""}`} role={errors.email ? "alert" : undefined}>Please enter a valid email</span>
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="company">Company Name</label>
-                <input id="company" value={form.company} onChange={(e) => update("company", e.target.value)} placeholder="Your Company" />
+                <input
+                  id="company"
+                  value={form.company}
+                  onChange={(e) => update("company", e.target.value)}
+                  placeholder="Your Company"
+                  maxLength={200}
+                  autoComplete="organization"
+                />
               </div>
               <div className="form-group">
                 <label htmlFor="industry">Industry *</label>
-                <select id="industry" className={errors.industry ? "error" : ""} value={form.industry} onChange={(e) => update("industry", e.target.value)}>
+                <select
+                  id="industry"
+                  className={errors.industry ? "error" : ""}
+                  value={form.industry}
+                  onChange={(e) => update("industry", e.target.value)}
+                  aria-invalid={errors.industry ? "true" : undefined}
+                  aria-describedby={errors.industry ? "industry-error" : undefined}
+                >
                   <option value="">Select Industry</option>
                   <option value="restaurant">Restaurant / Food</option>
                   <option value="poultry">Poultry / Agriculture</option>
@@ -568,19 +697,36 @@ export default function PublicSite() {
                   <option value="construction">Construction</option>
                   <option value="other">Other</option>
                 </select>
-                <span className={`form-error-msg${errors.industry ? " show" : ""}`}>Please select an industry</span>
+                <span id="industry-error" className={`form-error-msg${errors.industry ? " show" : ""}`} role={errors.industry ? "alert" : undefined}>Please select an industry</span>
               </div>
             </div>
             <div className="form-group">
               <label htmlFor="phone">Phone Number</label>
-              <input id="phone" type="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="+92 300 1234567" />
+              <input
+                id="phone"
+                type="tel"
+                value={form.phone}
+                onChange={(e) => update("phone", e.target.value)}
+                placeholder="+92 300 1234567"
+                maxLength={40}
+                autoComplete="tel"
+              />
             </div>
             <div className="form-group">
               <label htmlFor="message">Tell us about your needs *</label>
-              <textarea id="message" className={errors.message ? "error" : ""} value={form.message} onChange={(e) => update("message", e.target.value)} placeholder="What challenges are you facing? What are you looking for?" />
-              <span className={`form-error-msg${errors.message ? " show" : ""}`}>Please describe your needs</span>
+              <textarea
+                id="message"
+                className={errors.message ? "error" : ""}
+                value={form.message}
+                onChange={(e) => update("message", e.target.value)}
+                placeholder="What challenges are you facing? What are you looking for?"
+                maxLength={4000}
+                aria-invalid={errors.message ? "true" : undefined}
+                aria-describedby={errors.message ? "message-error" : undefined}
+              />
+              <span id="message-error" className={`form-error-msg${errors.message ? " show" : ""}`} role={errors.message ? "alert" : undefined}>Please describe your needs</span>
             </div>
-            <button type="submit" className={`form-submit${submitting ? " loading" : ""}`} disabled={submitting}>
+            <button type="submit" className={`form-submit${submitting ? " loading" : ""}`} disabled={submitting} aria-busy={submitting}>
               {submitting ? (
                 <>
                   <svg className="spin" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
@@ -594,11 +740,19 @@ export default function PublicSite() {
               )}
             </button>
             {message.type && (
-              <div className={`form-message ${message.type}`} style={{ display: "flex" }}>{message.text}</div>
+              <div
+                className={`form-message ${message.type}`}
+                style={{ display: "flex" }}
+                role="status"
+                aria-live="polite"
+              >
+                {message.text}
+              </div>
             )}
           </form>
         </div>
       </section>
+      </main>
 
       <footer className="footer">
         <div className="footer-container">
@@ -621,11 +775,6 @@ export default function PublicSite() {
         </div>
         <div className="footer-bottom">
           <p>&copy; 2026 MianX.ai. All rights reserved.</p>
-          <div className="footer-social">
-            <a href="#" aria-label="GitHub"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" /></svg></a>
-            <a href="#" aria-label="Twitter"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" /></svg></a>
-            <a href="#" aria-label="LinkedIn"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" /><rect x="2" y="9" width="4" height="12" /><circle cx="4" cy="4" r="2" /></svg></a>
-          </div>
         </div>
       </footer>
 

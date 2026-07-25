@@ -121,18 +121,26 @@ export default function LeadForm() {
           />
         </div>
         <div className="form-group">
-          <label htmlFor="industry">Industry</label>
+          <label htmlFor="industry">Industry *</label>
           <select
             id="industry"
             name="industry"
             value={form.industry}
             onChange={(e) => update("industry", e.target.value)}
+            aria-invalid={Boolean(fieldErrors.industry)}
+            aria-describedby={fieldErrors.industry ? "industryError" : undefined}
+            className={fieldErrors.industry ? "error" : undefined}
           >
             <option value="">Select Industry</option>
             {INDUSTRY_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
+          {fieldErrors.industry ? (
+            <span id="industryError" className="form-error-msg show" role="alert">
+              {fieldErrors.industry}
+            </span>
+          ) : null}
         </div>
       </div>
 
