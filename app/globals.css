@@ -1,26 +1,59 @@
 /* ==========================================================================
-   Design tokens — from the Founder-approved final designs:
+   Mianx brand tokens — "Midnight Intelligence + Titanium Precision".
+   Canonical definition and usage rules: design/MIANX-BRAND-SYSTEM.md
+   ========================================================================== */
+:root {
+  --mx-background: #050914;
+  --mx-surface: #0a1222;
+  --mx-card: #101a2d;
+  --mx-primary: #1677ff;
+  --mx-bright: #319cff;
+  --mx-cyan: #38c7ff;
+  --mx-titanium: #c9d2df;
+  --mx-text: #f5f8fc;
+  --mx-text-muted: #94a3b8;
+  --mx-border: #22324a;
+
+  /* Bright gradient — for gradient text, accent rules and decorative fills on
+     midnight surfaces, where brighter stops mean higher contrast. */
+  --mx-gradient-primary: linear-gradient(135deg, #126bff 0%, #229dff 55%, #38c7ff 100%);
+  /* Deep gradient — for filled controls that carry white text or icons. The
+     bright gradient reaches only ~2.9:1 against white and must not be used
+     behind text (design/MIANX-BRAND-SYSTEM.md § Accessibility). */
+  --mx-gradient-action: linear-gradient(135deg, #0b4fcc 0%, #1163f0 55%, #126bff 100%);
+
+  --mx-atmosphere:
+    radial-gradient(circle at 20% 25%, rgba(22, 119, 255, 0.18), transparent 38%),
+    radial-gradient(circle at 80% 75%, rgba(56, 199, 255, 0.1), transparent 34%),
+    #050914;
+}
+
+/* ==========================================================================
+   Application tokens — from the Founder-approved final designs:
    design/approved/final-website/mianx_website_public.html
    design/approved/final-website/mianx_admin_dashboard.html
+   Progressively repointed at the brand tokens above; the remaining indigo/teal
+   values are migrated in the redesign phase, not here.
    ========================================================================== */
 :root {
   --primary: #6366f1;
   --primary-dark: #4f46e5;
-  --primary-light: #818cf8;
+  --primary-light: var(--mx-bright);
   --accent: #06b6d4;
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
-  --bg-dark: #0a0a0f;
+  --bg-dark: var(--mx-background);
   --bg-card: #111118;
   --bg-card-hover: #1a1a24;
   --bg-sidebar: #0d0d14;
   --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-secondary: var(--mx-text-muted);
+  --text-muted: #7d8ca3;
   --border: rgba(255, 255, 255, 0.06);
   --border-hover: rgba(255, 255, 255, 0.12);
-  --gradient-1: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+  --gradient-1: var(--mx-gradient-primary);
+  --gradient-action: var(--mx-gradient-action);
   --gradient-3: linear-gradient(180deg, rgba(99, 102, 241, 0.15) 0%, transparent 100%);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-display: var(--font-space-grotesk), var(--font-sans);
@@ -101,7 +134,7 @@ select:focus-visible,
 .nav-container { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
 .logo { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
 .logo-icon {
-  width: 40px; height: 40px; background: var(--gradient-1); border-radius: 12px;
+  width: 40px; height: 40px; background: var(--gradient-action); border-radius: 12px;
   display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem;
   color: white; box-shadow: 0 0 30px rgba(99, 102, 241, 0.4); transition: transform 0.3s ease;
 }
@@ -118,7 +151,7 @@ select:focus-visible,
 .nav-links a.active { color: var(--primary-light); }
 .nav-links a.active::after { width: 100%; }
 .nav-cta {
-  background: var(--gradient-1); color: white; padding: 0.6rem 1.5rem; border-radius: 10px;
+  background: var(--gradient-action); color: white; padding: 0.6rem 1.5rem; border-radius: 10px;
   text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: all 0.3s ease; border: none; cursor: pointer;
   box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3); position: relative; overflow: hidden; display: inline-block;
 }
@@ -137,12 +170,45 @@ select:focus-visible,
 
 /* ================================== Hero =================================== */
 .hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: 8rem 2rem 4rem; }
-#hero-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
-.hero-fallback-bg {
+
+/* The atmosphere and lattice below are server-rendered and always present, so
+   the hero composition is complete before (and without) any WebGL. The
+   optional Three.js canvas mounts on top and only dims them once it has
+   actually painted a frame — see components/public/Hero.jsx. */
+.hero-atmosphere {
   position: absolute; inset: 0; z-index: 0;
-  background: radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.25), transparent 55%),
-              radial-gradient(circle at 70% 65%, rgba(6, 182, 212, 0.18), transparent 55%);
+  background: var(--mx-atmosphere);
+  transition: opacity 0.6s ease;
 }
+.hero-lattice {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  transition: opacity 0.6s ease;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(201, 210, 223, 0.05) 0 1px, transparent 1px 72px),
+    repeating-linear-gradient(90deg, rgba(201, 210, 223, 0.05) 0 1px, transparent 1px 72px);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, #000 10%, transparent 78%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, #000 10%, transparent 78%);
+}
+.hero-orbit {
+  position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
+  aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--mx-border);
+}
+.hero-orbit-outer { width: min(76vw, 820px); }
+.hero-orbit-mid { width: min(54vw, 580px); border-color: rgba(22, 119, 255, 0.28); }
+.hero-orbit-inner { width: min(34vw, 360px); border-color: rgba(56, 199, 255, 0.22); }
+.hero-node {
+  position: absolute; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--mx-bright); box-shadow: 0 0 10px rgba(56, 199, 255, 0.45);
+}
+.hero-node-1 { top: 45%; left: calc(50% - min(38vw, 410px)); }
+.hero-node-2 { top: calc(45% - min(27vw, 290px)); left: 50%; }
+.hero-node-3 { top: 45%; left: calc(50% + min(17vw, 180px)); background: var(--mx-titanium); box-shadow: none; }
+.hero-node-4 { top: calc(45% + min(27vw, 290px)); left: 50%; }
+.hero[data-scene="enhanced"] .hero-lattice { opacity: 0.28; }
+.hero[data-scene="enhanced"] .hero-atmosphere { opacity: 0.75; }
+
+.hero-canvas-mount { position: absolute; inset: 0; z-index: 1; }
+#hero-canvas { display: block; width: 100%; height: 100%; }
 .hero-content { position: relative; z-index: 2; text-align: center; max-width: 900px; }
 .hero-badge {
   display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(99, 102, 241, 0.1);
@@ -164,7 +230,7 @@ select:focus-visible,
 .hero-subtitle { font-size: clamp(1rem, 2vw, 1.25rem); color: var(--text-secondary); max-width: 640px; margin: 0 auto 2.5rem; line-height: 1.7; animation: fadeInUp 0.8s ease 0.7s both; }
 .hero-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; animation: fadeInUp 0.8s ease 0.9s both; }
 .btn-primary {
-  background: var(--gradient-1); color: white; padding: 1rem 2.5rem; border-radius: 12px; text-decoration: none;
+  background: var(--gradient-action); color: white; padding: 1rem 2.5rem; border-radius: 12px; text-decoration: none;
   font-weight: 600; font-size: 1rem; transition: all 0.3s ease; border: none; cursor: pointer; display: inline-flex;
   align-items: center; gap: 0.5rem; box-shadow: 0 4px 25px rgba(99, 102, 241, 0.4);
 }
@@ -197,7 +263,7 @@ section { padding: 6rem 2rem; position: relative; }
 .step-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 2.5rem 2rem; text-align: center; transition: all 0.4s ease; position: relative; }
 .step-card:hover { border-color: var(--primary); transform: translateY(-8px); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3); }
 .step-number {
-  width: 60px; height: 60px; background: var(--gradient-1); border-radius: 50%; display: flex; align-items: center;
+  width: 60px; height: 60px; background: var(--gradient-action); border-radius: 50%; display: flex; align-items: center;
   justify-content: center; font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: white;
   margin: 0 auto 1.5rem; box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
 }
@@ -260,7 +326,7 @@ section { padding: 6rem 2rem; position: relative; }
 }
 .form-error-msg { color: var(--danger); font-size: 0.8rem; }
 .form-submit {
-  background: var(--gradient-1); color: white; padding: 1rem 2rem; border-radius: 12px; border: none;
+  background: var(--gradient-action); color: white; padding: 1rem 2rem; border-radius: 12px; border: none;
   font-family: var(--font-sans); font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease;
   display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
 }
@@ -293,7 +359,7 @@ section { padding: 6rem 2rem; position: relative; }
 
 /* =============================== Scroll to top ================================ */
 .scroll-top {
-  position: fixed; bottom: 2rem; right: 2rem; width: 48px; height: 48px; background: var(--gradient-1); border: none;
+  position: fixed; bottom: 2rem; right: 2rem; width: 48px; height: 48px; background: var(--gradient-action); border: none;
   border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer;
   opacity: 0; visibility: hidden; transition: all 0.3s ease; z-index: 999; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
 }
