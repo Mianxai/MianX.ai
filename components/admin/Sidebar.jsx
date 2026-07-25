@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export default function Sidebar({ open, onClose, view, onSelectView, newCount, closeBtnRef }) {
   return (
     <>
@@ -53,6 +55,12 @@ export default function Sidebar({ open, onClose, view, onSelectView, newCount, c
               Submissions
               {newCount > 0 && <span className="sidebar-badge">{newCount}</span>}
             </button>
+          </li>
+          <li>
+            <Link href="/admin/runtime" onClick={onClose}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 9h6v6H9z" /><path d="M3 9h2M19 9h2M3 15h2M19 15h2M9 3v2M15 3v2M9 19v2M15 19v2" /></svg>
+              Runtime
+            </Link>
           </li>
           <li>
             <button type="button" disabled aria-disabled="true" title="Coming later">
