@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RUNTIME_TAB_PATHS } from "@/components/admin/nav";
+import AdminLoadingRegion from "@/components/admin/AdminLoadingRegion";
 import MianxLoader from "@/components/shared/MianxLoader";
+import { afterNextPaint } from "@/lib/after-paint";
 
 const TABS = [
   ["overview", "Overview"],
@@ -65,7 +67,8 @@ export default function RuntimeWorkspace({
   const [projectId, setProjectId] = useState(preferredProject);
   const [health, setHealth] = useState(null);
   const [notConfigured, setNotConfigured] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [bootstrapping, setBootstrapping] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const tabRefs = useRef({});
 
@@ -95,46 +98,60 @@ export default function RuntimeWorkspace({
   // Guards against a superseded load overwriting current state (stale response).
   const loadSeqRef = useRef(0);
 
-  const loadProjects = useCallback(async () => {
-    const seq = ++loadSeqRef.current;
-    setLoading(true);
-    setError("");
-    setNotConfigured(false);
-    // Health and projects are independent — fetch concurrently to keep the
-    // Refresh interaction responsive (previously a serial await chain).
-    const [healthRes, res] = await Promise.all([
-      call("/api/core/health"),
-      call("/api/core/projects"),
-    ]);
-    // A newer load started; discard this stale result.
-    if (seq !== loadSeqRef.current) return;
-    setHealth(healthRes.data);
-    if (res.status === 503) {
-      setNotConfigured(true);
-      setProjects([]);
-    } else if (!res.ok) {
-      setError(errorMessage(res.data, "Failed to load projects."));
-    } else {
-      const list = res.data?.projects || [];
-      setProjects(list);
-      setProjectId((cur) => {
-        if (cur && list.some((p) => p.id === cur)) return cur;
-        if (preferredProject && list.some((p) => p.id === preferredProject)) {
-          return preferredProject;
-        }
-        return list[0]?.id || "";
-      });
-    }
-    setLoading(false);
-  }, [call, preferredProject]);
+  const loadProjects = useCallback(
+    async ({ background = false } = {}) => {
+      const seq = ++loadSeqRef.current;
+      // Immediate pending feedback — paint before network.
+      if (background) setRefreshing(true);
+      else setBootstrapping(true);
+      setError("");
+      if (!background) setNotConfigured(false);
+
+      await afterNextPaint();
+      if (seq !== loadSeqRef.current) return;
+
+      const [healthRes, res] = await Promise.all([
+        call("/api/core/health"),
+        call("/api/core/projects"),
+      ]);
+      if (seq !== loadSeqRef.current) return;
+      setHealth(healthRes.data);
+      if (res.status === 503) {
+        setNotConfigured(true);
+        if (!background) setProjects([]);
+      } else if (!res.ok) {
+        setError(errorMessage(res.data, "Failed to load projects."));
+      } else {
+        const list = res.data?.projects || [];
+        setProjects(list);
+        setProjectId((cur) => {
+          if (cur && list.some((p) => p.id === cur)) return cur;
+          if (preferredProject && list.some((p) => p.id === preferredProject)) {
+            return preferredProject;
+          }
+          return list[0]?.id || "";
+        });
+      }
+      if (seq === loadSeqRef.current) {
+        setBootstrapping(false);
+        setRefreshing(false);
+      }
+    },
+    [call, preferredProject]
+  );
 
   useEffect(() => {
-    loadProjects();
+    void loadProjects({ background: false });
+    return () => {
+      loadSeqRef.current += 1;
+    };
   }, [loadProjects]);
 
   useEffect(() => {
-    onRefreshReady?.(loadProjects);
+    onRefreshReady?.(() => loadProjects({ background: true }));
   }, [onRefreshReady, loadProjects]);
+
+  const pending = bootstrapping || refreshing;
 
   function onTabKeyDown(e) {
     const idx = TABS.findIndex(([id]) => id === activeTab);
@@ -158,8 +175,18 @@ export default function RuntimeWorkspace({
             <h1>Mianx Core Runtime</h1>
           </div>
           <div className="header-actions">
-            <button type="button" className="header-btn-ghost" onClick={loadProjects} disabled={loading}>
-              {loading ? <MianxLoader variant="inline" label="Refreshing runtime…" /> : "Refresh"}
+            <button
+              type="button"
+              className="header-btn-ghost"
+              data-testid="runtime-refresh"
+              onClick={() => void loadProjects({ background: true })}
+              disabled={pending}
+            >
+              {refreshing ? (
+                <MianxLoader variant="inline" label="Refreshing runtime…" />
+              ) : (
+                "Refresh"
+              )}
             </button>
           </div>
         </div>
@@ -187,7 +214,7 @@ export default function RuntimeWorkspace({
           id="runtime-project"
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
-          disabled={notConfigured || projects.length === 0}
+          disabled={notConfigured || projects.length === 0 || bootstrapping}
         >
           {projects.length === 0 && <option value="">No projects yet</option>}
           {projects.map((p) => (
@@ -196,10 +223,24 @@ export default function RuntimeWorkspace({
             </option>
           ))}
         </select>
-        <ProjectCreator disabled={notConfigured} call={call} onCreated={loadProjects} />
+        <ProjectCreator
+          disabled={notConfigured || bootstrapping}
+          call={call}
+          onCreated={() => void loadProjects({ background: true })}
+        />
         {!showChrome && (
-          <button type="button" className="header-btn-ghost" onClick={loadProjects} disabled={loading}>
-            {loading ? <MianxLoader variant="inline" label="Refreshing runtime…" /> : "Refresh"}
+          <button
+            type="button"
+            className="header-btn-ghost"
+            data-testid="runtime-refresh"
+            onClick={() => void loadProjects({ background: true })}
+            disabled={pending}
+          >
+            {refreshing ? (
+              <MianxLoader variant="inline" label="Refreshing runtime…" />
+            ) : (
+              "Refresh"
+            )}
           </button>
         )}
       </div>
@@ -235,8 +276,10 @@ export default function RuntimeWorkspace({
         aria-labelledby={`runtime-tab-${activeTab}`}
         className="runtime-panel"
       >
-        {loading ? (
-          <MianxLoader variant="section" label="Loading runtime…" />
+        {bootstrapping ? (
+          <AdminLoadingRegion>
+            <MianxLoader variant="section" label="Loading runtime…" />
+          </AdminLoadingRegion>
         ) : notConfigured ? (
           <p className="runtime-muted">
             Runtime data is unavailable until Supabase is configured.
@@ -427,7 +470,13 @@ function AgentsPanel({ call, projectId }) {
     load();
   }
 
-  if (loading) return <MianxLoader variant="section" label="Loading agents…" />;
+  if (loading) {
+    return (
+      <AdminLoadingRegion>
+        <MianxLoader variant="section" label="Loading agents…" />
+      </AdminLoadingRegion>
+    );
+  }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
 
   return (
@@ -577,7 +626,13 @@ function TasksPanel({ call, projectId }) {
   );
 
   if (!projectId) return <p className="runtime-muted">Select or create a project first.</p>;
-  if (loading) return <MianxLoader variant="section" label="Loading tasks…" />;
+  if (loading) {
+    return (
+      <AdminLoadingRegion>
+        <MianxLoader variant="section" label="Loading tasks…" />
+      </AdminLoadingRegion>
+    );
+  }
 
   return (
     <div>
@@ -795,7 +850,13 @@ function RunsPanel({ call, projectId }) {
   }, [call, projectId]);
 
   if (!projectId) return <p className="runtime-muted">Select a project first.</p>;
-  if (loading) return <MianxLoader variant="section" label="Loading runs…" />;
+  if (loading) {
+    return (
+      <AdminLoadingRegion>
+        <MianxLoader variant="section" label="Loading runs…" />
+      </AdminLoadingRegion>
+    );
+  }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
   if (items.length === 0) return <p className="runtime-muted">No runs yet.</p>;
 
@@ -868,7 +929,13 @@ function ApprovalsPanel({ call, projectId }) {
   }
 
   if (!projectId) return <p className="runtime-muted">Select a project first.</p>;
-  if (loading) return <MianxLoader variant="section" label="Loading approvals…" />;
+  if (loading) {
+    return (
+      <AdminLoadingRegion>
+        <MianxLoader variant="section" label="Loading approvals…" />
+      </AdminLoadingRegion>
+    );
+  }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
   if (items.length === 0) return <p className="runtime-muted">No approval requests.</p>;
 
@@ -921,7 +988,13 @@ function AuditPanel({ call, projectId }) {
   }, [call, projectId]);
 
   if (!projectId) return <p className="runtime-muted">Select a project first.</p>;
-  if (loading) return <MianxLoader variant="section" label="Loading audit log…" />;
+  if (loading) {
+    return (
+      <AdminLoadingRegion>
+        <MianxLoader variant="section" label="Loading audit log…" />
+      </AdminLoadingRegion>
+    );
+  }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
   if (items.length === 0) return <p className="runtime-muted">No audit entries yet.</p>;
 

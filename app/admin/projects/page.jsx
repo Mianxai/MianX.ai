@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
+import AdminLoadingRegion from "@/components/admin/AdminLoadingRegion";
 import MianxLoader from "@/components/shared/MianxLoader";
 import { slugFromName, evaluateSlugInput } from "@/lib/slug";
 
@@ -100,7 +101,11 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {loading && <MianxLoader variant="section" label="Loading projects…" />}
+      {loading && projects.length === 0 && (
+        <AdminLoadingRegion>
+          <MianxLoader variant="section" label="Loading projects…" />
+        </AdminLoadingRegion>
+      )}
 
       {!loading && !notConfigured && projects.length === 0 && !error && (
         <div className="empty-state">
@@ -112,7 +117,7 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {!loading && projects.length > 0 && (
+      {projects.length > 0 && (
         <ul className="projects-list">
           {projects.map((p) => (
             <li key={p.id} className="projects-item">

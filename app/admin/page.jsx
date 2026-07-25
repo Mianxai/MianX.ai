@@ -1,53 +1,85 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
+import AdminLoadingRegion from "@/components/admin/AdminLoadingRegion";
 import OverviewCards from "@/components/admin/OverviewCards";
 import MianxLoader from "@/components/shared/MianxLoader";
+import { afterNextPaint } from "@/lib/after-paint";
 
 export default function AdminOverviewPage() {
   const router = useRouter();
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [bootstrapping, setBootstrapping] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [notConfigured, setNotConfigured] = useState(false);
   const [refreshedAt, setRefreshedAt] = useState(null);
+  const loadSeqRef = useRef(0);
+  const abortRef = useRef(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    setNotConfigured(false);
-    try {
-      const res = await fetch("/api/admin/overview");
-      if (res.status === 401) {
-        router.push("/admin/login");
-        return;
-      }
-      if (res.status === 503) {
-        setNotConfigured(true);
-        setData(null);
+  const load = useCallback(
+    async ({ background = false } = {}) => {
+      const seq = ++loadSeqRef.current;
+      // Immediate pending feedback — must paint before network work.
+      if (background) setRefreshing(true);
+      else setBootstrapping(true);
+      setError("");
+      setNotConfigured(false);
+
+      await afterNextPaint();
+      if (seq !== loadSeqRef.current) return;
+
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+
+      try {
+        const res = await fetch("/api/admin/overview", { signal: ac.signal });
+        if (seq !== loadSeqRef.current) return;
+        if (res.status === 401) {
+          router.push("/admin/login");
+          return;
+        }
+        if (res.status === 503) {
+          setNotConfigured(true);
+          if (!background) setData(null);
+          setRefreshedAt(new Date());
+          return;
+        }
+        const json = await res.json().catch(() => ({}));
+        if (seq !== loadSeqRef.current) return;
+        if (!res.ok) {
+          throw new Error(json?.error?.message || json?.error || "Failed to load overview");
+        }
+        setData(json);
         setRefreshedAt(new Date());
-        return;
+      } catch (err) {
+        if (err?.name === "AbortError") return;
+        if (seq !== loadSeqRef.current) return;
+        setError(err.message || "Failed to load overview");
+        if (!background) setData(null);
+      } finally {
+        if (seq === loadSeqRef.current) {
+          setBootstrapping(false);
+          setRefreshing(false);
+        }
       }
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(json?.error?.message || json?.error || "Failed to load overview");
-      }
-      setData(json);
-      setRefreshedAt(new Date());
-    } catch (err) {
-      setError(err.message || "Failed to load overview");
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
+    },
+    [router]
+  );
 
   useEffect(() => {
-    load();
+    void load({ background: false });
+    return () => {
+      loadSeqRef.current += 1;
+      abortRef.current?.abort();
+    };
   }, [load]);
+
+  const pending = bootstrapping || refreshing;
 
   return (
     <AdminShell
@@ -59,8 +91,18 @@ export default function AdminOverviewPage() {
               Last refreshed {refreshedAt.toLocaleTimeString()}
             </span>
           )}
-          <button type="button" className="header-btn-ghost" onClick={load} disabled={loading}>
-            {loading ? <MianxLoader variant="inline" label="Refreshing overview…" /> : "Refresh"}
+          <button
+            type="button"
+            className="header-btn-ghost"
+            data-testid="admin-refresh"
+            onClick={() => void load({ background: true })}
+            disabled={pending}
+          >
+            {refreshing ? (
+              <MianxLoader variant="inline" label="Refreshing overview…" />
+            ) : (
+              "Refresh"
+            )}
           </button>
         </>
       }
@@ -76,10 +118,12 @@ export default function AdminOverviewPage() {
           {error}
         </div>
       )}
-      {loading && !data && !error && !notConfigured && (
-        <MianxLoader variant="section" label="Loading overview…" />
+      {bootstrapping && !data && !error && !notConfigured && (
+        <AdminLoadingRegion>
+          <MianxLoader variant="section" label="Loading overview…" />
+        </AdminLoadingRegion>
       )}
-      {!loading && !error && !notConfigured && !data && (
+      {!bootstrapping && !error && !notConfigured && !data && (
         <div className="empty-state">
           <h3>No overview data</h3>
           <p>The overview API returned an empty response.</p>

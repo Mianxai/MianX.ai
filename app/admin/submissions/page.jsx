@@ -8,6 +8,7 @@ import StatsGrid from "@/components/admin/StatsGrid";
 import FiltersBar from "@/components/admin/FiltersBar";
 import LeadTable from "@/components/admin/LeadTable";
 import LeadDetailModal from "@/components/admin/LeadDetailModal";
+import AdminLoadingRegion from "@/components/admin/AdminLoadingRegion";
 import MianxLoader from "@/components/shared/MianxLoader";
 
 function SubmissionsContent() {
@@ -169,7 +170,9 @@ function SubmissionsContent() {
           <StatsGrid stats={stats} />
           <FiltersBar active={filter} onChange={onFilterChange} />
           {loading && leads.length === 0 ? (
-            <MianxLoader variant="section" label="Loading submissions…" />
+            <AdminLoadingRegion>
+              <MianxLoader variant="section" label="Loading submissions…" />
+            </AdminLoadingRegion>
           ) : (
             <>
               <div aria-live="polite" className="sr-only">
@@ -206,7 +209,9 @@ export default function SubmissionsPage() {
     <Suspense
       fallback={
         <AdminShell title="Submissions">
-          <MianxLoader variant="section" label="Loading submissions…" />
+          <AdminLoadingRegion>
+            <MianxLoader variant="section" label="Loading submissions…" />
+          </AdminLoadingRegion>
         </AdminShell>
       }
     >
