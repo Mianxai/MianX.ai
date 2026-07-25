@@ -6,6 +6,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import { ADMIN_NAV, isNavActive, isNavItemCurrent } from "@/components/admin/nav";
 import { NavIcon } from "@/components/admin/navIcons";
+import { useAdminNotifications } from "@/components/admin/AdminNotificationProvider";
+import {
+  formatNewSubmissionsBadge,
+  newSubmissionsAriaLabel,
+} from "@/lib/admin-notifications";
 
 const MOBILE_MQ = "(max-width: 900px)";
 
@@ -14,7 +19,8 @@ export default function AdminShell({
   title,
   actions = null,
   breadcrumbs = null,
-  newCount = 0,
+  /** Optional override for tests; production reads the shared provider. */
+  newCount,
 }) {
   const pathname = usePathname() || "";
   const router = useRouter();
@@ -96,7 +102,11 @@ export default function AdminShell({
     router.refresh();
   }
 
-  const badges = { newCount: newCount > 0 ? newCount : 0 };
+  const notifications = useAdminNotifications();
+  const newSubmissions =
+    typeof newCount === "number" ? newCount : notifications.newSubmissions;
+  const badgeText = formatNewSubmissionsBadge(newSubmissions);
+  const badgeLabel = newSubmissionsAriaLabel(newSubmissions);
 
   return (
     <div className="admin-app">
@@ -161,7 +171,7 @@ export default function AdminShell({
         <ul className="sidebar-nav">
           {ADMIN_NAV.map((item) => {
             const current = isNavItemCurrent(pathname, item);
-            const badge = item.badgeKey ? badges[item.badgeKey] : 0;
+            const showBadge = item.badgeKey === "newCount" && badgeText;
             return (
               <li key={item.href}>
                 <Link
@@ -182,7 +192,15 @@ export default function AdminShell({
                 >
                   <NavIcon name={item.icon} />
                   {item.label}
-                  {badge > 0 && <span className="sidebar-badge">{badge}</span>}
+                  {showBadge && (
+                    <span
+                      className="sidebar-badge"
+                      data-testid="submissions-badge"
+                      aria-label={badgeLabel}
+                    >
+                      {badgeText}
+                    </span>
+                  )}
                 </Link>
                 {item.children?.length > 0 && (
                   <ul className="sidebar-nav-nested">
