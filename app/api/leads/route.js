@@ -1,74 +1,129 @@
 import { NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase";
+import {
+  getSupabaseAdmin,
+  isSupabaseConfigured,
+  SUPABASE_NOT_CONFIGURED_MESSAGE,
+} from "@/lib/supabase";
 import { getSessionUser } from "@/lib/auth";
+import { validateLeadSubmission } from "@/lib/leads";
 
+// Env vars are read at request time, not at build time, so this route must
+// never be statically evaluated.
 export const dynamic = "force-dynamic";
+
+// Best-effort in-memory rate limit: not durable across cold starts or
+// multiple serverless instances, but stops naive rapid-fire bot submissions
+// within a single warm instance without adding an external dependency.
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 5;
+const submissionLog = new Map();
+
+function isRateLimited(key) {
+  const now = Date.now();
+  const timestamps = (submissionLog.get(key) || []).filter(
+    (t) => now - t < RATE_LIMIT_WINDOW_MS
+  );
+  timestamps.push(now);
+  submissionLog.set(key, timestamps);
+  return timestamps.length > RATE_LIMIT_MAX;
+}
+
+function clientKey(req) {
+  return (
+    req.headers?.get?.("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
+  );
+}
 
 // PUBLIC: anyone can submit a lead from the site.
 export async function POST(req) {
-  const body = await req.json();
-  if (!body.name || !body.email || !body.need) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json(
+      { error: SUPABASE_NOT_CONFIGURED_MESSAGE },
+      { status: 503 }
+    );
   }
+
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  if (isRateLimited(clientKey(req))) {
+    return NextResponse.json(
+      { error: "Too many submissions. Please try again in a minute." },
+      { status: 429 }
+    );
+  }
+
+  const { valid, honeypotTripped, errors, data } = validateLeadSubmission(body);
+  if (honeypotTripped) {
+    // Don't tip off bots — respond as if it worked, but never write to the DB.
+    return NextResponse.json({ ok: true });
+  }
+  if (!valid) {
+    return NextResponse.json(
+      { error: "Please fix the highlighted fields.", fieldErrors: errors },
+      { status: 400 }
+    );
+  }
+
   const supabaseAdmin = getSupabaseAdmin();
-
-  // Build the full record, but degrade gracefully if the target database is
-  // missing optional columns (e.g. a hosted Supabase project created before the
-  // phone/industry migration was applied). PostgREST reports missing columns
-  // with code PGRST204 / "Could not find the 'X' column ... in the schema
-  // cache"; we strip the offending optional column and retry so a customer
-  // submission is never lost. Required columns (name/email/need) exist in every
-  // version of the schema and are never dropped.
-  const droppable = new Set(["phone", "industry", "budget", "company"]);
-  let record = {
-    name: body.name,
-    email: body.email,
-    company: body.company,
-    phone: body.phone,
-    industry: body.industry,
-    budget: body.budget,
-    need: body.need,
-  };
-
-  let data = null;
-  let error = null;
-  const dropped = [];
-  for (let attempt = 0; attempt < 6; attempt++) {
-    ({ data, error } = await supabaseAdmin.from("leads").insert([record]).select().single());
-    if (!error) break;
-
-    const missing = error.message && error.message.match(/'([^']+)' column/);
-    const isSchemaCacheMiss =
-      error.code === "PGRST204" || /schema cache/i.test(error.message || "");
-    const badCol = missing && missing[1];
-    if (isSchemaCacheMiss && badCol && droppable.has(badCol) && badCol in record) {
-      const { [badCol]: _drop, ...rest } = record;
-      record = rest;
-      dropped.push(badCol);
-      continue;
-    }
-    break;
+  if (!supabaseAdmin) {
+    return NextResponse.json(
+      { error: SUPABASE_NOT_CONFIGURED_MESSAGE },
+      { status: 503 }
+    );
   }
 
+  const { data: row, error } = await supabaseAdmin
+    .from("leads")
+    .insert([
+      {
+        name: data.name,
+        email: data.email,
+        company: data.company || null,
+        phone: data.phone || null,
+        industry: data.industry || null,
+        need: data.message,
+      },
+    ])
+    .select()
+    .single();
+
+  // Never report success if the write itself failed.
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  const res = NextResponse.json(data);
-  if (dropped.length) {
-    // Surface (without failing) that the DB schema is behind the app.
-    res.headers.set("x-mianx-dropped-columns", dropped.join(","));
-  }
-  return res;
+  return NextResponse.json(row);
 }
 
 // PROTECTED: only a logged-in admin can list leads.
 export async function GET(req) {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json(
+      { error: SUPABASE_NOT_CONFIGURED_MESSAGE },
+      { status: 503 }
+    );
+  }
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabaseAdmin = getSupabaseAdmin();
-  const { data, error } = await supabaseAdmin
-    .from("leads")
-    .select("*")
-    .order("created_at", { ascending: false });
+  if (!supabaseAdmin) {
+    return NextResponse.json(
+      { error: SUPABASE_NOT_CONFIGURED_MESSAGE },
+      { status: 503 }
+    );
+  }
+
+  const showArchived = req.nextUrl?.searchParams?.get("archived") === "1";
+  let query = supabaseAdmin.from("leads").select("*");
+  query = showArchived
+    ? query.not("archived_at", "is", null)
+    : query.is("archived_at", null);
+  query = query.order("created_at", { ascending: false });
+
+  const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }

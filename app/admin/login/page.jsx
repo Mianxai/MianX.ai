@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getSupabase } from "@/lib/supabase";
-import BrandLogo from "@/components/BrandLogo";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -13,14 +12,24 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const configured = isSupabaseConfigured();
+
   async function onSubmit(e) {
     e.preventDefault();
     setLoading(true);
     setError("");
     try {
       const supabase = getSupabase();
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      if (!supabase) {
+        throw new Error(
+          "Configuration error: this deployment has no Supabase environment variables set. Admin sign-in is unavailable until they are configured."
+        );
+      }
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signInError) throw signInError;
       const token = data.session?.access_token;
       if (!token) throw new Error("No session returned");
       const maxAge = data.session.expires_in || 3600;
@@ -35,35 +44,61 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="login-page">
-      <form className="login-card" onSubmit={onSubmit}>
-        <Link href="/" className="login-logo logo">
-          <BrandLogo size={40} />
-          <span className="logo-text">MianX.ai</span>
+    <main id="main-content" className="login-shell">
+      <form className="login-card" onSubmit={onSubmit} noValidate>
+        <Link href="/" className="logo" style={{ marginBottom: "1.5rem" }}>
+          <span className="logo-icon" aria-hidden="true">M</span>
+          <span className="logo-text">Mianx.ai</span>
         </Link>
-        <h2>Admin sign in</h2>
-        <p className="muted">Access your submissions dashboard.</p>
+        <h1>Admin sign in</h1>
+        <p className="section-desc">Access the lead intelligence dashboard.</p>
 
-        <div className="login-field">
+        {!configured && (
+          <div className="admin-notice" role="alert" style={{ marginBottom: "1.25rem" }}>
+            Configuration error: Supabase environment variables are not set on this deployment.
+            Sign-in is unavailable until they are configured.
+          </div>
+        )}
+
+        <div className="form-group" style={{ marginBottom: "1rem" }}>
           <label htmlFor="email">Email</label>
-          <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@mianx.ai" required />
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@mianx.ai"
+            autoComplete="username"
+            required
+          />
         </div>
-        <div className="login-field">
+        <div className="form-group" style={{ marginBottom: "1.25rem" }}>
           <label htmlFor="password">Password</label>
-          <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            autoComplete="current-password"
+            required
+          />
         </div>
 
-        {error && <div className="form-message error" style={{ display: "flex", marginBottom: "1rem" }}>{error}</div>}
+        {error && (
+          <div className="form-message error" role="alert" style={{ marginBottom: "1rem" }}>
+            {error}
+          </div>
+        )}
 
-        <button type="submit" className="form-submit" disabled={loading} style={{ width: "100%" }}>
-          {loading ? (
-            <>
-              <svg className="spin" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-              Signing in…
-            </>
-          ) : "Sign in"}
+        <button className="form-submit" type="submit" disabled={loading || !configured}>
+          {loading ? (<><span className="spin" aria-hidden="true" /> Signing in…</>) : "Sign in"}
         </button>
+
+        <Link href="/" className="login-back">
+          ← Back to site
+        </Link>
       </form>
-    </div>
+    </main>
   );
 }
