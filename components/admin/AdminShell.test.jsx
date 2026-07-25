@@ -133,6 +133,26 @@ describe("AdminShell", () => {
         <p>body</p>
       </AdminShell>
     );
-    expect(screen.getByText("3")).toBeInTheDocument();
+    const badge = screen.getByTestId("submissions-badge");
+    expect(badge).toHaveTextContent("3");
+    expect(badge).toHaveAttribute("aria-label", "3 new submissions");
+  });
+
+  it("hides the badge when newCount is 0", () => {
+    render(
+      <AdminShell title="Overview" newCount={0}>
+        <p>body</p>
+      </AdminShell>
+    );
+    expect(screen.queryByTestId("submissions-badge")).toBeNull();
+  });
+
+  it("displays 99+ for counts above 99", () => {
+    render(
+      <AdminShell title="Overview" newCount={150}>
+        <p>body</p>
+      </AdminShell>
+    );
+    expect(screen.getByTestId("submissions-badge")).toHaveTextContent("99+");
   });
 });

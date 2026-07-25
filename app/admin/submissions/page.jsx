@@ -11,6 +11,7 @@ import LeadDetailModal from "@/components/admin/LeadDetailModal";
 import AdminLoadingRegion from "@/components/admin/AdminLoadingRegion";
 import MianxLoader from "@/components/shared/MianxLoader";
 import DelayedLoader from "@/components/shared/DelayedLoader";
+import { invalidateSubmissionCount } from "@/lib/admin-notifications";
 
 function SubmissionsContent() {
   const router = useRouter();
@@ -101,11 +102,13 @@ function SubmissionsContent() {
   function onUpdated(updated) {
     setLeads((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
     setSelected((cur) => (cur && cur.id === updated.id ? updated : cur));
+    invalidateSubmissionCount();
   }
 
   function onArchived(id) {
     setLeads((prev) => prev.filter((l) => l.id !== id));
     setSelected(null);
+    invalidateSubmissionCount();
   }
 
   function exportCsv() {
@@ -124,7 +127,6 @@ function SubmissionsContent() {
   return (
     <AdminShell
       title="Submissions"
-      newCount={stats.new}
       actions={
         <>
           <label htmlFor="admin-search" className="sr-only">
