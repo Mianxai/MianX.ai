@@ -23,6 +23,13 @@ async function leadStatusCounts(admin) {
   return counts;
 }
 
+function sourceOk(value) {
+  return { available: true, value, errorCode: null };
+}
+function sourceFail(code) {
+  return { available: false, value: null, errorCode: code || "SOURCE_ERROR" };
+}
+
 export const GET = withErrorHandling(async (req) => {
   await requireAdmin(req);
 
@@ -34,54 +41,76 @@ export const GET = withErrorHandling(async (req) => {
 
   const admin = getSupabaseAdmin();
   const config = runtimeConfigStatus();
-
-  let submissions = { total: 0, new: 0, contacted: 0, converted: 0, closed: 0 };
-  let projectsActive = 0;
-  let tasks = { queued: 0, in_progress: 0, blocked: 0 };
-  let approvalsPending = 0;
-  let runsFailed = 0;
-  let recentAudit = [];
+  const sources = {};
+  let partial = false;
 
   try {
-    submissions = await leadStatusCounts(admin);
+    sources.submissions = sourceOk(await leadStatusCounts(admin));
   } catch {
-    // leads table should exist; keep zeros on transient failure
+    partial = true;
+    sources.submissions = sourceFail("LEADS_UNAVAILABLE");
   }
 
   try {
-    projectsActive = await repo.countActiveProjects();
+    const projectsActive = await repo.countActiveProjects();
     const taskDist = await repo.countByStatus("tasks");
-    tasks = {
+    const approvalDist = await repo.countByStatus("approval_requests");
+    const runDist = await repo.countByStatus("agent_runs");
+    let jobCounts = {};
+    try {
+      jobCounts = await repo.countJobsByStatus();
+    } catch {
+      jobCounts = {};
+    }
+    const recentAudit = await repo.listRecentAudit(5);
+
+    sources.projects = sourceOk({ active: projectsActive });
+    sources.tasks = sourceOk({
       queued: (taskDist.pending || 0) + (taskDist.validated || 0),
       in_progress: taskDist.running || 0,
       blocked: taskDist.awaiting_approval || 0,
-    };
-    const approvalDist = await repo.countByStatus("approval_requests");
-    approvalsPending = approvalDist.pending || 0;
-    const runDist = await repo.countByStatus("agent_runs");
-    runsFailed = runDist.failed || 0;
-    recentAudit = await repo.listRecentAudit(5);
+    });
+    sources.approvals = sourceOk({ pending: approvalDist.pending || 0 });
+    sources.runs = sourceOk({ failed: runDist.failed || 0 });
+    sources.jobs = sourceOk(jobCounts);
+    sources.audit = sourceOk({ recent: recentAudit, count: recentAudit.length });
   } catch {
-    // Core tables may be missing if runtime migration not applied yet.
+    partial = true;
+    sources.projects = sources.projects || sourceFail("CORE_UNAVAILABLE");
+    sources.tasks = sources.tasks || sourceFail("CORE_UNAVAILABLE");
+    sources.approvals = sources.approvals || sourceFail("CORE_UNAVAILABLE");
+    sources.runs = sources.runs || sourceFail("CORE_UNAVAILABLE");
+    sources.jobs = sources.jobs || sourceFail("CORE_UNAVAILABLE");
+    sources.audit = sources.audit || sourceFail("CORE_UNAVAILABLE");
   }
+
+  const submissions = sources.submissions?.available
+    ? sources.submissions.value
+    : null;
+  const projects = sources.projects?.available ? sources.projects.value : null;
+  const tasks = sources.tasks?.available ? sources.tasks.value : null;
+  const approvals = sources.approvals?.available ? sources.approvals.value : null;
+  const runs = sources.runs?.available ? sources.runs.value : null;
+  const audit = sources.audit?.available ? sources.audit.value : null;
 
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
+    partial,
+    sources,
+    // Convenience mirrors: null when unavailable (never a misleading zero).
     submissions,
-    projects: { active: projectsActive },
+    projects,
     tasks,
-    approvals: { pending: approvalsPending },
-    runs: { failed: runsFailed },
+    approvals,
+    runs,
+    jobs: sources.jobs?.available ? sources.jobs.value : null,
     runtime: {
-      ok: true,
-      status: "Healthy",
+      ok: !partial,
+      status: partial ? "Degraded" : "Healthy",
       service: "mianx-core",
       config,
     },
     config,
-    audit: {
-      recent: recentAudit,
-      count: recentAudit.length,
-    },
+    audit,
   });
 });

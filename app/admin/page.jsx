@@ -129,6 +129,13 @@ export default function AdminOverviewPage() {
           <p>The overview API returned an empty response.</p>
         </div>
       )}
+      {data?.partial && (
+        <div className="admin-notice" role="status">
+          Some overview sources failed to load. Successful sections are shown;
+          failed sections report unavailable instead of a misleading zero.
+          Runtime status: {data.runtime?.status || "Degraded"}.
+        </div>
+      )}
       {data && <OverviewCards data={data} />}
     </AdminShell>
   );

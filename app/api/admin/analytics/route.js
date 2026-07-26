@@ -20,6 +20,13 @@ async function leadsByStatus(admin) {
   return out;
 }
 
+function ok(value) {
+  return { available: true, value, errorCode: null };
+}
+function fail(code) {
+  return { available: false, value: null, errorCode: code };
+}
+
 export const GET = withErrorHandling(async (req) => {
   await requireAdmin(req);
 
@@ -30,27 +37,26 @@ export const GET = withErrorHandling(async (req) => {
   }
 
   const admin = getSupabaseAdmin();
-  let leadsByStatusMap = {};
-  let tasksByStatus = {};
-  let runsByStatus = {};
-  let projectsByStatus = {};
-  let pendingApprovals = 0;
-  let runDurations = { sampleSize: 0, averageMs: null };
+  const sources = {};
+  let partial = false;
 
   try {
-    leadsByStatusMap = await leadsByStatus(admin);
+    sources.leadsByStatus = ok(await leadsByStatus(admin));
   } catch {
-    leadsByStatusMap = {};
+    partial = true;
+    sources.leadsByStatus = fail("LEADS_UNAVAILABLE");
   }
 
   try {
-    tasksByStatus = await repo.countByStatus("tasks");
-    runsByStatus = await repo.countByStatus("agent_runs");
-    projectsByStatus = await repo.countByStatus("projects");
+    const tasksByStatus = await repo.countByStatus("tasks");
+    const runsByStatus = await repo.countByStatus("agent_runs");
+    const projectsByStatus = await repo.countByStatus("projects");
     const approvals = await repo.countByStatus("approval_requests");
-    pendingApprovals = approvals.pending || 0;
+    sources.tasksByStatus = ok(tasksByStatus);
+    sources.runsByStatus = ok(runsByStatus);
+    sources.projectsByStatus = ok(projectsByStatus);
+    sources.pendingApprovals = ok(approvals.pending || 0);
 
-    // Average duration only when started_at and finished_at are present.
     const runs = await repo.listRuns({});
     const durations = [];
     for (const r of runs || []) {
@@ -59,29 +65,60 @@ export const GET = withErrorHandling(async (req) => {
         if (Number.isFinite(ms) && ms >= 0) durations.push(ms);
       }
     }
-    if (durations.length > 0) {
-      runDurations = {
-        sampleSize: durations.length,
-        averageMs: Math.round(
-          durations.reduce((a, b) => a + b, 0) / durations.length
-        ),
-      };
-    }
-  } catch {
-    // Runtime tables optional until migration applied.
-  }
-
-  return NextResponse.json({
-    generatedAt: new Date().toISOString(),
-    leadsByStatus: leadsByStatusMap,
-    tasksByStatus,
-    runsByStatus,
-    projectsByStatus,
-    pendingApprovals,
-    runSuccessFailure: {
+    sources.averageRunDuration = ok(
+      durations.length > 0
+        ? {
+            sampleSize: durations.length,
+            averageMs: Math.round(
+              durations.reduce((a, b) => a + b, 0) / durations.length
+            ),
+          }
+        : { sampleSize: 0, averageMs: null }
+    );
+    sources.runSuccessFailure = ok({
       succeeded: runsByStatus.succeeded || 0,
       failed: runsByStatus.failed || 0,
-    },
-    averageRunDuration: runDurations,
+    });
+  } catch {
+    partial = true;
+    for (const key of [
+      "tasksByStatus",
+      "runsByStatus",
+      "projectsByStatus",
+      "pendingApprovals",
+      "averageRunDuration",
+      "runSuccessFailure",
+    ]) {
+      if (!sources[key]) sources[key] = fail("CORE_UNAVAILABLE");
+    }
+  }
+
+  // Convenience mirrors: null when the source failed (never a fake empty object
+  // that looks like "zero rows").
+  return NextResponse.json({
+    generatedAt: new Date().toISOString(),
+    partial,
+    sources,
+    leadsByStatus: sources.leadsByStatus?.available
+      ? sources.leadsByStatus.value
+      : null,
+    tasksByStatus: sources.tasksByStatus?.available
+      ? sources.tasksByStatus.value
+      : null,
+    runsByStatus: sources.runsByStatus?.available
+      ? sources.runsByStatus.value
+      : null,
+    projectsByStatus: sources.projectsByStatus?.available
+      ? sources.projectsByStatus.value
+      : null,
+    pendingApprovals: sources.pendingApprovals?.available
+      ? sources.pendingApprovals.value
+      : null,
+    runSuccessFailure: sources.runSuccessFailure?.available
+      ? sources.runSuccessFailure.value
+      : null,
+    averageRunDuration: sources.averageRunDuration?.available
+      ? sources.averageRunDuration.value
+      : null,
   });
 });
