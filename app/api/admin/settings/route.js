@@ -80,7 +80,14 @@ export const GET = withErrorHandling(async (req) => {
     founderActions.push({
       label: "Configure durable rate-limit backend (recommended)",
       description:
-        "In-memory limits protect a single warm instance only. Set RATE_LIMIT_DURABLE_URL when a Redis/Upstash backend is ready.",
+        "In-memory limits protect a single warm instance only. Wire a durable adapter (and optional RATE_LIMIT_DURABLE_URL) before treating rate limits as cluster-safe. URL alone does not enable durability.",
+    });
+  }
+  if (!runtime.scheduler?.automaticProcessing) {
+    founderActions.push({
+      label: "Configure external or Pro scheduler for runtime tick",
+      description:
+        "No platform cron is configured in-repo (Hobby rejects sub-daily schedules). Queue jobs do not process automatically until an external/Pro scheduler calls POST /api/internal/runtime/tick with the internal secret.",
     });
   }
 
@@ -100,6 +107,12 @@ export const GET = withErrorHandling(async (req) => {
       leads: isSupabaseConfigured(),
       rateLimitBackend: runtime.rateLimit?.backend || "in-memory",
       rateLimitDurable: Boolean(runtime.rateLimit?.durable),
+      rateLimitUrlConfigured: Boolean(runtime.rateLimit?.urlConfigured),
+      schedulerMode: runtime.scheduler?.mode || "manual",
+      schedulerAutomaticProcessing: Boolean(
+        runtime.scheduler?.automaticProcessing
+      ),
+      platformCronConfigured: Boolean(runtime.scheduler?.platformCronConfigured),
       internalWorkerConfigured: runtime.internalWorkerConfigured,
       cronSecretConfigured: runtime.cronSecretConfigured,
       providerCircuitState: runtime.providerCircuit?.state || "closed",

@@ -206,7 +206,7 @@ export default function QueuePanel({ call, projectId }) {
       {(jobs || []).length === 0 ? (
         <p className="runtime-muted">
           {statusFilter === "all"
-            ? "No jobs in the queue yet. Jobs appear when a task is enqueued or a workflow starts."
+            ? "No jobs in the queue yet. Jobs appear when a task is enqueued or a workflow starts. Queued jobs process only when the internal tick endpoint is invoked (manual or external scheduler) — this deployment does not claim automatic processing."
             : `No ${statusFilter.replace("_", " ")} jobs.`}
         </p>
       ) : (

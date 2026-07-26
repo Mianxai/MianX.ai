@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireCapability, CAPABILITIES } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -7,9 +7,10 @@ export const dynamic = "force-dynamic";
 // configured, this route returns a controlled "not available" response
 // instead of calling out to Anthropic with an empty key — the rest of the
 // product (lead capture, admin auth, lead list/status) keeps working.
+// Requires MANAGE_LEADS so viewers cannot trigger provider spend.
 export async function POST(req) {
   try {
-    await requireAdmin(req);
+    await requireCapability(req, CAPABILITIES.MANAGE_LEADS);
   } catch (err) {
     const status = err?.status || 401;
     return NextResponse.json(

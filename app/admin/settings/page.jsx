@@ -22,6 +22,17 @@ function collectConfigRows(data) {
     rows.push({ label, value: yn, ok: value === true, hint });
   };
 
+  const pushText = (label, value, hint, ok = null) => {
+    if (value == null || value === "") return;
+    rows.push({
+      label,
+      value: String(value),
+      ok,
+      hint,
+      text: true,
+    });
+  };
+
   push("Supabase", cfg.supabase ?? data.supabase);
   push(
     "AI provider (Anthropic)",
@@ -30,6 +41,28 @@ function collectConfigRows(data) {
   );
   push("Admin auth configured", cfg.adminAuth ?? cfg.admin_auth);
   push("Lead capture API", cfg.leads ?? cfg.leadCapture);
+  push(
+    "Rate limit durable",
+    cfg.rateLimitDurable,
+    "In-memory is not cluster-safe"
+  );
+  pushText(
+    "Rate limit backend",
+    cfg.rateLimitBackend,
+    "Honest backend label — never secrets",
+    cfg.rateLimitDurable === true
+  );
+  pushText(
+    "Scheduler mode",
+    cfg.schedulerMode,
+    "No in-repo platform cron; tick is pull-based",
+    cfg.schedulerAutomaticProcessing === true
+  );
+  push(
+    "Automatic queue processing",
+    cfg.schedulerAutomaticProcessing,
+    "Requires external/Pro scheduler calling the tick endpoint"
+  );
 
   // Pass through any additional boolean flags without exposing secrets.
   const skip = new Set([
@@ -43,6 +76,14 @@ function collectConfigRows(data) {
     "founderActions",
     "founder_actions",
     "actions",
+    "rateLimitDurable",
+    "rateLimitBackend",
+    "schedulerMode",
+    "schedulerAutomaticProcessing",
+    "siteHostname",
+    "adminAccessModel",
+    "providerCircuitState",
+    "runtimeVersion",
   ]);
   for (const [key, val] of Object.entries(cfg)) {
     if (skip.has(key)) continue;
@@ -140,7 +181,17 @@ export default function SettingsPage() {
                   {row.hint && <span className="settings-row-hint">{row.hint}</span>}
                 </div>
                 <span
-                  className={`status-pill ${row.ok ? "status-yes" : "status-no"}`}
+                  className={`status-pill ${
+                    row.text
+                      ? row.ok === true
+                        ? "status-yes"
+                        : row.ok === false
+                          ? "status-no"
+                          : "status-muted"
+                      : row.ok
+                        ? "status-yes"
+                        : "status-no"
+                  }`}
                 >
                   {row.value}
                 </span>
