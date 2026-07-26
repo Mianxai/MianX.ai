@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling } from "@/lib/core/errors";
-import { requireAdmin, actorFromUser } from "@/lib/core/auth";
+import {
+  requireCapability,
+  actorFromUser,
+  CAPABILITIES,
+} from "@/lib/core/auth";
 import { parseJsonBody, assertUuid, clip } from "@/lib/core/validate";
 import { decideApproval } from "@/lib/core/runtime";
 import { CORE_LIMITS } from "@/lib/core/constants";
@@ -9,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 // POST /api/core/approvals/[id]/decision  { decision: "approved"|"rejected", note? }
 export const POST = withErrorHandling(async (req, { params }) => {
-  const user = await requireAdmin(req);
+  const { user } = await requireCapability(req, CAPABILITIES.DECIDE_APPROVALS);
   const { id } = await params;
   assertUuid(id, "id");
 

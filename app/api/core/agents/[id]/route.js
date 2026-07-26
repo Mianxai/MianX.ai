@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling, badRequest, invalidTransition } from "@/lib/core/errors";
-import { requireAdmin, actorFromUser } from "@/lib/core/auth";
+import { requireCapability, actorFromUser, CAPABILITIES } from "@/lib/core/auth";
 import { parseJsonBody, assertUuid } from "@/lib/core/validate";
 import { AGENT_INSTANCE_STATUSES } from "@/lib/core/constants";
 import * as repo from "@/lib/core/repo";
@@ -19,7 +19,7 @@ const INSTANCE_TRANSITIONS = {
 
 // PATCH /api/core/agents/:id  { status }
 export const PATCH = withErrorHandling(async (req, { params }) => {
-  const user = await requireAdmin(req);
+  const { user } = await requireCapability(req, CAPABILITIES.MANAGE_AGENTS);
   const actor = actorFromUser(user);
   const { id } = await params;
   assertUuid(id, "id");

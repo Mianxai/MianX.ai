@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling, badRequest } from "@/lib/core/errors";
-import { requireAdmin, actorFromUser } from "@/lib/core/auth";
+import { requireAdmin, requireCapability, actorFromUser, CAPABILITIES } from "@/lib/core/auth";
 import { parseJsonBody, clip } from "@/lib/core/validate";
 import { rateLimit } from "@/lib/core/ratelimit";
 import * as repo from "@/lib/core/repo";
@@ -21,7 +21,7 @@ export const GET = withErrorHandling(async (req, { params }) => {
 
 // PATCH /api/core/projects/:id  — status update or soft-archive (never hard delete)
 export const PATCH = withErrorHandling(async (req, { params }) => {
-  const user = await requireAdmin(req);
+  const { user } = await requireCapability(req, CAPABILITIES.MANAGE_PROJECTS);
   const actor = actorFromUser(user);
   const { id } = await params;
   rateLimit(`project-patch:${actor}`, { max: 60, windowMs: 60_000 });

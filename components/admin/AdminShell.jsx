@@ -97,7 +97,11 @@ export default function AdminShell({
   async function logout() {
     const supabase = getSupabase();
     if (supabase) await supabase.auth.signOut();
-    document.cookie = "sb-access-token=; path=/; max-age=0; SameSite=Lax";
+    try {
+      await fetch("/api/admin/session", { method: "DELETE" });
+    } catch {
+      /* best-effort cookie clear */
+    }
     router.push("/admin/login");
     router.refresh();
   }

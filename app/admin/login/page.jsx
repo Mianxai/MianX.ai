@@ -83,7 +83,23 @@ export default function AdminLoginPage() {
       const token = data.session?.access_token;
       if (!token) throw new Error("No session returned");
       const maxAge = data.session.expires_in || 3600;
-      document.cookie = `sb-access-token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+      // Server sets an HttpOnly cookie — the access token is never readable
+      // from document.cookie after this point.
+      const sessionRes = await fetch("/api/admin/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ access_token: token, expires_in: maxAge }),
+      });
+      if (!sessionRes.ok) {
+        let msg = "Could not establish a secure admin session.";
+        try {
+          const payload = await sessionRes.json();
+          msg = payload?.error?.message || msg;
+        } catch {
+          /* keep default */
+        }
+        throw new Error(msg);
+      }
       // Mark success and navigate immediately — the success animation plays out
       // during navigation and never adds an artificial delay.
       setSuccess(true);

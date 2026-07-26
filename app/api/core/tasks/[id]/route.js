@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling } from "@/lib/core/errors";
-import { requireAdmin, actorFromUser } from "@/lib/core/auth";
+import { requireAdmin, requireCapability, actorFromUser, CAPABILITIES } from "@/lib/core/auth";
 import { parseJsonBody, assertUuid } from "@/lib/core/validate";
 import { buildTaskPatch } from "@/lib/core/tasks";
 import * as repo from "@/lib/core/repo";
@@ -22,7 +22,7 @@ export const GET = withErrorHandling(async (req, { params }) => {
 // PATCH /api/core/tasks/[id]  { status?, priority?, description?, acceptance_criteria? }
 // Only allowlisted fields; status changes must be legal transitions.
 export const PATCH = withErrorHandling(async (req, { params }) => {
-  const user = await requireAdmin(req);
+  const { user } = await requireCapability(req, CAPABILITIES.MANAGE_TASKS);
   const { id } = await params;
   assertUuid(id, "id");
 

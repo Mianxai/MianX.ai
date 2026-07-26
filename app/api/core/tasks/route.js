@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling } from "@/lib/core/errors";
-import { requireAdmin, actorFromUser } from "@/lib/core/auth";
+import { requireAdmin, requireCapability, actorFromUser, CAPABILITIES } from "@/lib/core/auth";
 import { parseJsonBody, assertUuid } from "@/lib/core/validate";
 import { validateTaskCreate } from "@/lib/core/tasks";
 import { rateLimit } from "@/lib/core/ratelimit";
@@ -23,7 +23,7 @@ export const GET = withErrorHandling(async (req) => {
 
 // POST /api/core/tasks  { project_id, title, ... }
 export const POST = withErrorHandling(async (req) => {
-  const user = await requireAdmin(req);
+  const { user } = await requireCapability(req, CAPABILITIES.MANAGE_TASKS);
   const actor = actorFromUser(user);
   rateLimit(`task-create:${actor}`, { max: 30, windowMs: 60_000 });
 

@@ -4,7 +4,7 @@ import {
   isSupabaseConfigured,
   SUPABASE_NOT_CONFIGURED_MESSAGE,
 } from "@/lib/supabase";
-import { requireAdmin, actorFromUser } from "@/lib/admin-auth";
+import { requireCapability, actorFromUser, CAPABILITIES } from "@/lib/admin-auth";
 import { buildLeadPatch } from "@/lib/leads";
 import { recordAudit, buildAuditEntry } from "@/lib/core/audit";
 
@@ -26,7 +26,7 @@ export async function PATCH(req, { params }) {
   }
   let user;
   try {
-    user = await requireAdmin(req);
+    ({ user } = await requireCapability(req, CAPABILITIES.MANAGE_LEADS));
   } catch (err) {
     const status = err?.status || 401;
     return NextResponse.json(

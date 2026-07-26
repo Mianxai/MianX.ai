@@ -82,12 +82,16 @@ describe("Admin login page", () => {
     expect(signInWithPassword).not.toHaveBeenCalled();
   });
 
-  it("signs in, sets the session cookie, and navigates on success", async () => {
+  it("signs in via the HttpOnly session API and navigates on success", async () => {
     const user = userEvent.setup();
     signInWithPassword.mockResolvedValue({
       data: { session: { access_token: "tkn-123", expires_in: 3600 } },
       error: null,
     });
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ ok: true, user: { id: "u1", email: "admin@mianx.ai" } }),
+    }));
     render(<AdminLoginPage />);
     await user.type(screen.getByLabelText(/email address/i), "admin@mianx.ai");
     await user.type(screen.getByLabelText(/^password$/i), "correct horse");
@@ -99,8 +103,15 @@ describe("Admin login page", () => {
         password: "correct horse",
       })
     );
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/admin/session",
+        expect.objectContaining({ method: "POST" })
+      )
+    );
+    // Token must not be written to document.cookie (HttpOnly is server-set).
+    expect(document.cookie).not.toContain("tkn-123");
     await waitFor(() => expect(push).toHaveBeenCalledWith("/admin"));
-    expect(document.cookie).toContain("sb-access-token=tkn-123");
   });
 
   it("submits with the Enter key", async () => {
@@ -109,6 +120,10 @@ describe("Admin login page", () => {
       data: { session: { access_token: "tkn-xyz", expires_in: 3600 } },
       error: null,
     });
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ ok: true }),
+    }));
     render(<AdminLoginPage />);
     await user.type(screen.getByLabelText(/email address/i), "admin@mianx.ai");
     await user.type(screen.getByLabelText(/^password$/i), "pw{Enter}");
@@ -139,6 +154,10 @@ describe("Admin login page", () => {
       data: { session: { access_token: "fast", expires_in: 3600 } },
       error: null,
     });
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ ok: true }),
+    }));
     render(<AdminLoginPage />);
     await user.type(screen.getByLabelText(/email address/i), "admin@mianx.ai");
     await user.type(screen.getByLabelText(/^password$/i), "pw");

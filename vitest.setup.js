@@ -1,3 +1,10 @@
+// Temporary bootstrap for unit/integration tests that mock sessions without
+// a memberships table. Production must unset MIANX_ADMIN_BOOTSTRAP after the
+// Founder membership exists.
+if (process.env.MIANX_ADMIN_BOOTSTRAP === undefined) {
+  process.env.MIANX_ADMIN_BOOTSTRAP = "1";
+}
+
 // Global test setup. Only pulls in jest-dom matchers + RTL auto-cleanup when
 // a DOM (jsdom) environment is active for a given test file, so plain
 // Node-environment API route tests are unaffected.
