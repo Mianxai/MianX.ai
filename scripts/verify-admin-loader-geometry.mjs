@@ -2,30 +2,21 @@
 /**
  * Production-build geometry + interaction smoke for the admin branded loader.
  *
- * Uses Chrome CDP (same pattern as scripts/verify-navbar-geometry.mjs).
- * Does NOT require authenticated admin — it injects a fixture AdminShell+loader
- * page via data URL / Runtime evaluation against /admin/login shell CSS, OR
- * measures a fixture HTML document served from a temp file.
+ * Measures a fixture HTML document that mirrors the AdminShell + loader CSS
+ * contracts, so it does not require an authenticated admin session.
  *
  * Usage:
- *   node scripts/verify-admin-loader-geometry.mjs [baseUrl]
+ *   node scripts/verify-admin-loader-geometry.mjs
  *
  * Env:
- *   CHROME_PATH — Chrome binary
- *   CHROME_DEBUG_PORT — default 9334
+ *   CHROME_PATH — Chrome binary (auto-detected when unset)
+ *
+ * Ports are allocated dynamically by scripts/lib/browser-harness.mjs — there is
+ * no fixed remote-debugging or fixture port to collide with.
  */
 
-import { spawn } from "node:child_process";
-import { writeFile, mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { createServer } from "node:http";
-import { readFileSync } from "node:fs";
+import { runVerifier } from "./lib/browser-harness.mjs";
 
-const CHROME =
-  process.env.CHROME_PATH ||
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const PORT = Number(process.env.CHROME_DEBUG_PORT || 9334);
 const TOLERANCE_PX = 8;
 const VIEWPORTS = [
   [1440, 900],
@@ -37,74 +28,8 @@ const VIEWPORTS = [
   [360, 800],
 ];
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function waitForJson(url, attempts = 80) {
-  let lastError;
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) return response.json();
-    } catch (error) {
-      lastError = error;
-    }
-    await sleep(100);
-  }
-  throw lastError || new Error(`Timed out waiting for ${url}`);
-}
-
-class Cdp {
-  constructor(url) {
-    this.ws = new WebSocket(url);
-    this.id = 0;
-    this.pending = new Map();
-  }
-
-  async connect() {
-    await new Promise((resolve, reject) => {
-      this.ws.addEventListener("open", resolve, { once: true });
-      this.ws.addEventListener("error", reject, { once: true });
-    });
-    this.ws.addEventListener("message", (event) => {
-      const message = JSON.parse(event.data);
-      if (!message.id) return;
-      const pending = this.pending.get(message.id);
-      if (!pending) return;
-      this.pending.delete(message.id);
-      if (message.error) pending.reject(new Error(message.error.message));
-      else pending.resolve(message.result);
-    });
-  }
-
-  send(method, params = {}) {
-    const id = ++this.id;
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      this.ws.send(JSON.stringify({ id, method, params }));
-    });
-  }
-
-  async evaluate(expression) {
-    const result = await this.send("Runtime.evaluate", {
-      expression,
-      awaitPromise: true,
-      returnByValue: true,
-    });
-    if (result.exceptionDetails) {
-      throw new Error(result.exceptionDetails.text || "Browser evaluation failed");
-    }
-    return result.result.value;
-  }
-
-  close() {
-    this.ws.close();
-  }
-}
-
 function fixtureHtml() {
   // Minimal admin shell + loader using the same CSS class contracts.
-  // Loads production CSS from the running next server when BASE is provided;
-  // otherwise inlines the critical layout rules under test.
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -205,109 +130,64 @@ function measureExpression() {
   })()`;
 }
 
-async function main() {
-  const dir = await mkdtemp(join(tmpdir(), "mianx-loader-geo-"));
-  const htmlPath = join(dir, "fixture.html");
-  await writeFile(htmlPath, fixtureHtml(), "utf8");
+await runVerifier("admin-loader-geometry", async (harness) => {
+  const { url: fixtureUrl } = await harness.serveFixture(fixtureHtml());
+  const { client, port } = await harness.launchChrome();
+  console.log(`[admin-loader-geometry] app=${harness.appPort} cdp=${port}`);
+  const page = await client.newPage("about:blank");
 
-  const server = createServer((req, res) => {
-    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    res.end(readFileSync(htmlPath));
-  });
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const { port } = server.address();
-  const fixtureUrl = `http://127.0.0.1:${port}/`;
-
-  const chrome = spawn(
-    CHROME,
-    [
-      `--remote-debugging-port=${PORT}`,
-      "--headless=new",
-      "--disable-gpu",
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--user-data-dir=" + join(dir, "chrome-profile"),
-      "about:blank",
-    ],
-    { stdio: "ignore" }
-  );
-
-  let cdp;
   const results = [];
-  try {
-    await waitForJson(`http://127.0.0.1:${PORT}/json/version`);
-    const targetResponse = await fetch(
-      `http://127.0.0.1:${PORT}/json/new?${encodeURIComponent(fixtureUrl)}`,
-      { method: "PUT" }
-    );
-    const target = await targetResponse.json();
-    cdp = new Cdp(target.webSocketDebuggerUrl);
-    await cdp.connect();
-    await cdp.send("Page.enable");
-    await cdp.send("Runtime.enable");
-
-    for (const [w, h] of VIEWPORTS) {
-      await cdp.send("Emulation.setDeviceMetricsOverride", {
-        width: w,
-        height: h,
-        deviceScaleFactor: 1,
-        mobile: w <= 768,
-      });
-      await cdp.send("Page.navigate", { url: fixtureUrl });
-      await sleep(400);
-      const geo = await cdp.evaluate(measureExpression());
-      const pass =
-        geo.ok &&
-        geo.dx <= TOLERANCE_PX &&
-        geo.dy <= TOLERANCE_PX &&
-        !geo.loaderAboveHeader &&
-        !(w > 900 && geo.loaderInSidebar) &&
-        geo.scrollWidth <= geo.clientWidth + 1;
-      results.push({ w, h, pass, ...geo });
-      console.log(
-        `${w}x${h}: ${pass ? "PASS" : "FAIL"} dx=${Number(geo.dx).toFixed(1)} dy=${Number(geo.dy).toFixed(1)} regionH=${Number(geo.region?.height).toFixed(0)}`
-      );
-    }
-
-    // Interaction pending-paint check at desktop.
-    await cdp.send("Emulation.setDeviceMetricsOverride", {
-      width: 1440,
-      height: 900,
+  for (const [w, h] of VIEWPORTS) {
+    harness.assertionLabel = `admin loader centring @ ${w}x${h}`;
+    await page.send("Emulation.setDeviceMetricsOverride", {
+      width: w,
+      height: h,
       deviceScaleFactor: 1,
-      mobile: false,
+      mobile: w <= 768,
     });
-    await cdp.send("Page.navigate", { url: fixtureUrl });
-    await sleep(400);
-    const paintMs = await cdp.evaluate(`(async () => {
-      const btn = document.querySelector('[data-testid="admin-refresh"]');
-      btn.click();
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      return window.__getPendingPaintMs();
-    })()`);
-    console.log(`pending-paint-ms: ${paintMs}`);
-    if (paintMs == null || paintMs > 100) {
-      console.error(`FAIL: pending paint ${paintMs}ms exceeds 100ms target`);
-      process.exitCode = 1;
-    } else {
-      console.log("PASS: pending paint ≤100ms");
-    }
-
-    const failed = results.filter((r) => !r.pass);
-    if (failed.length) {
-      console.error(`FAIL: ${failed.length} viewport(s) outside ±${TOLERANCE_PX}px`);
-      process.exitCode = 1;
-    } else {
-      console.log(`PASS: all ${results.length} viewports within ±${TOLERANCE_PX}px`);
-    }
-  } finally {
-    cdp?.close();
-    chrome.kill("SIGKILL");
-    server.close();
-    await rm(dir, { recursive: true, force: true });
+    await page.navigate(fixtureUrl);
+    const geo = await page.evaluate(measureExpression());
+    const pass =
+      geo.ok &&
+      geo.dx <= TOLERANCE_PX &&
+      geo.dy <= TOLERANCE_PX &&
+      !geo.loaderAboveHeader &&
+      !(w > 900 && geo.loaderInSidebar) &&
+      geo.scrollWidth <= geo.clientWidth + 1;
+    results.push({ w, h, pass, ...geo });
+    console.log(
+      `${w}x${h}: ${pass ? "PASS" : "FAIL"} dx=${Number(geo.dx).toFixed(1)} dy=${Number(geo.dy).toFixed(1)} regionH=${Number(geo.region?.height).toFixed(0)}`
+    );
   }
-}
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
+  // Interaction pending-paint check at desktop.
+  harness.assertionLabel = "refresh pending-paint @ 1440x900";
+  await page.send("Emulation.setDeviceMetricsOverride", {
+    width: 1440,
+    height: 900,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
+  await page.navigate(fixtureUrl);
+  const paintMs = await page.evaluate(`(async () => {
+    const btn = document.querySelector('[data-testid="admin-refresh"]');
+    btn.click();
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return window.__getPendingPaintMs();
+  })()`);
+  console.log(`pending-paint-ms: ${paintMs}`);
+  if (paintMs == null || paintMs > 100) {
+    console.error(`FAIL: pending paint ${paintMs}ms exceeds 100ms target`);
+    process.exitCode = 1;
+  } else {
+    console.log("PASS: pending paint ≤100ms");
+  }
+
+  const failed = results.filter((r) => !r.pass);
+  if (failed.length) {
+    console.error(`FAIL: ${failed.length} viewport(s) outside ±${TOLERANCE_PX}px`);
+    process.exitCode = 1;
+  } else {
+    console.log(`PASS: all ${results.length} viewports within ±${TOLERANCE_PX}px`);
+  }
 });

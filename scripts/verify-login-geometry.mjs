@@ -2,7 +2,6 @@
 /**
  * Real-browser geometry contract for the centered premium admin login.
  *
- * Uses Chrome CDP (same pattern as scripts/verify-admin-loader-geometry.mjs).
  * Fixture replicates the login.css centering contract (100dvh flex centre,
  * card width min(100%, 420px), safe-area padding) so the check runs without a
  * server. Asserts, at every target viewport:
@@ -17,20 +16,14 @@
  *                                                     # real /admin/login page
  * When BASE is set it navigates the real login route, also asserts the approved
  * MX asset is present and reports any console errors.
- * Env: CHROME_PATH, CHROME_DEBUG_PORT (default 9335), BASE
+ * Env: CHROME_PATH, BASE
+ *
+ * Ports are allocated dynamically by scripts/lib/browser-harness.mjs — there is
+ * no fixed remote-debugging or fixture port to collide with.
  */
 
-import { spawn } from "node:child_process";
-import { writeFile, mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { createServer } from "node:http";
-import { readFileSync } from "node:fs";
+import { runVerifier, waitFor } from "./lib/browser-harness.mjs";
 
-const CHROME =
-  process.env.CHROME_PATH ||
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const PORT = Number(process.env.CHROME_DEBUG_PORT || 9335);
 const TOLERANCE_PX = 8;
 const VIEWPORTS = [
   [1440, 900],
@@ -41,73 +34,6 @@ const VIEWPORTS = [
   [390, 844],
   [360, 800],
 ];
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function waitForJson(url, attempts = 80) {
-  let lastError;
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) return response.json();
-    } catch (error) {
-      lastError = error;
-    }
-    await sleep(100);
-  }
-  throw lastError || new Error(`Timed out waiting for ${url}`);
-}
-
-class Cdp {
-  constructor(url) {
-    this.ws = new WebSocket(url);
-    this.id = 0;
-    this.pending = new Map();
-    this.consoleErrors = [];
-    this.ws.addEventListener("message", (event) => {
-      const message = JSON.parse(event.data);
-      if (message.method === "Runtime.consoleAPICalled" && message.params.type === "error") {
-        this.consoleErrors.push(
-          (message.params.args || []).map((a) => a.value || a.description).join(" ")
-        );
-      }
-      if (message.method === "Runtime.exceptionThrown") {
-        const d = message.params.exceptionDetails;
-        this.consoleErrors.push("EXC: " + (d?.exception?.description || d?.text));
-      }
-      if (!message.id) return;
-      const pending = this.pending.get(message.id);
-      if (!pending) return;
-      this.pending.delete(message.id);
-      if (message.error) pending.reject(new Error(message.error.message));
-      else pending.resolve(message.result);
-    });
-  }
-  async connect() {
-    await new Promise((resolve, reject) => {
-      this.ws.addEventListener("open", resolve, { once: true });
-      this.ws.addEventListener("error", reject, { once: true });
-    });
-  }
-  send(method, params = {}) {
-    const id = ++this.id;
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      this.ws.send(JSON.stringify({ id, method, params }));
-    });
-  }
-  async evaluate(expression) {
-    const { result } = await this.send("Runtime.evaluate", {
-      expression,
-      returnByValue: true,
-      awaitPromise: true,
-    });
-    return result.value;
-  }
-  close() {
-    this.ws.close();
-  }
-}
 
 function fixtureHtml() {
   // Mirrors the login.css centering contract under test.
@@ -161,109 +87,74 @@ function measureExpression() {
   })()`;
 }
 
-async function main() {
+await runVerifier("login-geometry", async (harness) => {
   const BASE = process.env.BASE || "";
-  const dir = await mkdtemp(join(tmpdir(), "mianx-login-geo-"));
-  const htmlPath = join(dir, "fixture.html");
-  await writeFile(htmlPath, fixtureHtml(), "utf8");
-
-  let server = null;
   let targetUrl;
   if (BASE) {
     targetUrl = `${BASE.replace(/\/$/, "")}/admin/login`;
     console.log(`Mode: real page  →  ${targetUrl}`);
   } else {
-    server = createServer((req, res) => {
-      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(readFileSync(htmlPath));
-    });
-    await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-    const { port } = server.address();
-    targetUrl = `http://127.0.0.1:${port}/`;
+    ({ url: targetUrl } = await harness.serveFixture(fixtureHtml()));
     console.log("Mode: layout-contract fixture");
   }
-  const fixtureUrl = targetUrl;
 
-  const chrome = spawn(
-    CHROME,
-    [
-      `--remote-debugging-port=${PORT}`,
-      "--headless=new",
-      "--disable-gpu",
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--user-data-dir=" + join(dir, "chrome-profile"),
-      "about:blank",
-    ],
-    { stdio: "ignore" }
-  );
+  const { client, port } = await harness.launchChrome();
+  console.log(`[login-geometry] app=${harness.appPort ?? "external"} cdp=${port}`);
+  const page = await client.newPage("about:blank");
 
-  let cdp;
   const results = [];
-  try {
-    await waitForJson(`http://127.0.0.1:${PORT}/json/version`);
-    const targetResponse = await fetch(
-      `http://127.0.0.1:${PORT}/json/new?${encodeURIComponent(fixtureUrl)}`,
-      { method: "PUT" }
-    );
-    const target = await targetResponse.json();
-    cdp = new Cdp(target.webSocketDebuggerUrl);
-    await cdp.connect();
-    await cdp.send("Page.enable");
-    await cdp.send("Runtime.enable");
+  for (const [w, h] of VIEWPORTS) {
+    harness.assertionLabel = `login card centring @ ${w}x${h}`;
+    await page.send("Emulation.setDeviceMetricsOverride", {
+      width: w,
+      height: h,
+      deviceScaleFactor: 1,
+      mobile: w <= 768,
+    });
+    await page.navigate(targetUrl);
 
-    for (const [w, h] of VIEWPORTS) {
-      await cdp.send("Emulation.setDeviceMetricsOverride", {
-        width: w,
-        height: h,
-        deviceScaleFactor: 1,
-        mobile: w <= 768,
-      });
-      await cdp.send("Page.navigate", { url: fixtureUrl });
-      await sleep(BASE ? 800 : 350);
-      let geo = await cdp.evaluate(measureExpression());
-      // Real client-rendered page may hydrate slightly after load — poll briefly.
-      for (let i = 0; i < 20 && (!geo || !geo.ok); i += 1) {
-        await sleep(200);
-        geo = await cdp.evaluate(measureExpression());
-      }
-      geo = geo || { ok: false };
-      const noOverflow = geo.scrollWidth <= geo.clientWidth + 1;
-      const horizontallyCentred = geo.dx <= TOLERANCE_PX;
-      // Vertically centred when it fits; otherwise must be top-aligned + scrollable.
-      const verticallyOk = geo.fits ? geo.dy <= TOLERANCE_PX : geo.topAligned;
-      // On the real page the approved MX asset must be present.
-      const logoOk = BASE ? geo.hasLogo === true : true;
-      const pass =
-        geo.ok && noOverflow && horizontallyCentred && verticallyOk && logoOk;
-      results.push({ w, h, pass, ...geo, noOverflow });
-      console.log(
-        `${w}x${h}: ${pass ? "PASS" : "FAIL"} dx=${Number(geo.dx).toFixed(1)} dy=${Number(geo.dy).toFixed(1)} cardH=${Number(geo.card?.height).toFixed(0)} fits=${geo.fits} overflowOk=${noOverflow}${BASE ? ` logo=${geo.hasLogo}` : ""}`
+    // The real route is client-rendered; give hydration a bounded window to
+    // produce the card (and the approved MX asset) before measuring.
+    let geo = null;
+    try {
+      geo = await waitFor(
+        async () => {
+          const measured = await page.evaluate(measureExpression());
+          if (!measured?.ok) return null;
+          if (BASE && !measured.hasLogo) return null;
+          return measured;
+        },
+        { timeoutMs: 4000, intervalMs: 200, label: `login card @ ${w}x${h}` }
       );
+    } catch {
+      geo = (await page.evaluate(measureExpression())) || { ok: false };
     }
 
-    if (BASE) {
-      const errs = cdp.consoleErrors;
-      console.log(`consoleErrors: ${errs.length ? JSON.stringify(errs) : "none"}`);
-      if (errs.length) process.exitCode = 1;
-    }
-
-    const failed = results.filter((r) => !r.pass);
-    if (failed.length) {
-      console.error(`FAIL: ${failed.length} viewport(s) failed the login contract`);
-      process.exitCode = 1;
-    } else {
-      console.log(`PASS: login centred + no overflow at all ${results.length} viewports`);
-    }
-  } finally {
-    cdp?.close();
-    chrome.kill("SIGKILL");
-    server?.close();
-    await rm(dir, { recursive: true, force: true });
+    const noOverflow = geo.scrollWidth <= geo.clientWidth + 1;
+    const horizontallyCentred = geo.dx <= TOLERANCE_PX;
+    // Vertically centred when it fits; otherwise must be top-aligned + scrollable.
+    const verticallyOk = geo.fits ? geo.dy <= TOLERANCE_PX : geo.topAligned;
+    // On the real page the approved MX asset must be present.
+    const logoOk = BASE ? geo.hasLogo === true : true;
+    const pass =
+      geo.ok && noOverflow && horizontallyCentred && verticallyOk && logoOk;
+    results.push({ w, h, pass, ...geo, noOverflow });
+    console.log(
+      `${w}x${h}: ${pass ? "PASS" : "FAIL"} dx=${Number(geo.dx).toFixed(1)} dy=${Number(geo.dy).toFixed(1)} cardH=${Number(geo.card?.height).toFixed(0)} fits=${geo.fits} overflowOk=${noOverflow}${BASE ? ` logo=${geo.hasLogo}` : ""}`
+    );
   }
-}
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
+  if (BASE) {
+    const errs = page.consoleErrors;
+    console.log(`consoleErrors: ${errs.length ? JSON.stringify(errs) : "none"}`);
+    if (errs.length) process.exitCode = 1;
+  }
+
+  const failed = results.filter((r) => !r.pass);
+  if (failed.length) {
+    console.error(`FAIL: ${failed.length} viewport(s) failed the login contract`);
+    process.exitCode = 1;
+  } else {
+    console.log(`PASS: login centred + no overflow at all ${results.length} viewports`);
+  }
 });

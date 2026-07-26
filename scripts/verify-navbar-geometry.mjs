@@ -1,84 +1,28 @@
 #!/usr/bin/env node
+/**
+ * Real-browser navbar geometry contract for the public landing page.
+ *
+ * Usage:
+ *   node scripts/verify-navbar-geometry.mjs                 # starts its own
+ *                                                           # `next start` on a
+ *                                                           # free port
+ *   node scripts/verify-navbar-geometry.mjs http://host:port  # existing server
+ *
+ * Ports are allocated dynamically by scripts/lib/browser-harness.mjs — there is
+ * no fixed remote-debugging port, and the application server never shares a
+ * port with the CDP endpoint.
+ */
 
-import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { runVerifier, waitFor } from "./lib/browser-harness.mjs";
 
-const BASE_URL = process.argv[2] || "http://127.0.0.1:3000";
-const CHROME =
-  process.env.CHROME_PATH ||
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const PORT = Number(process.env.CHROME_DEBUG_PORT || 9333);
+const EXPLICIT_BASE_URL = process.argv[2] || process.env.BASE_URL || "";
 const OUTPUT_DIR = process.env.NAVBAR_ARTIFACT_DIR || "/tmp/mianx-navbar-geometry";
 const VIEWPORTS = [1440, 1280, 1126, 1024, 768, 390];
 const DESKTOP_MIN_WIDTH = 901;
 const SECTIONS = ["services", "industries", "partners", "testimonials", "contact"];
 const TOLERANCE = 0.5;
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function waitForJson(url, attempts = 80) {
-  let lastError;
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) return response.json();
-    } catch (error) {
-      lastError = error;
-    }
-    await sleep(100);
-  }
-  throw lastError || new Error(`Timed out waiting for ${url}`);
-}
-
-class Cdp {
-  constructor(url) {
-    this.ws = new WebSocket(url);
-    this.id = 0;
-    this.pending = new Map();
-  }
-
-  async connect() {
-    await new Promise((resolve, reject) => {
-      this.ws.addEventListener("open", resolve, { once: true });
-      this.ws.addEventListener("error", reject, { once: true });
-    });
-    this.ws.addEventListener("message", (event) => {
-      const message = JSON.parse(event.data);
-      if (!message.id) return;
-      const pending = this.pending.get(message.id);
-      if (!pending) return;
-      this.pending.delete(message.id);
-      if (message.error) pending.reject(new Error(message.error.message));
-      else pending.resolve(message.result);
-    });
-  }
-
-  send(method, params = {}) {
-    const id = ++this.id;
-    return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
-      this.ws.send(JSON.stringify({ id, method, params }));
-    });
-  }
-
-  async evaluate(expression) {
-    const result = await this.send("Runtime.evaluate", {
-      expression,
-      awaitPromise: true,
-      returnByValue: true,
-    });
-    if (result.exceptionDetails) {
-      throw new Error(result.exceptionDetails.text || "Browser evaluation failed");
-    }
-    return result.result.value;
-  }
-
-  close() {
-    this.ws.close();
-  }
-}
 
 function geometryExpression() {
   return `(() => {
@@ -123,6 +67,40 @@ function geometryExpression() {
         : true,
     };
   })()`;
+}
+
+/**
+ * Scroll-spy is IntersectionObserver-driven, so instead of sleeping we poll
+ * until two consecutive samples agree (and, when given, until the expected tab
+ * is active). Bounded — a state that never settles still fails.
+ */
+async function readSettledGeometry(page, { expectActive, label, timeoutMs = 5000 } = {}) {
+  let previous = null;
+  const signature = (state) =>
+    JSON.stringify([
+      state.active,
+      state.track?.left,
+      state.track?.width,
+      state.pill?.left,
+      state.pill?.width,
+      state.scrollY,
+    ]);
+  return waitFor(
+    async () => {
+      const current = await page.evaluate(geometryExpression());
+      const stable = previous && signature(previous) === signature(current);
+      previous = current;
+      if (!stable) return null;
+      if (expectActive !== undefined && current.active !== expectActive) return null;
+      return current;
+    },
+    { timeoutMs, intervalMs: 100, label: label || "settled navbar geometry" }
+  );
+}
+
+/** Last-resort read used to build the original error message on timeout. */
+async function readGeometry(page) {
+  return page.evaluate(geometryExpression());
 }
 
 function assertDesktopGeometry(width, baseline, state) {
@@ -174,147 +152,147 @@ function assertDesktopGeometry(width, baseline, state) {
   }
 }
 
-async function screenshot(cdp, filename) {
-  const result = await cdp.send("Page.captureScreenshot", {
+async function screenshot(page, filename) {
+  const result = await page.send("Page.captureScreenshot", {
     format: "png",
     fromSurface: true,
   });
   await writeFile(join(OUTPUT_DIR, filename), Buffer.from(result.data, "base64"));
 }
 
-async function main() {
+await runVerifier("navbar-geometry", async (harness) => {
   await mkdir(OUTPUT_DIR, { recursive: true });
-  const profile = await mkdtemp(join(tmpdir(), "mianx-navbar-chrome-"));
-  const chrome = spawn(
-    CHROME,
-    [
-      "--headless=new",
-      "--disable-gpu",
-      "--disable-background-networking",
-      "--no-first-run",
-      "--no-default-browser-check",
-      `--remote-debugging-port=${PORT}`,
-      `--user-data-dir=${profile}`,
-      "about:blank",
-    ],
-    { stdio: "ignore" }
-  );
+  harness.artifactDir = OUTPUT_DIR;
 
-  let cdp;
-  try {
-    await waitForJson(`http://127.0.0.1:${PORT}/json/version`);
-    const targetResponse = await fetch(
-      `http://127.0.0.1:${PORT}/json/new?${encodeURIComponent(BASE_URL)}`,
-      { method: "PUT" }
-    );
-    const target = await targetResponse.json();
-    cdp = new Cdp(target.webSocketDebuggerUrl);
-    await cdp.connect();
-    await cdp.send("Page.enable");
-    await cdp.send("Runtime.enable");
+  let baseUrl = EXPLICIT_BASE_URL.replace(/\/$/, "");
+  if (baseUrl) {
+    console.log(`Mode: existing server → ${baseUrl}`);
+  } else {
+    harness.failedCommand = "next start (dynamic port)";
+    ({ baseUrl } = await harness.startNextServer());
+    console.log(`Mode: own production server → ${baseUrl}`);
+  }
+  harness.failedCommand = null;
 
-    const report = { baseUrl: BASE_URL, tolerance: TOLERANCE, viewports: {} };
+  const { client, port } = await harness.launchChrome();
+  console.log(`[navbar-geometry] app=${harness.appPort ?? "external"} cdp=${port}`);
+  const page = await client.newPage("about:blank");
 
-    for (const width of VIEWPORTS) {
-      await cdp.send("Emulation.setDeviceMetricsOverride", {
-        width,
-        height: 900,
-        deviceScaleFactor: 1,
-        mobile: false,
-      });
-      await cdp.send("Page.navigate", { url: `${BASE_URL}/` });
-      await sleep(1000);
-      await cdp.evaluate("document.fonts.ready.then(() => true)");
-      await sleep(100);
+  const report = { baseUrl, tolerance: TOLERANCE, viewports: {} };
 
-      const top = await cdp.evaluate(geometryExpression());
-      const states = [{ name: "top", ...top }];
+  for (const width of VIEWPORTS) {
+    harness.assertionLabel = `navbar @ ${width}px top`;
+    await page.send("Emulation.setDeviceMetricsOverride", {
+      width,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
+    await page.navigate(`${baseUrl}/`);
 
-      if (width >= DESKTOP_MIN_WIDTH) {
-        if (top.active) {
-          throw new Error(`${width}px expected no active tab at page top, got ${top.active}`);
-        }
-        if (width === 1440) await screenshot(cdp, "navbar-1440-top.png");
-        if (width === 1126) await screenshot(cdp, "navbar-1126-top.png");
+    const top = await readSettledGeometry(page, { label: `navbar @ ${width}px top` });
+    const states = [{ name: "top", ...top }];
 
-        for (const section of SECTIONS) {
-          await cdp.evaluate(`(() => {
-            document.getElementById(${JSON.stringify(section)}).scrollIntoView({
-              block: "center",
-              behavior: "instant"
-            });
-          })()`);
-          await sleep(650);
-          const measured = await cdp.evaluate(geometryExpression());
-          if (measured.active !== section) {
-            throw new Error(`${width}px expected ${section} active, got ${measured.active || "none"}`);
-          }
-          assertDesktopGeometry(width, top, measured);
-          states.push({ name: section, ...measured });
-          if (width === 1440 && section === "services") {
-            await screenshot(cdp, "navbar-1440-scrolled.png");
-          }
-          if (width === 1126 && section === "services") {
-            await screenshot(cdp, "navbar-1126-scrolled.png");
-          }
-        }
+    if (width >= DESKTOP_MIN_WIDTH) {
+      if (top.active) {
+        throw new Error(`${width}px expected no active tab at page top, got ${top.active}`);
+      }
+      if (width === 1440) await screenshot(page, "navbar-1440-top.png");
+      if (width === 1126) await screenshot(page, "navbar-1126-top.png");
 
-        await cdp.send("Page.navigate", { url: `${BASE_URL}/#contact` });
-        await sleep(1000);
-        await cdp.evaluate("document.fonts.ready.then(() => true)");
-        const deepAnchor = await cdp.evaluate(geometryExpression());
-        if (deepAnchor.active !== "contact") {
-          throw new Error(`${width}px deep anchor expected contact active, got ${deepAnchor.active || "none"}`);
-        }
-        assertDesktopGeometry(width, top, deepAnchor);
-        states.push({ name: "deep-contact", ...deepAnchor });
-
-        await cdp.evaluate(`(() => {
-          document.getElementById("contact").scrollIntoView({ block: "center", behavior: "instant" });
-          document.getElementById("services").scrollIntoView({ block: "center", behavior: "instant" });
+      for (const section of SECTIONS) {
+        harness.assertionLabel = `navbar @ ${width}px section ${section}`;
+        await page.evaluate(`(() => {
+          document.getElementById(${JSON.stringify(section)}).scrollIntoView({
+            block: "center",
+            behavior: "instant"
+          });
         })()`);
-        await sleep(650);
-        const quickScroll = await cdp.evaluate(geometryExpression());
-        if (quickScroll.active !== "services") {
-          throw new Error(`${width}px quick scroll expected services active, got ${quickScroll.active || "none"}`);
+        let measured;
+        try {
+          measured = await readSettledGeometry(page, {
+            expectActive: section,
+            label: `navbar @ ${width}px section ${section}`,
+          });
+        } catch {
+          const actual = await readGeometry(page);
+          throw new Error(
+            `${width}px expected ${section} active, got ${actual.active || "none"}`
+          );
         }
-        assertDesktopGeometry(width, top, quickScroll);
-        states.push({ name: "quick-services", ...quickScroll });
-
-        await cdp.evaluate("window.scrollTo({ top: 0, behavior: 'instant' })");
-        await sleep(650);
-        const returned = await cdp.evaluate(geometryExpression());
-        assertDesktopGeometry(width, top, returned);
-        states.push({ name: "returned-top", ...returned });
-      } else {
-        if (top.trackDisplay !== "none") throw new Error(`${width}px desktop track should be hidden`);
-        if (top.mobileButtonDisplay === "none") throw new Error(`${width}px mobile menu button is hidden`);
+        assertDesktopGeometry(width, top, measured);
+        states.push({ name: section, ...measured });
+        if (width === 1440 && section === "services") {
+          await screenshot(page, "navbar-1440-scrolled.png");
+        }
+        if (width === 1126 && section === "services") {
+          await screenshot(page, "navbar-1126-scrolled.png");
+        }
       }
 
-      report.viewports[width] = states;
-      const summary = states.map((state) => ({
-        state: state.name,
-        active: state.active,
-        left: state.track?.left,
-        right: state.track?.right,
-        width: state.track?.width,
-        height: state.track?.height,
-        centerX: state.track?.centerX,
-      }));
-      console.log(`\n${width}px`);
-      console.table(summary);
+      harness.assertionLabel = `navbar @ ${width}px deep anchor #contact`;
+      await page.navigate(`${baseUrl}/#contact`);
+      let deepAnchor;
+      try {
+        deepAnchor = await readSettledGeometry(page, {
+          expectActive: "contact",
+          label: `navbar @ ${width}px deep anchor`,
+        });
+      } catch {
+        const actual = await readGeometry(page);
+        throw new Error(
+          `${width}px deep anchor expected contact active, got ${actual.active || "none"}`
+        );
+      }
+      assertDesktopGeometry(width, top, deepAnchor);
+      states.push({ name: "deep-contact", ...deepAnchor });
+
+      harness.assertionLabel = `navbar @ ${width}px quick scroll`;
+      await page.evaluate(`(() => {
+        document.getElementById("contact").scrollIntoView({ block: "center", behavior: "instant" });
+        document.getElementById("services").scrollIntoView({ block: "center", behavior: "instant" });
+      })()`);
+      let quickScroll;
+      try {
+        quickScroll = await readSettledGeometry(page, {
+          expectActive: "services",
+          label: `navbar @ ${width}px quick scroll`,
+        });
+      } catch {
+        const actual = await readGeometry(page);
+        throw new Error(
+          `${width}px quick scroll expected services active, got ${actual.active || "none"}`
+        );
+      }
+      assertDesktopGeometry(width, top, quickScroll);
+      states.push({ name: "quick-services", ...quickScroll });
+
+      harness.assertionLabel = `navbar @ ${width}px returned to top`;
+      await page.evaluate("window.scrollTo({ top: 0, behavior: 'instant' })");
+      const returned = await readSettledGeometry(page, {
+        label: `navbar @ ${width}px returned to top`,
+      });
+      assertDesktopGeometry(width, top, returned);
+      states.push({ name: "returned-top", ...returned });
+    } else {
+      if (top.trackDisplay !== "none") throw new Error(`${width}px desktop track should be hidden`);
+      if (top.mobileButtonDisplay === "none") throw new Error(`${width}px mobile menu button is hidden`);
     }
 
-    await writeFile(join(OUTPUT_DIR, "geometry-report.json"), JSON.stringify(report, null, 2));
-    console.log(`\nNavbar geometry verified. Artifacts: ${OUTPUT_DIR}`);
-  } finally {
-    cdp?.close();
-    chrome.kill("SIGTERM");
-    await rm(profile, { recursive: true, force: true });
+    report.viewports[width] = states;
+    const summary = states.map((state) => ({
+      state: state.name,
+      active: state.active,
+      left: state.track?.left,
+      right: state.track?.right,
+      width: state.track?.width,
+      height: state.track?.height,
+      centerX: state.track?.centerX,
+    }));
+    console.log(`\n${width}px`);
+    console.table(summary);
   }
-}
 
-main().catch((error) => {
-  console.error(error.stack || error.message);
-  process.exitCode = 1;
+  await writeFile(join(OUTPUT_DIR, "geometry-report.json"), JSON.stringify(report, null, 2));
+  console.log(`\nNavbar geometry verified. Artifacts: ${OUTPUT_DIR}`);
 });

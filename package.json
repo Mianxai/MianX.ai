@@ -12,7 +12,8 @@
     "lint": "next lint",
     "test": "vitest run",
     "typecheck": "tsc -p jsconfig.json --noEmit",
-    "verify:navbar": "node scripts/verify-navbar-geometry.mjs"
+    "verify:navbar": "node scripts/verify-navbar-geometry.mjs",
+    "verify:browser": "node scripts/verify-browser-harness.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
