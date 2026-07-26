@@ -776,6 +776,39 @@ function TaskRow({ task, instances, call, onChanged }) {
   async function run() {
     setBusy(true);
     setMsg("");
+    const selected = instances.find((i) => i.id === agentId);
+    const agentSlug = selected?.agent_definitions?.slug;
+    if (agentSlug && task.project_id) {
+      // Preferred production path: durable async enqueue.
+      const enqueueRes = await call("/api/core/jobs", {
+        method: "POST",
+        body: JSON.stringify({
+          project_id: task.project_id,
+          task_id: task.id,
+          agent_slug: agentSlug,
+          input: task.input || {},
+          idempotency_key: `task-enqueue:${task.id}:${agentSlug}`,
+        }),
+      });
+      if (enqueueRes.ok) {
+        setBusy(false);
+        setMsg(
+          enqueueRes.data?.created === false
+            ? "Already queued (idempotent). Open the Queue tab."
+            : "Queued for async execution. Open the Queue tab to monitor."
+        );
+        onChanged?.();
+        return;
+      }
+      // If enqueue failed because agent is draft/disabled, fall through to sync diagnostic.
+      if (enqueueRes.status !== 400) {
+        setBusy(false);
+        setMsg(errorMessage(enqueueRes.data, "Could not enqueue job."));
+        onChanged?.();
+        return;
+      }
+    }
+    // Compatibility / diagnostic path: synchronous provider call in-request.
     const res = await call(`/api/core/tasks/${task.id}/run`, {
       method: "POST",
       body: JSON.stringify(agentId ? { agent_instance_id: agentId } : {}),
@@ -788,7 +821,7 @@ function TaskRow({ task, instances, call, onChanged }) {
     } else if (!res.ok) {
       setMsg(errorMessage(res.data, "Run failed."));
     } else {
-      setMsg("Run completed.");
+      setMsg("Synchronous diagnostic run completed.");
     }
     onChanged?.();
   }
@@ -829,7 +862,7 @@ function TaskRow({ task, instances, call, onChanged }) {
           disabled={!runnable || busy || instances.length === 0}
           onClick={run}
         >
-          {busy ? "Running…" : "Run"}
+          {busy ? "Queuing…" : "Enqueue"}
         </button>
       </div>
     </li>

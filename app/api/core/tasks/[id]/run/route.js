@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling } from "@/lib/core/errors";
-import { requireAdmin, actorFromUser } from "@/lib/core/auth";
+import { requireCapability, actorFromUser, CAPABILITIES } from "@/lib/core/auth";
 import { parseJsonBody, assertUuid, clip } from "@/lib/core/validate";
 import { rateLimit } from "@/lib/core/ratelimit";
 import { executeTaskRun } from "@/lib/core/runtime";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 // Validates, gates on approval, then executes a run — calling the provider only
 // when configured. Returns 202 when a human approval is required.
 export const POST = withErrorHandling(async (req, { params }) => {
-  const user = await requireAdmin(req);
+  const { user } = await requireCapability(req, CAPABILITIES.MANAGE_TASKS);
   const actor = actorFromUser(user);
   const { id } = await params;
   assertUuid(id, "id");

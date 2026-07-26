@@ -24,8 +24,7 @@ export const GET = withErrorHandling(async (req) => {
   const site = safeHostname();
   const access = await getAdminAccessModelStatus();
   const analyticsConfigured = Boolean(
-    process.env.NEXT_PUBLIC_VERCEL_ANALYTICS ||
-      process.env.VERCEL === "1"
+    process.env.NEXT_PUBLIC_VERCEL_ANALYTICS || process.env.VERCEL === "1"
   );
 
   const founderActions = [];
@@ -48,19 +47,40 @@ export const GET = withErrorHandling(async (req) => {
     founderActions.push({
       label: "Apply admin_memberships migration",
       description:
-        "Apply supabase/migrations/20260725120000_admin_memberships.sql, then insert an active owner membership for the Founder auth user.",
+        "Apply supabase/migrations/20260725120000_admin_memberships.sql and 20260726120000_admin_membership_viewer_role.sql, then insert an active owner membership for the Founder auth user.",
     });
   } else if (access.activeMemberships === 0) {
     founderActions.push({
       label: "Bootstrap Founder admin membership",
       description:
-        "Insert one active row into admin_memberships for the Founder user_id/email. Until then, any authenticated session user remains authorized (compatibility mode).",
+        "Insert one active owner row into admin_memberships for the Founder user_id/email. Until then set MIANX_ADMIN_BOOTSTRAP=1 temporarily or admin APIs remain locked.",
+    });
+  }
+  if (access.bootstrapEnabled) {
+    founderActions.push({
+      label: "Disable admin bootstrap flag",
+      description:
+        "Remove MIANX_ADMIN_BOOTSTRAP after the Founder membership exists so authorization stays fail-closed.",
+    });
+  }
+  if (!runtime.internalWorkerConfigured) {
+    founderActions.push({
+      label: "Configure internal runtime worker secret",
+      description:
+        "Set INTERNAL_RUNTIME_SECRET (preferred) or CRON_SECRET (≥16 chars). Required before the tick endpoint will process jobs.",
     });
   }
   if (!site.configured) {
     founderActions.push({
       label: "Set public site URL",
       description: "Set NEXT_PUBLIC_SITE_URL for canonical links and SEO metadata.",
+    });
+  }
+  if (!runtime.rateLimit?.durable) {
+    founderActions.push({
+      label: "Configure durable rate-limit backend (recommended)",
+      description:
+        "In-memory limits protect a single warm instance only. Set RATE_LIMIT_DURABLE_URL when a Redis/Upstash backend is ready.",
     });
   }
 
@@ -76,8 +96,13 @@ export const GET = withErrorHandling(async (req) => {
       adminAccessModel: access.model,
       membershipTable: access.membershipTable,
       compatibilityMode: access.compatibilityMode,
+      bootstrapEnabled: access.bootstrapEnabled,
       leads: isSupabaseConfigured(),
-      rateLimitBackend: "in-memory",
+      rateLimitBackend: runtime.rateLimit?.backend || "in-memory",
+      rateLimitDurable: Boolean(runtime.rateLimit?.durable),
+      internalWorkerConfigured: runtime.internalWorkerConfigured,
+      cronSecretConfigured: runtime.cronSecretConfigured,
+      providerCircuitState: runtime.providerCircuit?.state || "closed",
       analyticsIntegration: analyticsConfigured,
       runtimeVersion: process.env.npm_package_version || "0.1.0",
     },

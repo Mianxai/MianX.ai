@@ -25,7 +25,10 @@ describe("GET /api/core/health", () => {
     expect(data.service).toBe("mianx-core");
     expect(data.config.supabase).toBe(false);
     expect(data.config.providers.anthropic).toBe(false);
+    // Operational count = active agents only; the catalog also carries the
+    // non-executable draft definitions.
     expect(data.agents).toBe(3);
+    expect(data.agentsCatalogTotal).toBeGreaterThan(data.agents);
     // Must never leak secret values (the response uses only boolean config
     // flags, never keys, URLs or role secrets).
     const serialized = JSON.stringify(data);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling, badRequest } from "@/lib/core/errors";
-import { requireAdmin, actorFromUser } from "@/lib/core/auth";
+import { requireAdmin, requireCapability, actorFromUser, CAPABILITIES } from "@/lib/core/auth";
 import { parseJsonBody, assertUuid, clip } from "@/lib/core/validate";
 import { rateLimit } from "@/lib/core/ratelimit";
 import * as repo from "@/lib/core/repo";
@@ -57,7 +57,7 @@ export const GET = withErrorHandling(async (req) => {
 // Enqueues one job. Idempotent per (project_id, idempotency_key); duplicate
 // enqueues replay the existing job with 200 instead of creating a copy.
 export const POST = withErrorHandling(async (req) => {
-  const user = await requireAdmin(req);
+  const { user } = await requireCapability(req, CAPABILITIES.MANAGE_JOBS);
   const actor = actorFromUser(user);
   rateLimit(`job-enqueue:${actor}`, { max: 30, windowMs: 60_000 });
 

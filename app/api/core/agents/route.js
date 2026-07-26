@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling } from "@/lib/core/errors";
-import { requireAdmin, actorFromUser } from "@/lib/core/auth";
+import { requireAdmin, requireCapability, actorFromUser, CAPABILITIES } from "@/lib/core/auth";
 import { parseJsonBody, assertUuid, clip } from "@/lib/core/validate";
 import { listAgentDefinitions } from "@/lib/core/agents";
 import { registerAgent } from "@/lib/core/runtime";
@@ -26,7 +26,7 @@ export const GET = withErrorHandling(async (req) => {
 // POST /api/core/agents  { project_id, slug, display_name? }
 // Registers a catalog agent into a project as an active instance.
 export const POST = withErrorHandling(async (req) => {
-  const user = await requireAdmin(req);
+  const { user } = await requireCapability(req, CAPABILITIES.MANAGE_AGENTS);
   const body = await parseJsonBody(req);
   const projectId = clip(body.project_id, 64);
   const slug = clip(body.slug, 100);

@@ -337,7 +337,7 @@ section { padding: 6rem 2rem; position: relative; }
 
 /* Services / Industries / Partners */
 .platform-section { background: var(--gradient-3); }
-.services-grid, .industries-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; max-width: 1200px; margin: 0 auto; }
+.services-grid, .industries-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1.5rem; max-width: 1200px; margin: 0 auto; }
 .service-card, .industry-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 2rem; transition: all 0.4s ease; position: relative; overflow: hidden; cursor: pointer; }
 .service-card::before, .industry-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--gradient-1); transform: scaleX(0); transition: transform 0.4s ease; }
 .service-card:hover, .industry-card:hover { border-color: var(--border-hover); transform: translateY(-6px); box-shadow: 0 25px 60px rgba(0,0,0,0.4); }
@@ -357,7 +357,7 @@ section { padding: 6rem 2rem; position: relative; }
 .industry-icon { width: 60px; height: 60px; background: var(--gradient-1); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; font-size: 1.5rem; transition: transform 0.3s ease; }
 .industry-card:hover .industry-icon { transform: scale(1.1); }
 
-.partners-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto; }
+.partners-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto; }
 .partner-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 2rem; transition: all 0.4s ease; position: relative; overflow: hidden; }
 .partner-card:hover { border-color: var(--border-hover); transform: translateY(-6px); box-shadow: 0 25px 60px rgba(0,0,0,0.4); }
 .partner-status { position: absolute; top: 1.5rem; right: 1.5rem; padding: 0.3rem 0.8rem; border-radius: 50px; font-size: 0.75rem; font-weight: 600; }
