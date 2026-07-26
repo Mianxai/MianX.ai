@@ -12,12 +12,13 @@ vi.mock("next/navigation", () => ({
 }));
 
 const signInWithPassword = vi.fn();
+const signOut = vi.fn(async () => ({ error: null }));
 let configured = true;
 
 vi.mock("@/lib/supabase", () => ({
   isSupabaseConfigured: () => configured,
   getSupabase: () => ({
-    auth: { signInWithPassword },
+    auth: { signInWithPassword, signOut },
   }),
 }));
 
@@ -28,6 +29,7 @@ describe("Admin login page", () => {
     push.mockClear();
     refresh.mockClear();
     signInWithPassword.mockReset();
+    signOut.mockClear();
     configured = true;
     document.cookie = "sb-access-token=; path=/; max-age=0";
   });
@@ -106,12 +108,60 @@ describe("Admin login page", () => {
     await waitFor(() =>
       expect(global.fetch).toHaveBeenCalledWith(
         "/api/admin/session",
-        expect.objectContaining({ method: "POST" })
+        expect.objectContaining({
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+        })
       )
     );
     // Token must not be written to document.cookie (HttpOnly is server-set).
     expect(document.cookie).not.toContain("tkn-123");
     await waitFor(() => expect(push).toHaveBeenCalledWith("/admin"));
+  });
+
+  it("does not redirect and clears client auth when session exchange fails", async () => {
+    const user = userEvent.setup();
+    signInWithPassword.mockResolvedValue({
+      data: { session: { access_token: "tkn-fail", expires_in: 3600 } },
+      error: null,
+    });
+    global.fetch = vi.fn(async () => ({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        error: { code: "FORBIDDEN", message: "Cross-origin mutation rejected." },
+        requestId: "req_test",
+      }),
+    }));
+    render(<AdminLoginPage />);
+    await user.type(screen.getByLabelText(/email address/i), "admin@mianx.ai");
+    await user.type(screen.getByLabelText(/^password$/i), "correct horse");
+    await user.click(screen.getByTestId("login-submit"));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/could not establish a secure admin session|cross-origin/i);
+    expect(push).not.toHaveBeenCalled();
+    expect(signOut).toHaveBeenCalled();
+  });
+
+  it("shows a generic error for invalid credentials and does not redirect", async () => {
+    const user = userEvent.setup();
+    signInWithPassword.mockResolvedValue({
+      data: {},
+      error: new Error("Invalid login credentials"),
+    });
+    render(<AdminLoginPage />);
+    await user.type(screen.getByLabelText(/email address/i), "admin@mianx.ai");
+    await user.type(screen.getByLabelText(/^password$/i), "wrong");
+    await user.click(screen.getByTestId("login-submit"));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/sign in failed\. check your credentials/i);
+    expect(alert).not.toHaveTextContent(/invalid login credentials/i);
+    // Button is re-enabled so the user can retry.
+    expect(screen.getByTestId("login-submit")).not.toBeDisabled();
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("submits with the Enter key", async () => {
@@ -128,24 +178,6 @@ describe("Admin login page", () => {
     await user.type(screen.getByLabelText(/email address/i), "admin@mianx.ai");
     await user.type(screen.getByLabelText(/^password$/i), "pw{Enter}");
     await waitFor(() => expect(signInWithPassword).toHaveBeenCalled());
-  });
-
-  it("keeps the form usable and shows the error on failed sign in", async () => {
-    const user = userEvent.setup();
-    signInWithPassword.mockResolvedValue({
-      data: {},
-      error: new Error("Invalid login credentials"),
-    });
-    render(<AdminLoginPage />);
-    await user.type(screen.getByLabelText(/email address/i), "admin@mianx.ai");
-    await user.type(screen.getByLabelText(/^password$/i), "wrong");
-    await user.click(screen.getByTestId("login-submit"));
-
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/invalid login credentials/i);
-    // Button is re-enabled so the user can retry.
-    expect(screen.getByTestId("login-submit")).not.toBeDisabled();
-    expect(push).not.toHaveBeenCalled();
   });
 
   it("does not delay navigation with an animation timer", async () => {

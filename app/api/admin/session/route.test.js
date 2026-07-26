@@ -67,6 +67,7 @@ describe("POST/DELETE /api/admin/session", () => {
     expect(setCookie).toMatch(/sb-access-token=/);
     expect(setCookie).toMatch(/httponly/);
     expect(setCookie).toMatch(/samesite=lax/);
+    expect(setCookie).toMatch(/path=\//);
     expect(setCookie).not.toMatch(/secure/); // not prod
   });
 
@@ -96,5 +97,8 @@ describe("POST/DELETE /api/admin/session", () => {
     const setCookie = cookieHeader(res);
     expect(setCookie).toMatch(/sb-access-token=/);
     expect(setCookie).toMatch(/max-age=0/);
+    expect(setCookie).toMatch(/httponly/);
+    expect(setCookie).toMatch(/samesite=lax/);
+    expect(setCookie).toMatch(/path=\//);
   });
 });
