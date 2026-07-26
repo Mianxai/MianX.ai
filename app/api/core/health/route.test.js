@@ -29,6 +29,10 @@ describe("GET /api/core/health", () => {
     // non-executable draft definitions.
     expect(data.agents).toBe(3);
     expect(data.agentsCatalogTotal).toBeGreaterThan(data.agents);
+    expect(data.config.scheduler.mode).toBe("manual");
+    expect(data.config.scheduler.automaticProcessing).toBe(false);
+    expect(data.config.scheduler.platformCronConfigured).toBe(false);
+    expect(data.config.rateLimit.durable).toBe(false);
     // Must never leak secret values (the response uses only boolean config
     // flags, never keys, URLs or role secrets).
     const serialized = JSON.stringify(data);
