@@ -88,7 +88,8 @@ planning — not 445 always-on processes. Executable agents remain in
 
 Wave-1 executive control plane (active runtime): `lib/core/executive/` —
 Executive Orchestrator + C-Suite advisors, `executive-readiness` workflow,
-delegation safety, Founder approval for protected launch decisions.
+delegation safety. Founder approval is action/capability-based (protected
+actions only) — advisory/read-only executive work completes without approval.
 
 ### Mianx Core runtime loop (local)
 
