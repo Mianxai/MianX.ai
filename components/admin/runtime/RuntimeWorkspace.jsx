@@ -7,6 +7,7 @@ import MianxLoader from "@/components/shared/MianxLoader";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import QueuePanel from "@/components/admin/runtime/QueuePanel";
 import { afterNextPaint } from "@/lib/after-paint";
+import { explainApproval } from "@/lib/core/approvals/explain";
 
 const TABS = [
   ["overview", "Overview"],
@@ -940,6 +941,7 @@ function ApprovalsPanel({ call, projectId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(null);
+  const [explanations, setExplanations] = useState({});
 
   const load = useCallback(async () => {
     if (!projectId) {
@@ -949,15 +951,19 @@ function ApprovalsPanel({ call, projectId }) {
     }
     setLoading(true);
     setError("");
-    // Approvals are listed via the runs of a project; use the dedicated route.
     const res = await call(`/api/core/approvals?project_id=${projectId}`);
     if (res.status === 404) {
-      // No list route configured; fall back to empty.
       setItems([]);
     } else if (!res.ok) {
       setError(errorMessage(res.data, "Failed to load approvals."));
     } else {
-      setItems(res.data?.approvals || []);
+      const approvals = res.data?.approvals || [];
+      setItems(approvals);
+      const next = {};
+      for (const a of approvals) {
+        next[a.id] = explainApproval(a);
+      }
+      setExplanations(next);
     }
     setLoading(false);
   }, [call, projectId]);
@@ -984,39 +990,63 @@ function ApprovalsPanel({ call, projectId }) {
 
   return (
     <ul className="runtime-list">
-      {items.map((a) => (
-        <li key={a.id} className="runtime-item">
-          <div>
-            <strong>{a.requested_capability}</strong>
-            <p className="runtime-muted">
-              <span className={`runtime-status status-${a.status}`}>{a.status}</span>
-              {a.reason ? ` · ${a.reason}` : ""}
-            </p>
-          </div>
-          {a.status === "pending" && (
-            <div className="runtime-item-actions">
-              {confirming === a.id ? (
-                <>
-                  <span className="runtime-muted">Confirm:</span>
-                  <button className="header-btn" onClick={() => decide(a.id, "approved")}>
-                    Approve
-                  </button>
-                  <button className="header-btn-ghost" onClick={() => decide(a.id, "rejected")}>
-                    Reject
-                  </button>
-                  <button className="header-btn-ghost" onClick={() => setConfirming(null)}>
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button className="header-btn" onClick={() => setConfirming(a.id)}>
-                  Decide
-                </button>
-              )}
+      {items.map((a) => {
+        const ex = explanations[a.id] || {};
+        return (
+          <li key={a.id} className="runtime-item runtime-approval-card">
+            <div>
+              {ex.highRisk ? (
+                <p className="runtime-risk-banner">{ex.riskLabel || "PROTECTED ACTION"}</p>
+              ) : null}
+              <strong>{ex.requestedAction || a.requested_capability}</strong>
+              <p className="runtime-muted">
+                <span className={`runtime-status status-${a.status}`}>{a.status}</span>
+                {ex.requestingAgent ? ` · agent ${ex.requestingAgent}` : ""}
+                {a.project_id ? ` · project ${String(a.project_id).slice(0, 8)}…` : ""}
+              </p>
+              <p className="runtime-muted">
+                <strong>Reason:</strong> {ex.reason || a.reason || "No reason recorded"}
+              </p>
+              {ex.affectedResource ? (
+                <p className="runtime-muted">
+                  <strong>Affected:</strong> {ex.affectedResource}
+                </p>
+              ) : null}
+              <p className="runtime-muted">
+                <strong>If approved:</strong> {ex.whatIfApproved}
+              </p>
+              <p className="runtime-muted">
+                <strong>If rejected:</strong> {ex.whatIfRejected}
+              </p>
             </div>
-          )}
-        </li>
-      ))}
+            {a.status === "pending" && (
+              <div className="runtime-item-actions">
+                {confirming === a.id ? (
+                  <>
+                    <span className="runtime-muted">Confirm decision:</span>
+                    <button className="header-btn" onClick={() => decide(a.id, "approved")}>
+                      Approve
+                    </button>
+                    <button
+                      className="header-btn-ghost"
+                      onClick={() => decide(a.id, "rejected")}
+                    >
+                      Reject
+                    </button>
+                    <button className="header-btn-ghost" onClick={() => setConfirming(null)}>
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button className="header-btn" onClick={() => setConfirming(a.id)}>
+                    Review decision
+                  </button>
+                )}
+              </div>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }

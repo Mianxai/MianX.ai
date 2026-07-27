@@ -41,6 +41,18 @@ export const ADMIN_NAV = [
     icon: "command",
   },
   {
+    href: "/admin/objectives",
+    label: "Objectives",
+    match: "prefix",
+    icon: "objectives",
+  },
+  {
+    href: "/admin/ceo-brief",
+    label: "CEO Brief",
+    match: "prefix",
+    icon: "brief",
+  },
+  {
     href: "/admin/runtime",
     label: "Runtime",
     match: "prefix",
