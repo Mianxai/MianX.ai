@@ -201,6 +201,26 @@ Repository closeout can ship code only. Remaining Founder-only actions:
 Do **not** treat capacity_reserve slots as live agents. Maximum capacity is 445
 planning slots; activation is pod-scoped via the Workforce Planner.
 
+### Founder authenticated E2E checklist (production — disposable project only)
+
+Do **not** use real customer data. Create a clearly labelled disposable test
+project (e.g. `RC-E2E-DISPOSABLE`) then:
+
+1. Login at `/admin/login`
+2. Open Admin Control Center overview
+3. Select/create the disposable project
+4. Confirm Agents list shows active definitions (no secrets)
+5. Start a safe workflow objective (e.g. `executive-readiness` or
+   `software-delivery` with a non-production objective)
+6. Observe Task → Queue job → Run progression (manual tick if cron unset)
+7. Exercise an approval path if the workflow requests one — deny or approve
+   only for the disposable project
+8. Confirm Audit entries for the workflow
+9. Logout
+10. Delete/archive the disposable project when finished
+
+Agents must never request Founder credentials to automate this path.
+
 ## Repository map
 
 - `app/`, `components/`, `lib/`, `middleware.js` — the Next.js app.
