@@ -51,11 +51,22 @@ describe("migration contract (static, not applied)", () => {
 
   it("expected dry-run order lists newer additive migrations last", () => {
     // Exact list a Founder should see from `supabase db push --dry-run`
-    // when only these two are pending relative to a pre-runtime_jobs prod.
+    // when only these are pending relative to a pre-runtime_jobs prod.
     const expectedTail = [
       "20260725150000_runtime_jobs.sql",
       "20260726120000_admin_membership_viewer_role.sql",
+      "20260727120000_admin_memberships_service_role_grant.sql",
     ];
-    expect(files.slice(-2)).toEqual(expectedTail);
+    expect(files.slice(-3)).toEqual(expectedTail);
+  });
+
+  it("service_role grant migration is additive and non-destructive", () => {
+    const sql = readMigration(
+      "20260727120000_admin_memberships_service_role_grant.sql"
+    );
+    expect(sql).toMatch(/grant all privileges on table admin_memberships to service_role/i);
+    expect(sql).not.toMatch(/drop table/i);
+    expect(sql).not.toMatch(/truncate /i);
+    expect(sql).not.toMatch(/delete from /i);
   });
 });
