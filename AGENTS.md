@@ -91,6 +91,12 @@ Executive Orchestrator + C-Suite advisors, `executive-readiness` workflow,
 delegation safety. Founder approval is action/capability-based (protected
 actions only) — advisory/read-only executive work completes without approval.
 
+Wave-2 software delivery pod (active runtime): `lib/core/delivery/` —
+Product → Architecture → Engineering → Review → independent QA
+(`software-delivery` workflow). Structured planning artifacts only — no
+autonomous repository writes or production deploys. Founder approval only
+when a protected action is proposed.
+
 ### Mianx Core runtime loop (local)
 
 1. Apply migrations (`supabase db reset` or `supabase migration up`).

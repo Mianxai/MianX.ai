@@ -9,7 +9,9 @@ import {
   startProductPlanning,
   startReleaseReadiness,
   startExecutiveObjective,
+  startSoftwareDelivery,
 } from "@/lib/core/workflow";
+import { routeExecutiveObjectiveToDelivery } from "@/lib/core/delivery/executive-bridge";
 
 export const dynamic = "force-dynamic";
 
@@ -53,10 +55,33 @@ export const POST = withErrorHandling(async (req) => {
       proposedAction: safe.proposed_action,
       actor,
     });
+  } else if (safe.workflow === "software-delivery") {
+    if (safe.routed_by) {
+      result = await routeExecutiveObjectiveToDelivery({
+        projectId: safe.project_id,
+        objective: safe.objective,
+        routedBy: safe.routed_by,
+        proposedAction: safe.proposed_action,
+        actor,
+      });
+    } else {
+      result = await startSoftwareDelivery({
+        projectId: safe.project_id,
+        objective: safe.objective,
+        proposedAction: safe.proposed_action,
+        actor,
+      });
+    }
   }
 
   return NextResponse.json(
-    { task: result.task, job: result.job, created: result.created },
+    {
+      task: result.task,
+      job: result.job,
+      created: result.created,
+      pod: result.pod || null,
+      executive_state: result.executive_state || null,
+    },
     { status: result.created ? 201 : 200 }
   );
 });
