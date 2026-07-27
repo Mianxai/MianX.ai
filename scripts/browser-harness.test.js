@@ -562,6 +562,17 @@ describeBrowser("real Chrome (dynamic port discovery)", () => {
         for (const holder of holders) await holder.close();
       }
       for (const pid of pids) expect(isPidAlive(pid)).toBe(false);
+      // Temp profile cleanup can lag the process exit slightly under load.
+      await waitFor(
+        async () => {
+          const after = await tempDirsWithPrefix();
+          return (
+            after.length === before.length &&
+            after.every((d, i) => d === before[i])
+          );
+        },
+        { timeoutMs: 15_000, intervalMs: 250 }
+      );
       expect(await tempDirsWithPrefix()).toEqual(before);
     },
     120000

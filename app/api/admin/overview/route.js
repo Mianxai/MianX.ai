@@ -93,6 +93,49 @@ export const GET = withErrorHandling(async (req) => {
   const runs = sources.runs?.available ? sources.runs.value : null;
   const audit = sources.audit?.available ? sources.audit.value : null;
 
+  // Additive truthful metrics from status-count maps only (no invented KPIs).
+  const jobCountMap = sources.jobs?.available ? sources.jobs.value : null;
+  const runtimeMetrics = {
+    data_available: Boolean(jobCountMap),
+    status: jobCountMap ? "ok" : "insufficient_data",
+    job_status_counts: jobCountMap
+      ? { data_available: true, status: "ok", value: jobCountMap }
+      : { data_available: false, status: "insufficient_data", value: null },
+    dead_letter: jobCountMap
+      ? {
+          data_available: true,
+          status: "ok",
+          value: Number(jobCountMap.dead_letter) || 0,
+        }
+      : { data_available: false, status: "insufficient_data", value: null },
+    excluded_metrics: {
+      csat: {
+        data_available: false,
+        status: "insufficient_data",
+        value: null,
+        note: "CSAT is not collected by this runtime",
+      },
+      uptime: {
+        data_available: false,
+        status: "insufficient_data",
+        value: null,
+        note: "uptime is not derived from job stats",
+      },
+      savings: {
+        data_available: false,
+        status: "insufficient_data",
+        value: null,
+        note: "savings are never invented",
+      },
+      revenue: {
+        data_available: false,
+        status: "insufficient_data",
+        value: null,
+        note: "revenue is never invented",
+      },
+    },
+  };
+
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
     partial,
@@ -104,6 +147,7 @@ export const GET = withErrorHandling(async (req) => {
     approvals,
     runs,
     jobs: sources.jobs?.available ? sources.jobs.value : null,
+    runtimeMetrics,
     runtime: {
       ok: !partial,
       status: partial ? "Degraded" : "Healthy",
