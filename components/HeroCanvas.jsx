@@ -49,7 +49,7 @@ export default function HeroCanvas({ onUnavailable, onReady } = {}) {
 
   useEffect(() => {
     const mount = mountRef.current;
-    if (!mount) return;
+    if (!mount) return undefined;
 
     let cancelled = false;
     let reported = false;
@@ -85,7 +85,10 @@ export default function HeroCanvas({ onUnavailable, onReady } = {}) {
     const support = detectWebGL2Support(contextAttributes);
     if (!support.supported) {
       fallBack(support.reason, support.error);
-      return;
+      return () => {
+        cancelled = true;
+        cleanup();
+      };
     }
 
     async function build() {

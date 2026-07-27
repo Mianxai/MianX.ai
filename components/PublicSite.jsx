@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import HeroCanvas from "./HeroCanvas";
 import BrandLogo from "./BrandLogo";
+import { validateLeadSubmission } from "@/lib/leads";
 
 const EMPTY = {
   name: "",
@@ -314,22 +315,37 @@ export default function PublicSite() {
     setErrors((e) => ({ ...e, [key]: false }));
   }
 
-  function validateEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }
-
   async function onSubmit(e) {
     e.preventDefault();
     if (submittingRef.current) return;
 
+    // Same rules as POST /api/leads — keep client fieldErrors aligned.
+    const check = validateLeadSubmission({
+      name: form.name,
+      email: form.email,
+      company: form.company,
+      phone: form.phone,
+      industry: form.industry,
+      need: form.message,
+      website: form.website,
+    });
+    if (check.honeypotTripped) {
+      // Silent success for bots; do not hit the API.
+      setMessage({
+        type: "success",
+        text: "Thank you! We will contact you within 24 hours.",
+      });
+      setForm(EMPTY);
+      return;
+    }
     const nextErrors = {
-      name: !form.name.trim(),
-      email: !form.email.trim() || !validateEmail(form.email),
-      industry: !form.industry,
-      message: !form.message.trim(),
+      name: Boolean(check.errors.name),
+      email: Boolean(check.errors.email),
+      industry: Boolean(check.errors.industry),
+      message: Boolean(check.errors.message),
     };
     setErrors(nextErrors);
-    if (Object.values(nextErrors).some(Boolean)) return;
+    if (!check.valid) return;
 
     submittingRef.current = true;
     setSubmitting(true);
