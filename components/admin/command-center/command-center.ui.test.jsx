@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import AgentListFallback from "./AgentListFallback";
 import OverviewMetrics from "./OverviewMetrics";
 import DepartmentRail from "./DepartmentRail";
+import StatusChip from "./StatusChip";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -35,6 +36,11 @@ describe("Command Center UI contracts", () => {
     expect(screen.getByText(/Working/i)).toBeTruthy();
     await user.click(screen.getByRole("button", { name: /Research Agent/i }));
     expect(onSelect).toHaveBeenCalledWith("research");
+  });
+
+  it("StatusChip always includes a text label", () => {
+    render(<StatusChip status="approval_required" />);
+    expect(screen.getByText(/Approval required/i)).toBeTruthy();
   });
 
   it("shows Data unavailable for missing metrics", () => {

@@ -7,13 +7,15 @@ import AdminShell from "@/components/admin/AdminShell";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
 import CommandNetwork from "@/components/admin/command-center/CommandNetwork";
-import AgentDetailPanel from "@/components/admin/command-center/AgentDetailPanel";
+import AgentDetailDrawer from "@/components/admin/command-center/AgentDetailDrawer";
 import OverviewMetrics from "@/components/admin/command-center/OverviewMetrics";
 import DepartmentRail from "@/components/admin/command-center/DepartmentRail";
 import WorkflowBoard from "@/components/admin/command-center/WorkflowBoard";
 import CeoBriefPanel from "@/components/admin/command-center/CeoBriefPanel";
 import SchedulePanel from "@/components/admin/command-center/SchedulePanel";
 import AgentListFallback from "@/components/admin/command-center/AgentListFallback";
+import OpsStatusBar from "@/components/admin/command-center/OpsStatusBar";
+import CeoOrchestratorCard from "@/components/admin/command-center/CeoOrchestratorCard";
 
 async function fetchJson(path, router) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
@@ -41,7 +43,7 @@ export default function CommandCenterClient() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [viewMode, setViewMode] = useState("network"); // network | list
+  const [viewMode, setViewMode] = useState("network");
 
   const query = useMemo(() => {
     const q = new URLSearchParams();
@@ -61,7 +63,9 @@ export default function CommandCenterClient() {
       if (!soft) setLoading(false);
       setRefreshing(false);
       if (!res.ok) {
-        setError(res.data?.error?.message || res.data?.error || "Failed to load Command Center");
+        setError(
+          res.data?.error?.message || res.data?.error || "Failed to load Command Center"
+        );
         if (!soft) setData(null);
         return;
       }
@@ -87,13 +91,20 @@ export default function CommandCenterClient() {
     [router, searchParams]
   );
 
+  const ceoAgent = useMemo(
+    () => (data?.agents || []).find((a) => a.slug === "executive-ceo") || null,
+    [data]
+  );
+
   const actions = (
     <div className="cc-header-actions">
       <label className="cc-project-select">
         <span className="sr-only">Project filter</span>
         <select
           value={projectId}
-          onChange={(e) => replaceParams({ project_id: e.target.value || null, agent: null })}
+          onChange={(e) =>
+            replaceParams({ project_id: e.target.value || null, agent: null })
+          }
           aria-label="Filter by project"
         >
           <option value="">All projects</option>
@@ -104,6 +115,9 @@ export default function CommandCenterClient() {
           ))}
         </select>
       </label>
+      <Link href="/admin/objectives" className="header-btn">
+        New objective
+      </Link>
       <button
         type="button"
         className="header-btn-ghost"
@@ -119,7 +133,7 @@ export default function CommandCenterClient() {
   );
 
   return (
-    <AdminShell title="Agent Command Center" actions={actions}>
+    <AdminShell title="Command Center" actions={actions}>
       <div className="cc-page">
         {loading && !data ? (
           <DelayedLoader delayMs={200}>
@@ -135,7 +149,18 @@ export default function CommandCenterClient() {
 
         {data ? (
           <>
+            <OpsStatusBar
+              schedule={data.schedule}
+              readiness={data.productionReadiness}
+              overview={data.overview}
+              refreshing={refreshing}
+            />
             <OverviewMetrics metrics={data.overview} />
+            <CeoOrchestratorCard
+              agent={ceoAgent}
+              brief={data.ceoBrief}
+              projectId={projectId || null}
+            />
 
             <div className="cc-layout">
               <DepartmentRail
@@ -164,7 +189,9 @@ export default function CommandCenterClient() {
                   </div>
                   <p className="cc-muted">
                     {data.hierarchy.executableCount} executable agents
-                    {projectId ? " · project scoped" : " · catalog statuses (select a project for live work)"}
+                    {projectId
+                      ? " · project scoped"
+                      : " · catalog (select a project for live work)"}
                   </p>
                 </div>
 
@@ -197,23 +224,33 @@ export default function CommandCenterClient() {
               </div>
 
               <aside className="cc-side-col">
-                <AgentDetailPanel
-                  detail={data.selectedDetail}
-                  onClose={() => replaceParams({ agent: null })}
-                />
                 <CeoBriefPanel brief={data.ceoBrief} />
-                <SchedulePanel schedule={data.schedule} readiness={data.productionReadiness} />
+                <SchedulePanel
+                  schedule={data.schedule}
+                  readiness={data.productionReadiness}
+                />
                 <section className="cc-card" aria-labelledby="cc-knowledge-h">
                   <h2 id="cc-knowledge-h">Knowledge / outputs</h2>
                   <p className="cc-muted">{data.knowledge?.note}</p>
                   <div className="cc-link-row">
-                    <Link href={data.knowledge?.runsHref || "/admin/runtime/runs"}>Runs</Link>
-                    <Link href={data.knowledge?.auditHref || "/admin/runtime/audit"}>Audit</Link>
-                    <Link href="/admin/runtime/approvals">Approvals</Link>
+                    <Link href={data.knowledge?.runsHref || "/admin/runtime/runs"}>
+                      Runs
+                    </Link>
+                    <Link href={data.knowledge?.auditHref || "/admin/runtime/audit"}>
+                      Audit
+                    </Link>
+                    <Link href="/admin/ceo-brief">CEO Brief</Link>
+                    <Link href="/admin/objectives">Objectives</Link>
                   </div>
                 </section>
               </aside>
             </div>
+
+            <AgentDetailDrawer
+              open={Boolean(agentSlug)}
+              detail={data.selectedDetail}
+              onClose={() => replaceParams({ agent: null })}
+            />
           </>
         ) : null}
       </div>

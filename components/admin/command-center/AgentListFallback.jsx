@@ -1,21 +1,14 @@
 "use client";
 
-const STATUS_LABEL = {
-  working: "Working",
-  idle: "Idle",
-  waiting: "Waiting",
-  blocked: "Blocked",
-  approval_required: "Approval required",
-  failed: "Failed",
-  paused: "Paused",
-};
+import StatusChip from "./StatusChip";
 
 export default function AgentListFallback({ agents, selectedSlug, onSelect }) {
   return (
     <section className="cc-card" aria-labelledby="cc-list-h">
       <h2 id="cc-list-h">Agents</h2>
       <p className="cc-muted">
-        Semantic list equivalent of the network view (required for accessibility and mobile).
+        Semantic list equivalent of the network view (required for accessibility and
+        mobile).
       </p>
       <ul className="cc-agent-list">
         {agents.map((a) => (
@@ -30,20 +23,20 @@ export default function AgentListFallback({ agents, selectedSlug, onSelect }) {
             >
               <span className="cc-agent-card-top">
                 <strong>{a.name}</strong>
-                <span className={`cc-status-pill cc-status-${a.status}`}>
-                  <span className="cc-status-dot" aria-hidden="true" />
-                  {STATUS_LABEL[a.status] || a.status}
-                </span>
+                <StatusChip status={a.status} />
               </span>
               <span className="cc-agent-meta">
-                {a.department} · {a.workforceSlug || a.slug}
-                {a.hierarchyLevel ? ` · ${a.hierarchyLevel}` : ""}
+                {a.department}
+                {a.hierarchyLevel ? ` · ${a.hierarchyLevel}` : ""} ·{" "}
+                {a.workforceSlug || a.slug}
               </span>
               <span className="cc-agent-meta">
+                {a.live?.projectId
+                  ? `Project ${a.live.projectId.slice(0, 8)}…`
+                  : "No project instance"}
                 {a.live?.currentWorkflow
-                  ? `Workflow: ${a.live.currentWorkflow}`
-                  : "No active workflow"}
-                {a.live?.lastRunStatus ? ` · last run ${a.live.lastRunStatus}` : ""}
+                  ? ` · ${a.live.currentWorkflow}`
+                  : " · No active workflow"}
               </span>
             </button>
           </li>
