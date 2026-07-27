@@ -186,7 +186,10 @@ export default function QueuePanel({ call, projectId }) {
         Job statuses above are queue truth. Tasks waiting on a human appear as
         task status &quot;awaiting approval&quot; (Approvals panel) — successful
         jobs that gated on approval are counted as succeeded here, not as a
-        separate queue state.
+        separate queue state. Wave-1{" "}
+        <code>executive-readiness</code> jobs show the owning executive agent,
+        workstream step, and park Industry OS launch decisions for Founder
+        approval.
       </p>
 
       <div className="runtime-queue-toolbar">
