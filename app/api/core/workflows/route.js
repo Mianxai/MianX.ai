@@ -50,6 +50,7 @@ export const POST = withErrorHandling(async (req) => {
     result = await startExecutiveObjective({
       projectId: safe.project_id,
       objective: safe.objective,
+      proposedAction: safe.proposed_action,
       actor,
     });
   }
