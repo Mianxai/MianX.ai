@@ -12,6 +12,37 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Need enough history for local tooling; PR base is fetched next.
+          fetch-depth: 0
+
+      - name: Resolve protected-diff base for PR checks
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BASE_SHA}" ]; then
+            echo "PR base SHA missing from GitHub context" >&2
+            exit 1
+          fi
+          git fetch --no-tags --depth=1 origin "${BASE_SHA}"
+          git rev-parse --verify "${BASE_SHA}^{commit}" >/dev/null
+          echo "MIANX_DIFF_BASE=${BASE_SHA}" >> "${GITHUB_ENV}"
+          echo "Resolved protected-diff base ${BASE_SHA}"
+
+      - name: Resolve protected-diff base for branch pushes
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          if git rev-parse --verify origin/main >/dev/null 2>&1; then
+            echo "MIANX_DIFF_BASE=origin/main" >> "${GITHUB_ENV}"
+          elif git rev-parse --verify main >/dev/null 2>&1; then
+            echo "MIANX_DIFF_BASE=main" >> "${GITHUB_ENV}"
+          else
+            echo "Unable to resolve protected-diff base" >&2
+            exit 1
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

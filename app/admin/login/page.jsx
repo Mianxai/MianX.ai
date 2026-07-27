@@ -79,22 +79,36 @@ export default function AdminLoginPage() {
         email: email.trim(),
         password,
       });
-      if (signInError) throw signInError;
+      if (signInError) {
+        throw new Error("Sign in failed. Check your credentials and try again.");
+      }
       const token = data.session?.access_token;
-      if (!token) throw new Error("No session returned");
+      if (!token) {
+        throw new Error("Sign in failed. Check your credentials and try again.");
+      }
       const maxAge = data.session.expires_in || 3600;
       // Server sets an HttpOnly cookie — the access token is never readable
-      // from document.cookie after this point.
+      // from document.cookie after this point. Relative URL + same-origin
+      // credentials keep the request on the public alias the user is viewing.
       const sessionRes = await fetch("/api/admin/session", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ access_token: token, expires_in: maxAge }),
       });
       if (!sessionRes.ok) {
+        try {
+          await supabase.auth.signOut();
+        } catch {
+          /* best-effort clear of stale client auth */
+        }
         let msg = "Could not establish a secure admin session.";
         try {
           const payload = await sessionRes.json();
-          msg = payload?.error?.message || msg;
+          // Prefer a controlled server message; never surface tokens.
+          if (payload?.error?.message && !/token|cookie|secret|password/i.test(payload.error.message)) {
+            msg = payload.error.message;
+          }
         } catch {
           /* keep default */
         }
@@ -107,6 +121,7 @@ export default function AdminLoginPage() {
       router.refresh();
     } catch (err) {
       setSubmitting(false);
+      setSuccess(false);
       setError(err.message || "Sign in failed. Check your credentials and try again.");
       // Move focus to the alert so it is announced, then let the user retry.
       requestAnimationFrame(() => errorRef.current?.focus());
