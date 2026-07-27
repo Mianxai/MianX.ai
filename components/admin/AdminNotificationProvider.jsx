@@ -23,6 +23,7 @@ const INVALIDATION_DEBOUNCE_MS = 250;
 
 const AdminNotificationsContext = createContext({
   newSubmissions: 0,
+  inboxAttention: 0,
   badgeText: null,
   ariaLabel: "0 new submissions",
   refresh: async () => {},
@@ -44,6 +45,7 @@ export function AdminNotificationProvider({ children }) {
     const cached = getCachedNewSubmissions();
     return typeof cached === "number" ? cached : 0;
   });
+  const [inboxAttention, setInboxAttention] = useState(0);
 
   const abortRef = useRef(null);
   const seqRef = useRef(0);
@@ -79,6 +81,9 @@ export function AdminNotificationProvider({ children }) {
       if (seq !== seqRef.current) return;
       if (data && typeof data.newSubmissions === "number") {
         applyCount(data.newSubmissions);
+      }
+      if (data && typeof data.inboxAttention === "number") {
+        setInboxAttention(Math.max(0, data.inboxAttention));
       }
     } catch (err) {
       if (err?.name === "AbortError") return;
@@ -155,11 +160,12 @@ export function AdminNotificationProvider({ children }) {
     const badgeText = formatNewSubmissionsBadge(newSubmissions);
     return {
       newSubmissions,
+      inboxAttention,
       badgeText,
       ariaLabel: newSubmissionsAriaLabel(newSubmissions),
       refresh,
     };
-  }, [newSubmissions, refresh]);
+  }, [newSubmissions, inboxAttention, refresh]);
 
   return (
     <AdminNotificationsContext.Provider value={value}>

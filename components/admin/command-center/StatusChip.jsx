@@ -8,6 +8,7 @@ const LABELS = {
   approval_required: "Approval required",
   failed: "Failed",
   paused: "Paused",
+  unavailable: "Unavailable",
   QUEUED: "Queued",
   PLANNING: "Planning",
   RUNNING: "Running",

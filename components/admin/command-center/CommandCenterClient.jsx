@@ -16,6 +16,7 @@ import SchedulePanel from "@/components/admin/command-center/SchedulePanel";
 import AgentListFallback from "@/components/admin/command-center/AgentListFallback";
 import OpsStatusBar from "@/components/admin/command-center/OpsStatusBar";
 import CeoOrchestratorCard from "@/components/admin/command-center/CeoOrchestratorCard";
+import FounderAuthorityBanner from "@/components/admin/command-center/FounderAuthorityBanner";
 
 async function fetchJson(path, router) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
@@ -155,6 +156,7 @@ export default function CommandCenterClient() {
               overview={data.overview}
               refreshing={refreshing}
             />
+            <FounderAuthorityBanner />
             <OverviewMetrics metrics={data.overview} />
             <CeoOrchestratorCard
               agent={ceoAgent}

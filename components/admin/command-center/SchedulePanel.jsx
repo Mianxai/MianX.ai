@@ -2,6 +2,10 @@
 
 export default function SchedulePanel({ schedule, readiness }) {
   if (!schedule) return null;
+  const tick = schedule.recentWorkerProcessing;
+  const lastTickLabel = schedule.lastTick
+    ? schedule.lastTick
+    : "Data unavailable";
   return (
     <section className="cc-card" aria-labelledby="cc-sched-h">
       <h2 id="cc-sched-h">Schedule</h2>
@@ -32,10 +36,20 @@ export default function SchedulePanel({ schedule, readiness }) {
         </div>
         <div>
           <dt>Last tick</dt>
-          <dd className="cc-unavailable">
-            {schedule.lastTick || "Data unavailable (not persisted)"}
+          <dd className={schedule.lastTick ? undefined : "cc-unavailable"}>
+            {lastTickLabel}
           </dd>
         </div>
+        {tick ? (
+          <div>
+            <dt>Last tick summary</dt>
+            <dd>
+              claimed {tick.claimed} · succeeded {tick.succeeded} · failed{" "}
+              {tick.failed} · dead-letter {tick.dead_lettered} ·{" "}
+              {tick.duration_ms}ms
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt>Schema readiness</dt>
           <dd>

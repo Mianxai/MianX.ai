@@ -735,6 +735,91 @@
 }
 .runtime-approval-card { align-items: flex-start; }
 
+.cc-founder-authority {
+  border: 1px solid rgba(79, 124, 255, 0.28);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 58, 110, 0.35));
+  padding: 0.9rem 1.1rem;
+}
+.cc-founder-authority-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+.cc-founder-authority-body {
+  margin: 0.4rem 0 0.65rem;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  max-width: 62ch;
+}
+.cc-founder-authority-flow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--primary-light);
+}
+.cc-founder-authority-flow li[aria-hidden="true"] {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.inbox-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+.inbox-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+.inbox-item.severity-critical {
+  border-color: rgba(239, 68, 68, 0.45);
+}
+.inbox-item.severity-high {
+  border-color: rgba(245, 158, 11, 0.4);
+}
+.inbox-kind {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  margin-bottom: 0.25rem;
+}
+.inbox-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-family: var(--font-display);
+}
+.inbox-risk {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fecaca;
+}
+
+.mx-status-unavailable .mx-status-dot { background: var(--text-muted); }
+.mx-status-unavailable { color: var(--text-muted); }
+
 @media (max-width: 900px) {
   .obj-layout { grid-template-columns: 1fr; }
   .cc-drawer { width: 100vw; }

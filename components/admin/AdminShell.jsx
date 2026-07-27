@@ -111,6 +111,14 @@ export default function AdminShell({
     typeof newCount === "number" ? newCount : notifications.newSubmissions;
   const badgeText = formatNewSubmissionsBadge(newSubmissions);
   const badgeLabel = newSubmissionsAriaLabel(newSubmissions);
+  const inboxAttention =
+    typeof notifications.inboxAttention === "number"
+      ? notifications.inboxAttention
+      : 0;
+  const inboxBadgeText = formatNewSubmissionsBadge(inboxAttention);
+  const inboxBadgeLabel = `${inboxAttention} Founder Inbox item${
+    inboxAttention === 1 ? "" : "s"
+  }`;
 
   return (
     <div className="admin-app">
@@ -175,7 +183,11 @@ export default function AdminShell({
         <ul className="sidebar-nav">
           {ADMIN_NAV.map((item) => {
             const current = isNavItemCurrent(pathname, item);
-            const showBadge = item.badgeKey === "newCount" && badgeText;
+            const showSubmissionsBadge = item.badgeKey === "newCount" && badgeText;
+            const showInboxBadge = item.badgeKey === "inboxCount" && inboxBadgeText;
+            const showBadge = showSubmissionsBadge || showInboxBadge;
+            const activeBadgeText = showInboxBadge ? inboxBadgeText : badgeText;
+            const activeBadgeLabel = showInboxBadge ? inboxBadgeLabel : badgeLabel;
             return (
               <li key={item.href}>
                 <Link
@@ -199,10 +211,12 @@ export default function AdminShell({
                   {showBadge && (
                     <span
                       className="sidebar-badge"
-                      data-testid="submissions-badge"
-                      aria-label={badgeLabel}
+                      data-testid={
+                        showInboxBadge ? "inbox-badge" : "submissions-badge"
+                      }
+                      aria-label={activeBadgeLabel}
                     >
-                      {badgeText}
+                      {activeBadgeText}
                     </span>
                   )}
                 </Link>
