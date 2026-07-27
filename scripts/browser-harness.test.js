@@ -137,6 +137,7 @@ describe("DevToolsActivePort discovery", () => {
       "scripts/verify-admin-loader-geometry.mjs",
       "scripts/verify-login-geometry.mjs",
       "scripts/verify-submission-badge-geometry.mjs",
+      "scripts/verify-command-center-geometry.mjs",
       "scripts/lib/browser-harness.mjs",
     ];
     for (const source of sources) {
@@ -483,6 +484,7 @@ describe("geometry contracts are still enforced", () => {
     { file: "scripts/verify-admin-loader-geometry.mjs", viewports: 7, tolerance: "TOLERANCE_PX = 8" },
     { file: "scripts/verify-login-geometry.mjs", viewports: 7, tolerance: "TOLERANCE_PX = 8" },
     { file: "scripts/verify-submission-badge-geometry.mjs", viewports: 5, tolerance: null },
+    { file: "scripts/verify-command-center-geometry.mjs", viewports: 6, tolerance: null },
   ];
 
   it.each(contracts)("$file keeps its viewports and tolerance", ({ file, viewports, tolerance }) => {

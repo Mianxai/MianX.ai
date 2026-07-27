@@ -56,6 +56,10 @@ describe("AdminShell", () => {
       "href",
       "/admin/projects"
     );
+    expect(screen.getByRole("link", { name: /Command Center/i })).toHaveAttribute(
+      "href",
+      "/admin/command-center"
+    );
     expect(screen.getByRole("link", { name: /^Runtime$/i })).toHaveAttribute(
       "href",
       "/admin/runtime"

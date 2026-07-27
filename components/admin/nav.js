@@ -35,6 +35,12 @@ export const ADMIN_NAV = [
     icon: "projects",
   },
   {
+    href: "/admin/command-center",
+    label: "Command Center",
+    match: "prefix",
+    icon: "command",
+  },
+  {
     href: "/admin/runtime",
     label: "Runtime",
     match: "prefix",

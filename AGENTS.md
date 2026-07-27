@@ -181,22 +181,25 @@ Pending hosted migrations must be applied by the Founder after
 
 Repository closeout can ship code only. Remaining Founder-only actions:
 
-1. **Migrations (pending on hosted):** review then apply
-   `20260725150000_runtime_jobs.sql`,
-   `20260726120000_admin_membership_viewer_role.sql`,
-   `20260727120000_admin_memberships_service_role_grant.sql`
-   via `npx supabase db push` after dry-run review.
+1. **Migrations:** apply any remaining hosted migrations after dry-run review
+   (runtime_jobs + admin_memberships grants). Skip if already applied and
+   health reports `runtime_jobs_schema` / `admin_membership_schema` as
+   `configured`.
 2. **Scheduler secret:** set `INTERNAL_RUNTIME_SECRET` or `CRON_SECRET` (≥16 chars).
-3. **Scheduler config:** Vercel Cron (or equivalent) →
-   `GET|POST /api/internal/runtime/tick` with Bearer secret (see above).
+3. **Scheduler config:** Vercel Pro Cron or external scheduler →
+   `GET|POST /api/internal/runtime/tick` with Bearer secret. Hobby cannot host
+   sub-daily cron in-repo; health mode stays `external_scheduler_required`
+   until automatic processing is truly wired.
 4. **Optional Anthropic:** `ANTHROPIC_API_KEY` for live analysis; without it,
-   `/api/analyze` returns 503 `ANTHROPIC_NOT_CONFIGURED`.
+   agent runs return controlled 503.
 5. **Site URL:** `NEXT_PUBLIC_SITE_URL` for absolute links/OG when needed.
 6. **Optional durable rate limit:** `RATE_LIMIT_DURABLE_URL` +
    `RATE_LIMIT_DURABLE_TOKEN` (Upstash REST). Until set, limiter is in-memory.
-7. **Custom domain / legal content / CSP nonce phase:** only if Founder wants
+7. **Command Center review:** open `/admin/command-center` on preview/production
+   and confirm hierarchy/metrics against live projects.
+8. **Custom domain / legal content / CSP nonce phase:** only if Founder wants
    those production hardening steps.
-8. **Production deploy + merge to main:** explicit Founder approval only.
+9. **Production deploy + merge to main:** explicit Founder approval only.
 
 Do **not** treat capacity_reserve slots as live agents. Maximum capacity is 445
 planning slots; activation is pod-scoped via the Workforce Planner.

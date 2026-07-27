@@ -35,6 +35,16 @@ export function NavIcon({ name }) {
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
         </svg>
       );
+    case "command":
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="5" r="2" />
+          <circle cx="5" cy="19" r="2" />
+          <circle cx="19" cy="19" r="2" />
+          <circle cx="12" cy="12" r="2.5" />
+          <path d="M12 7v2.5M10.2 13.5l-3.7 3.2M13.8 13.5l3.7 3.2" />
+        </svg>
+      );
     case "runtime":
       return (
         <svg {...props}>

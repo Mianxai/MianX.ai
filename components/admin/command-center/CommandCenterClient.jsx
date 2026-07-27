@@ -1,0 +1,222 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import AdminShell from "@/components/admin/AdminShell";
+import DelayedLoader from "@/components/shared/DelayedLoader";
+import MianxLoader from "@/components/shared/MianxLoader";
+import CommandNetwork from "@/components/admin/command-center/CommandNetwork";
+import AgentDetailPanel from "@/components/admin/command-center/AgentDetailPanel";
+import OverviewMetrics from "@/components/admin/command-center/OverviewMetrics";
+import DepartmentRail from "@/components/admin/command-center/DepartmentRail";
+import WorkflowBoard from "@/components/admin/command-center/WorkflowBoard";
+import CeoBriefPanel from "@/components/admin/command-center/CeoBriefPanel";
+import SchedulePanel from "@/components/admin/command-center/SchedulePanel";
+import AgentListFallback from "@/components/admin/command-center/AgentListFallback";
+
+async function fetchJson(path, router) {
+  const res = await fetch(path, { headers: { Accept: "application/json" } });
+  if (res.status === 401) {
+    router?.push("/admin/login");
+    return { ok: false, status: 401, data: null };
+  }
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+  return { ok: res.ok, status: res.status, data };
+}
+
+export default function CommandCenterClient() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const projectId = searchParams?.get("project_id") || "";
+  const department = searchParams?.get("department") || "all";
+  const agentSlug = searchParams?.get("agent") || "";
+
+  const [data, setData] = useState(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState("network"); // network | list
+
+  const query = useMemo(() => {
+    const q = new URLSearchParams();
+    if (projectId) q.set("project_id", projectId);
+    if (department && department !== "all") q.set("department", department);
+    if (agentSlug) q.set("agent", agentSlug);
+    return q.toString();
+  }, [projectId, department, agentSlug]);
+
+  const load = useCallback(
+    async ({ soft = false } = {}) => {
+      if (soft) setRefreshing(true);
+      else setLoading(true);
+      setError("");
+      const path = `/api/admin/command-center${query ? `?${query}` : ""}`;
+      const res = await fetchJson(path, router);
+      if (!soft) setLoading(false);
+      setRefreshing(false);
+      if (!res.ok) {
+        setError(res.data?.error?.message || res.data?.error || "Failed to load Command Center");
+        if (!soft) setData(null);
+        return;
+      }
+      setData(res.data);
+    },
+    [query, router]
+  );
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const replaceParams = useCallback(
+    (patch) => {
+      const next = new URLSearchParams(searchParams?.toString() || "");
+      for (const [k, v] of Object.entries(patch)) {
+        if (v == null || v === "" || v === "all") next.delete(k);
+        else next.set(k, v);
+      }
+      const qs = next.toString();
+      router.replace(qs ? `/admin/command-center?${qs}` : "/admin/command-center");
+    },
+    [router, searchParams]
+  );
+
+  const actions = (
+    <div className="cc-header-actions">
+      <label className="cc-project-select">
+        <span className="sr-only">Project filter</span>
+        <select
+          value={projectId}
+          onChange={(e) => replaceParams({ project_id: e.target.value || null, agent: null })}
+          aria-label="Filter by project"
+        >
+          <option value="">All projects</option>
+          {(data?.projects || []).map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button
+        type="button"
+        className="header-btn-ghost"
+        onClick={() => load({ soft: true })}
+        disabled={refreshing}
+      >
+        {refreshing ? "Refreshing…" : "Refresh"}
+      </button>
+      <Link href="/admin/runtime" className="header-btn-ghost">
+        Runtime
+      </Link>
+    </div>
+  );
+
+  return (
+    <AdminShell title="Agent Command Center" actions={actions}>
+      <div className="cc-page">
+        {loading && !data ? (
+          <DelayedLoader delayMs={200}>
+            <MianxLoader variant="section" label="Loading command center…" />
+          </DelayedLoader>
+        ) : null}
+
+        {error ? (
+          <div className="cc-banner cc-banner-error" role="alert">
+            {error}
+          </div>
+        ) : null}
+
+        {data ? (
+          <>
+            <OverviewMetrics metrics={data.overview} />
+
+            <div className="cc-layout">
+              <DepartmentRail
+                departments={data.departments}
+                active={department}
+                onSelect={(slug) => replaceParams({ department: slug, agent: null })}
+              />
+
+              <div className="cc-main-col">
+                <div className="cc-toolbar">
+                  <div className="cc-view-toggle" role="group" aria-label="View mode">
+                    <button
+                      type="button"
+                      className={viewMode === "network" ? "active" : ""}
+                      onClick={() => setViewMode("network")}
+                    >
+                      Network
+                    </button>
+                    <button
+                      type="button"
+                      className={viewMode === "list" ? "active" : ""}
+                      onClick={() => setViewMode("list")}
+                    >
+                      List
+                    </button>
+                  </div>
+                  <p className="cc-muted">
+                    {data.hierarchy.executableCount} executable agents
+                    {projectId ? " · project scoped" : " · catalog statuses (select a project for live work)"}
+                  </p>
+                </div>
+
+                <div className="cc-network-desktop">
+                  {viewMode === "network" ? (
+                    <CommandNetwork
+                      hierarchy={data.hierarchy}
+                      agents={data.agents}
+                      selectedSlug={agentSlug}
+                      onSelect={(slug) => replaceParams({ agent: slug })}
+                    />
+                  ) : (
+                    <AgentListFallback
+                      agents={data.agents}
+                      selectedSlug={agentSlug}
+                      onSelect={(slug) => replaceParams({ agent: slug })}
+                    />
+                  )}
+                </div>
+
+                <div className="cc-network-mobile">
+                  <AgentListFallback
+                    agents={data.agents}
+                    selectedSlug={agentSlug}
+                    onSelect={(slug) => replaceParams({ agent: slug })}
+                  />
+                </div>
+
+                <WorkflowBoard workflows={data.workflows} />
+              </div>
+
+              <aside className="cc-side-col">
+                <AgentDetailPanel
+                  detail={data.selectedDetail}
+                  onClose={() => replaceParams({ agent: null })}
+                />
+                <CeoBriefPanel brief={data.ceoBrief} />
+                <SchedulePanel schedule={data.schedule} readiness={data.productionReadiness} />
+                <section className="cc-card" aria-labelledby="cc-knowledge-h">
+                  <h2 id="cc-knowledge-h">Knowledge / outputs</h2>
+                  <p className="cc-muted">{data.knowledge?.note}</p>
+                  <div className="cc-link-row">
+                    <Link href={data.knowledge?.runsHref || "/admin/runtime/runs"}>Runs</Link>
+                    <Link href={data.knowledge?.auditHref || "/admin/runtime/audit"}>Audit</Link>
+                    <Link href="/admin/runtime/approvals">Approvals</Link>
+                  </div>
+                </section>
+              </aside>
+            </div>
+          </>
+        ) : null}
+      </div>
+    </AdminShell>
+  );
+}
