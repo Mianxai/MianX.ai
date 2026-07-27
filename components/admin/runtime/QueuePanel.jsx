@@ -187,11 +187,11 @@ export default function QueuePanel({ call, projectId }) {
         task status &quot;awaiting approval&quot; (Approvals panel) — successful
         jobs that gated on approval are counted as succeeded here, not as a
         separate queue state. Wave-1{" "}
-        <code>executive-readiness</code> and Wave-2{" "}
-        <code>software-delivery</code> jobs show owning agent and stage.
-        Advisory delivery completes without Founder approval; only a proposed
-        protected action parks the task for Founder approval. Agents produce
-        structured plans — they do not autonomously write repository code.
+        <code>software-delivery</code> / <code>controlled-delivery</code> jobs
+        show owning agent and stage. Advisory delivery completes without Founder
+        approval; only a proposed protected action parks the task for Founder
+        approval. Coding executor changes are workspace-scoped patch candidates —
+        never autonomous production pushes or deploys.
       </p>
 
       <div className="runtime-queue-toolbar">
