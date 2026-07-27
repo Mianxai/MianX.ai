@@ -68,7 +68,7 @@ export function formatTokens(job) {
   } out`;
 }
 
-export default function QueuePanel({ call, projectId }) {
+export default function QueuePanel({ call, projectId, health = null }) {
   const [jobs, setJobs] = useState(null);
   const [counts, setCounts] = useState({});
   const [total, setTotal] = useState(0);
@@ -193,6 +193,19 @@ export default function QueuePanel({ call, projectId }) {
         approval. Coding executor changes are workspace-scoped patch candidates —
         never autonomous production pushes or deploys.
       </p>
+      {health?.config && (
+        <p className="runtime-muted" data-testid="queue-runtime-readiness">
+          Rate limit:{" "}
+          {health.config.rateLimit?.durable ? "durable adapter" : "in-memory"}
+          {" · "}
+          Scheduler: {health.config.scheduler?.mode || "manual"}
+          {health.config.scheduler?.automaticProcessing
+            ? " (automatic)"
+            : health.config.scheduler?.readyForExternalScheduler
+              ? " (secret ready for external cron)"
+              : " (configure CRON_SECRET / INTERNAL_RUNTIME_SECRET)"}
+        </p>
+      )}
 
       <div className="runtime-queue-toolbar">
         <div

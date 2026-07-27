@@ -134,13 +134,72 @@ Recommended Founder setup (do not configure secrets from CI/agents):
    exhausted attempts go to `dead_letter`. Tick HTTP failures should be
    retried by the scheduler.
 
-Rate limiting for admin/API abuse paths is **in-memory per process** today
-(`lib/core/ratelimit.js`) — honest for single-instance/dev; multi-instance
-production should swap in a durable external limiter adapter later. Not
-required to pass development gates.
+#### Vercel Cron readiness (Founder configures — do not enable from agents)
+
+When the deployment is on Vercel Pro (or another host that allows sub-daily
+schedules), the Founder may add a cron that hits the internal tick endpoint.
+This repository does **not** ship a production `vercel.json` cron and agents
+must **not** configure production cron or secrets.
+
+Example shape (illustrative only — Founder applies on the host):
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/internal/runtime/tick",
+      "schedule": "* * * * *"
+    }
+  ]
+}
+```
+
+Authorize with `Authorization: Bearer <CRON_SECRET or INTERNAL_RUNTIME_SECRET>`.
+Hobby plans reject sub-daily schedules; until a Pro/external scheduler is
+configured, `runtimeConfigStatus().scheduler.automaticProcessing` stays
+`false` and queue processing remains manual (`Run tick` / `npm run runtime:tick`).
+
+#### Durable rate-limit adapter (optional)
+
+Admin/API rate limiting defaults to **in-memory per process**
+(`lib/core/ratelimit.js`) — honest for single-instance/dev. For multi-instance
+production, the Founder may set both:
+
+- `RATE_LIMIT_DURABLE_URL` — Upstash Redis REST URL
+- `RATE_LIMIT_DURABLE_TOKEN` — Upstash REST token
+
+`lib/core/ratelimit-upstash.js` builds an optional fetch-based adapter (no extra
+npm dependency). If either env var is missing, the adapter is `null` and the
+in-memory fallback remains. `rateLimitBackendStatus()` reports `durable: true`
+only when an adapter is active — URL alone is never treated as durable.
+Not required to pass development gates.
 
 Pending hosted migrations must be applied by the Founder after
 `npx supabase db push --dry-run` review — never auto-applied from CI.
+
+## Founder production release checklist (manual — agents must not perform)
+
+Repository closeout can ship code only. Remaining Founder-only actions:
+
+1. **Migrations (pending on hosted):** review then apply
+   `20260725150000_runtime_jobs.sql`,
+   `20260726120000_admin_membership_viewer_role.sql`,
+   `20260727120000_admin_memberships_service_role_grant.sql`
+   via `npx supabase db push` after dry-run review.
+2. **Scheduler secret:** set `INTERNAL_RUNTIME_SECRET` or `CRON_SECRET` (≥16 chars).
+3. **Scheduler config:** Vercel Cron (or equivalent) →
+   `GET|POST /api/internal/runtime/tick` with Bearer secret (see above).
+4. **Optional Anthropic:** `ANTHROPIC_API_KEY` for live analysis; without it,
+   `/api/analyze` returns 503 `ANTHROPIC_NOT_CONFIGURED`.
+5. **Site URL:** `NEXT_PUBLIC_SITE_URL` for absolute links/OG when needed.
+6. **Optional durable rate limit:** `RATE_LIMIT_DURABLE_URL` +
+   `RATE_LIMIT_DURABLE_TOKEN` (Upstash REST). Until set, limiter is in-memory.
+7. **Custom domain / legal content / CSP nonce phase:** only if Founder wants
+   those production hardening steps.
+8. **Production deploy + merge to main:** explicit Founder approval only.
+
+Do **not** treat capacity_reserve slots as live agents. Maximum capacity is 445
+planning slots; activation is pod-scoped via the Workforce Planner.
 
 ## Repository map
 

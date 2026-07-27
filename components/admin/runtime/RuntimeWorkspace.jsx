@@ -296,7 +296,7 @@ export default function RuntimeWorkspace({
               <TasksPanel call={call} projectId={projectId} />
             )}
             {activeTab === "queue" && (
-              <QueuePanel call={call} projectId={projectId} />
+              <QueuePanel call={call} projectId={projectId} health={health} />
             )}
             {activeTab === "runs" && <RunsPanel call={call} projectId={projectId} />}
             {activeTab === "approvals" && (
@@ -373,6 +373,19 @@ function ProjectCreator({ disabled, call, onCreated }) {
 
 function OverviewPanel({ health, projects }) {
   const cfg = health?.config;
+  const rateLimit = cfg?.rateLimit;
+  const scheduler = cfg?.scheduler;
+  const rateLabel = rateLimit?.durable
+    ? "Durable adapter active"
+    : rateLimit?.urlConfigured
+      ? "In-memory (URL set, adapter inactive)"
+      : "In-memory (single instance)";
+  const schedulerLabel = scheduler?.automaticProcessing
+    ? "Automatic processing"
+    : scheduler?.readyForExternalScheduler
+      ? "Manual — worker secret ready for external cron"
+      : "Manual — configure CRON_SECRET / INTERNAL_RUNTIME_SECRET for scheduler";
+
   return (
     <div className="runtime-cards">
       <div className="runtime-card">
@@ -399,6 +412,16 @@ function OverviewPanel({ health, projects }) {
         <h3>Registered agents</h3>
         <p className="runtime-metric">{health?.agents ?? 0}</p>
         <p className="runtime-muted">catalog definitions</p>
+      </div>
+      <div className="runtime-card">
+        <h3>Rate limit</h3>
+        <p className="runtime-metric">{rateLimit?.durable ? "Durable" : "In-memory"}</p>
+        <p className="runtime-muted">{rateLabel}</p>
+      </div>
+      <div className="runtime-card">
+        <h3>Scheduler</h3>
+        <p className="runtime-metric">{scheduler?.mode || "manual"}</p>
+        <p className="runtime-muted">{schedulerLabel}</p>
       </div>
     </div>
   );

@@ -12,8 +12,13 @@ import {
   startSoftwareDelivery,
   startPlatformCandidate,
   startControlledDelivery,
+  startOperationsIncident,
+  startBusinessGrowth,
+  startAdvisoryReview,
+  startEnterpriseObjective,
 } from "@/lib/core/workflow";
 import { routeExecutiveObjectiveToDelivery } from "@/lib/core/delivery/executive-bridge";
+import { startSoftwareFactory } from "@/lib/core/enterprise/software-factory";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +106,68 @@ export const POST = withErrorHandling(async (req) => {
       routedBy: safe.routed_by,
       actor,
     });
+  } else if (safe.workflow === "operations-incident") {
+    result = await startOperationsIncident({
+      projectId: safe.project_id,
+      signal: safe.signal,
+      objective: safe.objective,
+      proposedAction: safe.proposed_action,
+      actor,
+    });
+  } else if (safe.workflow === "business-growth") {
+    assertUuid(safe.lead_id, "lead_id");
+    result = await startBusinessGrowth({
+      projectId: safe.project_id,
+      leadId: safe.lead_id,
+      includeResearch: safe.include_research,
+      actor,
+    });
+  } else if (safe.workflow === "advisory-review") {
+    result = await startAdvisoryReview({
+      projectId: safe.project_id,
+      question: safe.question,
+      matter: safe.matter,
+      proposedAction: safe.proposed_action,
+      actor,
+    });
+  } else if (safe.workflow === "enterprise-objective") {
+    if (body.factory === "software-factory") {
+      result = await startSoftwareFactory({
+        projectId: safe.project_id,
+        objective: safe.objective,
+        mode: body.factory_mode === "controlled-delivery"
+          ? "controlled-delivery"
+          : "software-delivery",
+        proposedAction: safe.proposed_action,
+        workspaceRoot: body.workspace_root || null,
+        edits: Array.isArray(body.edits) ? body.edits : [],
+        allowedPathPrefixes: Array.isArray(body.allowed_path_prefixes)
+          ? body.allowed_path_prefixes
+          : ["fixtures/"],
+        commands: Array.isArray(body.commands) ? body.commands : [],
+        actor,
+      });
+      return NextResponse.json(
+        {
+          factory: result.factory,
+          mode: result.mode,
+          executive: result.executive,
+          delivery: result.delivery,
+          notes: result.notes,
+          created: Boolean(result.delivery?.created || result.executive?.created),
+        },
+        { status: 201 }
+      );
+    }
+    result = await startEnterpriseObjective({
+      projectId: safe.project_id,
+      objective: safe.objective,
+      departmentsNeeded: safe.departments_needed,
+      riskClass: safe.risk_class,
+      proposedAction: safe.proposed_action,
+      projectProfile: safe.project_profile,
+      actor,
+    });
   }
 
   return NextResponse.json(
@@ -110,6 +177,7 @@ export const POST = withErrorHandling(async (req) => {
       created: result.created,
       pod: result.pod || null,
       executive_state: result.executive_state || null,
+      decomposition: result.decomposition || null,
     },
     { status: result.created ? 201 : 200 }
   );
