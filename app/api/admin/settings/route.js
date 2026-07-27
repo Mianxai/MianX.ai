@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withErrorHandling } from "@/lib/core/errors";
 import { requireAdmin, getAdminAccessModelStatus } from "@/lib/admin-auth";
 import { runtimeConfigStatus } from "@/lib/core/config";
+import { productionReadinessStatus } from "@/lib/core/production-readiness";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { getSiteUrl } from "@/lib/site";
 
@@ -119,6 +120,15 @@ export const GET = withErrorHandling(async (req) => {
       analyticsIntegration: analyticsConfigured,
       runtimeVersion: process.env.npm_package_version || "0.1.0",
     },
+    productionReadiness: productionReadinessStatus({
+      membershipTablePresent:
+        access.membershipTable === true
+          ? true
+          : access.membershipTable === false
+            ? false
+            : null,
+      runtimeJobsSchemaPresent: null,
+    }),
     access,
     founderActions,
   });

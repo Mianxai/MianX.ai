@@ -4,6 +4,7 @@ import {
   listAgentDefinitions,
   listActiveAgentDefinitions,
 } from "@/lib/core/agents";
+import { productionReadinessStatus } from "@/lib/core/production-readiness";
 
 // Reads env at request time only.
 export const dynamic = "force-dynamic";
@@ -20,6 +21,7 @@ export async function GET() {
     service: "mianx-core",
     time: new Date().toISOString(),
     config: runtimeConfigStatus(),
+    productionReadiness: productionReadinessStatus(),
     agents: listActiveAgentDefinitions().length,
     agentsCatalogTotal: listAgentDefinitions().length,
   });

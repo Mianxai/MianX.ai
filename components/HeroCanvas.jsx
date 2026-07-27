@@ -45,7 +45,10 @@ function lerp(a, b, t) {
 export default function HeroCanvas({ onUnavailable, onReady } = {}) {
   const mountRef = useRef(null);
   const callbacks = useRef({ onUnavailable, onReady });
-  callbacks.current = { onUnavailable, onReady };
+
+  useEffect(() => {
+    callbacks.current = { onUnavailable, onReady };
+  }, [onUnavailable, onReady]);
 
   useEffect(() => {
     const mount = mountRef.current;
