@@ -21,6 +21,7 @@ export const GET = withErrorHandling(async (req) => {
   const taskId = clip(params.get("task_id") || "", 64);
 
   if (projectId) assertUuid(projectId, "project_id");
+  else throw badRequest("project_id is required.");
   if (taskId) assertUuid(taskId, "task_id");
   if (status && !JOB_STATUSES.includes(status)) {
     throw badRequest(`status must be one of: ${JOB_STATUSES.join(", ")}`);
@@ -39,13 +40,13 @@ export const GET = withErrorHandling(async (req) => {
 
   const [{ rows, total }, counts] = await Promise.all([
     repo.listJobs({
-      projectId: projectId || undefined,
+      projectId,
       taskId: taskId || undefined,
       status: status || undefined,
       limit,
       offset,
     }),
-    repo.countJobsByStatus(projectId || undefined),
+    repo.countJobsByStatus(projectId),
   ]);
 
   return NextResponse.json({ jobs: rows, total, counts, limit, offset });

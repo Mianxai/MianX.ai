@@ -93,6 +93,29 @@ Gotchas:
    `ANTHROPIC_API_KEY`, jobs fail with a controlled provider status; tests use
    the fake/deterministic provider.
 
+### External scheduler adapter (not auto-configured)
+
+Durability requires an external scheduler. This repo does **not** invent
+background durability on Vercel serverless alone.
+
+Recommended Founder setup (do not configure secrets from CI/agents):
+
+1. Set `INTERNAL_RUNTIME_SECRET` or `CRON_SECRET` (≥16 chars) in the host.
+2. Point a scheduler (Vercel Cron or equivalent) at
+   `GET|POST /api/internal/runtime/tick` with
+   `Authorization: Bearer <secret>` (and optional `x-request-id`).
+3. Interval: **1 minute** is a practical starting point; each tick is
+   bounded (`JOB_LIMITS.maxJobsPerTick` / `maxTickMs`) and uses job leases
+   so overlapping ticks cannot double-run the same job.
+4. Failure behaviour: transient provider errors requeue with backoff;
+   exhausted attempts go to `dead_letter`. Tick HTTP failures should be
+   retried by the scheduler.
+
+Rate limiting for admin/API abuse paths is **in-memory per process** today
+(`lib/core/ratelimit.js`) — honest for single-instance/dev; multi-instance
+production should swap in a durable external limiter adapter later. Not
+required to pass development gates.
+
 Pending hosted migrations must be applied by the Founder after
 `npx supabase db push --dry-run` review — never auto-applied from CI.
 

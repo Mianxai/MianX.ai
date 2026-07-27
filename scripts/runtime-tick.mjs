@@ -3,8 +3,13 @@
  * Local/staging helper: POST one runtime worker tick.
  *
  * Requires INTERNAL_RUNTIME_SECRET or CRON_SECRET (≥16 chars) and a running
- * app. Never prints the secret. Uses the fake/deterministic provider when
- * ANTHROPIC_API_KEY is unset on the server.
+ * app. Never prints the secret.
+ *
+ * Honest provider note: the tick endpoint uses the server's configured
+ * provider. Without ANTHROPIC_API_KEY, Anthropic-backed jobs fail closed with
+ * a controlled "not configured" error — this helper does NOT switch the
+ * server to the fake/deterministic provider. Use unit/E2E tests with
+ * createFakeProvider() for offline verification.
  *
  * Usage:
  *   BASE_URL=http://127.0.0.1:3000 INTERNAL_RUNTIME_SECRET=… \
