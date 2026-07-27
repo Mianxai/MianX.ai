@@ -54,6 +54,14 @@ describe("GET /api/core/jobs", () => {
     vi.doUnmock("@/lib/auth");
   });
 
+  it("requires project_id", async () => {
+    await withAuth({ email: "admin@mianx.ai" });
+    const { GET } = await import("./route.js");
+    const res = await GET(fakeReq({}, "limit=10"));
+    expect(res.status).toBe(400);
+    vi.doUnmock("@/lib/auth");
+  });
+
   it("clamps the limit to the server ceiling", async () => {
     await withAuth({ email: "admin@mianx.ai" });
     const listJobs = vi.fn(async () => ({ rows: [], total: 0 }));
@@ -62,7 +70,7 @@ describe("GET /api/core/jobs", () => {
       countJobsByStatus: vi.fn(async () => ({})),
     }));
     const { GET } = await import("./route.js");
-    await GET(fakeReq({}, `limit=99999`));
+    await GET(fakeReq({}, `project_id=${UUID}&limit=99999`));
     expect(listJobs.mock.calls[0][0].limit).toBeLessThanOrEqual(100);
     vi.doUnmock("@/lib/core/repo");
     vi.doUnmock("@/lib/auth");
@@ -197,18 +205,28 @@ describe("POST /api/core/jobs/[id]/cancel and /retry", () => {
     vi.doMock("@/lib/core/repo", () => ({
       getJob: vi.fn(async () => ({
         id: UUID,
-        project_id: "p1",
+        project_id: UUID,
         status: "dead_letter",
         error: { code: "PROVIDER_ERROR" },
       })),
       updateJobIfStatus: vi.fn(async () => ({ id: UUID, status: "queued" })),
     }));
     const { POST } = await import("./[id]/retry/route.js");
-    const res = await POST(fakeReq({}), { params: Promise.resolve({ id: UUID }) });
+    const res = await POST(fakeReq({ project_id: UUID }), {
+      params: Promise.resolve({ id: UUID }),
+    });
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.job.status).toBe("queued");
     vi.doUnmock("@/lib/core/repo");
+    vi.doUnmock("@/lib/auth");
+  });
+
+  it("retry requires project_id", async () => {
+    await withAuth({ email: "admin@mianx.ai" });
+    const { POST } = await import("./[id]/retry/route.js");
+    const res = await POST(fakeReq({}), { params: Promise.resolve({ id: UUID }) });
+    expect(res.status).toBe(400);
     vi.doUnmock("@/lib/auth");
   });
 });

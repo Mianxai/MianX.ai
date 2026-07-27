@@ -129,7 +129,13 @@ export default function QueuePanel({ call, projectId }) {
   async function act(job, action) {
     setBusyId(job.id);
     setConfirming(null);
-    const res = await call(`/api/core/jobs/${job.id}/${action}`, { method: "POST" });
+    const res = await call(
+      `/api/core/jobs/${job.id}/${action}?project_id=${encodeURIComponent(projectId)}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ project_id: projectId }),
+      }
+    );
     setBusyId("");
     if (!res.ok) {
       setError(errorMessage(res.data, `Could not ${action} the job.`));
@@ -176,6 +182,12 @@ export default function QueuePanel({ call, projectId }) {
           </div>
         ))}
       </div>
+      <p className="runtime-muted" data-testid="queue-approval-note">
+        Job statuses above are queue truth. Tasks waiting on a human appear as
+        task status &quot;awaiting approval&quot; (Approvals panel) — successful
+        jobs that gated on approval are counted as succeeded here, not as a
+        separate queue state.
+      </p>
 
       <div className="runtime-queue-toolbar">
         <div
