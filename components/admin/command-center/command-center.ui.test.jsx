@@ -70,10 +70,10 @@ describe("Command Center UI contracts", () => {
           { slug: "engineering", name: "Engineering", agentCount: 4, activeInstances: 1 },
         ]}
         active="all"
-        onSelect={() => {}}
+        onSelectDepartment={() => {}}
       />
     );
-    expect(screen.getByRole("button", { name: /All departments/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Company overview/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Leadership/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Engineering/i })).toBeTruthy();
   });

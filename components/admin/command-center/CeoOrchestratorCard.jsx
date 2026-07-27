@@ -15,13 +15,19 @@ export default function CeoOrchestratorCard({ agent, brief, projectId }) {
   const blocked = brief?.blockedObjectives?.length;
   const pending = brief?.pendingApprovals?.length;
   const completed = brief?.recentCompleted?.[0] || null;
+  const activeTitle =
+    brief?.activeObjectives?.[0]?.title ||
+    brief?.activeObjectives?.[0]?.workflow ||
+    null;
 
   return (
     <section className="cc-ceo-card" aria-labelledby="cc-ceo-title">
       <div className="cc-ceo-card-top">
         <div>
-          <p className="cc-eyebrow">Founder authority → Executive layer</p>
-          <h2 id="cc-ceo-title">Executive CEO / Orchestrator</h2>
+          <p className="cc-eyebrow">Command layer · reports to Founder</p>
+          <h2 id="cc-ceo-title">
+            {agent?.name || "Executive CEO / Orchestrator"}
+          </h2>
           <p className="cc-muted">
             {agent?.purpose
               ? agent.purpose.slice(0, 160) + (agent.purpose.length > 160 ? "…" : "")
@@ -32,7 +38,7 @@ export default function CeoOrchestratorCard({ agent, brief, projectId }) {
       </div>
       <dl className="cc-ceo-grid">
         <div>
-          <dt>Current project</dt>
+          <dt>Selected project</dt>
           <dd>
             {projectId
               ? live.projectId || projectId
@@ -40,35 +46,32 @@ export default function CeoOrchestratorCard({ agent, brief, projectId }) {
           </dd>
         </div>
         <div>
-          <dt>Current objective</dt>
-          <dd>
-            {brief?.activeObjectives?.[0]?.title ||
-              brief?.activeObjectives?.[0]?.workflow ||
-              "No activity yet"}
-          </dd>
+          <dt>Active objective</dt>
+          <dd>{activeTitle || "No activity yet"}</dd>
         </div>
         <div>
-          <dt>Active workstreams</dt>
+          <dt>Delegated workstreams</dt>
           <dd>
             {typeof activeStreams === "number" ? activeStreams : "Data unavailable"}
           </dd>
         </div>
         <div>
-          <dt>Blocked workstreams</dt>
+          <dt>Blockers</dt>
           <dd>{typeof blocked === "number" ? blocked : "Data unavailable"}</dd>
         </div>
         <div>
-          <dt>Pending approvals</dt>
+          <dt>Pending Founder approvals</dt>
           <dd>{typeof pending === "number" ? pending : "Data unavailable"}</dd>
         </div>
         <div>
-          <dt>Recent completed</dt>
+          <dt>Latest completed</dt>
           <dd>{completed?.title || "No activity yet"}</dd>
         </div>
       </dl>
       <div className="cc-link-row">
         <Link href="/admin/objectives">Objectives</Link>
         <Link href="/admin/ceo-brief">CEO Brief</Link>
+        <Link href="/admin/inbox">Founder Inbox</Link>
         <Link href="/admin/runtime/approvals">Approvals</Link>
       </div>
     </section>
