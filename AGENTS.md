@@ -79,6 +79,13 @@ Gotchas:
 - Local anon/service_role keys printed by `supabase status` are shared
   insecure defaults — fine for local dev only, never production.
 
+### AI Workforce canonical registry (organizational)
+
+Source-controlled org registry (not runtime activation): `lib/workforce/`.
+Defines 20 departments and **445 planned role slots**. This is capacity
+planning — not 445 always-on processes. Executable agents remain in
+`lib/core/agents.js`. Validate with `npx vitest run lib/workforce`.
+
 ### Mianx Core runtime loop (local)
 
 1. Apply migrations (`supabase db reset` or `supabase migration up`).
