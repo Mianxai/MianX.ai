@@ -20,6 +20,7 @@ export const DEFAULT_VERIFIERS = [
   { name: "admin-loader", script: "scripts/verify-admin-loader-geometry.mjs" },
   { name: "login", script: "scripts/verify-login-geometry.mjs" },
   { name: "submission-badge", script: "scripts/verify-submission-badge-geometry.mjs" },
+  { name: "command-center", script: "scripts/verify-command-center-geometry.mjs" },
 ];
 
 const VERIFIER_TIMEOUT_MS = Number(process.env.MIANX_VERIFIER_TIMEOUT_MS || 300000);
