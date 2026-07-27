@@ -10,6 +10,8 @@ import {
   startReleaseReadiness,
   startExecutiveObjective,
   startSoftwareDelivery,
+  startPlatformCandidate,
+  startControlledDelivery,
 } from "@/lib/core/workflow";
 import { routeExecutiveObjectiveToDelivery } from "@/lib/core/delivery/executive-bridge";
 
@@ -72,6 +74,33 @@ export const POST = withErrorHandling(async (req) => {
         actor,
       });
     }
+  } else if (safe.workflow === "platform-candidate") {
+    result = await startPlatformCandidate({
+      projectId: safe.project_id,
+      objective: safe.objective,
+      workspaceRoot: safe.workspace_root,
+      edits: Array.isArray(body.edits) ? body.edits : [],
+      allowedPathPrefixes: Array.isArray(body.allowed_path_prefixes)
+        ? body.allowed_path_prefixes
+        : ["fixtures/"],
+      commands: Array.isArray(body.commands) ? body.commands : [],
+      proposedAction: safe.proposed_action,
+      actor,
+    });
+  } else if (safe.workflow === "controlled-delivery") {
+    result = await startControlledDelivery({
+      projectId: safe.project_id,
+      objective: safe.objective,
+      workspaceRoot: safe.workspace_root,
+      edits: Array.isArray(body.edits) ? body.edits : [],
+      allowedPathPrefixes: Array.isArray(body.allowed_path_prefixes)
+        ? body.allowed_path_prefixes
+        : ["fixtures/"],
+      commands: Array.isArray(body.commands) ? body.commands : [],
+      proposedAction: safe.proposed_action,
+      routedBy: safe.routed_by,
+      actor,
+    });
   }
 
   return NextResponse.json(

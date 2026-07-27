@@ -97,6 +97,11 @@ Product → Architecture → Engineering → Review → independent QA
 autonomous repository writes or production deploys. Founder approval only
 when a protected action is proposed.
 
+Wave-3 platform + controlled coding (active runtime): `lib/core/platform/` +
+`lib/core/coding/` — workspace-scoped coding executor, security/DevOps/infra/
+data-AI readiness (`platform-candidate`, `controlled-delivery`). Never pushes,
+merges, or deploys autonomously.
+
 ### Mianx Core runtime loop (local)
 
 1. Apply migrations (`supabase db reset` or `supabase migration up`).
