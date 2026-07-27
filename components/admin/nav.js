@@ -14,16 +14,63 @@ export const PATH_TO_RUNTIME_TAB = Object.fromEntries(
   Object.entries(RUNTIME_TAB_PATHS).map(([tab, path]) => [path, tab])
 );
 
+/**
+ * Founder Operating System left navigation.
+ * Labels map to existing routes/data — no duplicate backends.
+ */
 export const ADMIN_NAV = [
   {
-    href: "/admin",
-    label: "Overview",
-    match: "exact",
-    icon: "overview",
+    href: "/admin/command-center",
+    label: "Command Center",
+    match: "prefix",
+    icon: "command",
   },
   {
-    href: "/admin/submissions",
-    label: "Submissions",
+    href: "/admin/ceo-brief",
+    label: "CEO Brief",
+    match: "prefix",
+    icon: "brief",
+  },
+  {
+    href: "/admin/objectives",
+    label: "Objectives",
+    match: "prefix",
+    icon: "objectives",
+  },
+  {
+    href: "/admin/inbox",
+    label: "Founder Inbox",
+    match: "prefix",
+    icon: "inbox",
+    badgeKey: "inboxCount",
+  },
+  {
+    href: "/admin/agent-network",
+    label: "Agent Network",
+    match: "prefix",
+    icon: "network",
+  },
+  {
+    href: "/admin/departments",
+    label: "Departments",
+    match: "prefix",
+    icon: "departments",
+  },
+  {
+    href: "/admin/workflows",
+    label: "Workflows",
+    match: "prefix",
+    icon: "workflows",
+  },
+  {
+    href: "/admin/schedule",
+    label: "Schedule",
+    match: "prefix",
+    icon: "schedule",
+  },
+  {
+    href: "/admin/lead-pipeline",
+    label: "Lead Pipeline",
     match: "prefix",
     icon: "submissions",
     badgeKey: "newCount",
@@ -35,22 +82,34 @@ export const ADMIN_NAV = [
     icon: "projects",
   },
   {
-    href: "/admin/command-center",
-    label: "Command Center",
+    href: "/admin/runtime/approvals",
+    label: "Approvals",
     match: "prefix",
-    icon: "command",
+    icon: "approvals",
   },
   {
-    href: "/admin/objectives",
-    label: "Objectives",
+    href: "/admin/knowledge",
+    label: "Knowledge",
     match: "prefix",
-    icon: "objectives",
+    icon: "knowledge",
   },
   {
-    href: "/admin/ceo-brief",
-    label: "CEO Brief",
+    href: "/admin/outputs",
+    label: "Outputs",
     match: "prefix",
-    icon: "brief",
+    icon: "outputs",
+  },
+  {
+    href: "/admin/analytics",
+    label: "Analytics",
+    match: "prefix",
+    icon: "analytics",
+  },
+  {
+    href: "/admin/runtime/audit",
+    label: "Audit",
+    match: "prefix",
+    icon: "audit",
   },
   {
     href: "/admin/runtime",
@@ -67,10 +126,10 @@ export const ADMIN_NAV = [
     ],
   },
   {
-    href: "/admin/analytics",
-    label: "Analytics",
-    match: "prefix",
-    icon: "analytics",
+    href: "/admin",
+    label: "Overview",
+    match: "exact",
+    icon: "overview",
   },
   {
     href: "/admin/settings",
@@ -92,6 +151,14 @@ export function isNavItemCurrent(pathname, item) {
   if (item.match === "exact") return pathname === item.href;
   if (item.href === "/admin/runtime") {
     return pathname === "/admin/runtime" || pathname.startsWith("/admin/runtime/");
+  }
+  // Approvals nav item shares prefix with /admin/runtime/approvals under Runtime —
+  // treat dedicated Approvals entry as current only on that path.
+  if (item.href === "/admin/runtime/approvals") {
+    return pathname === "/admin/runtime/approvals" || pathname.startsWith("/admin/runtime/approvals/");
+  }
+  if (item.href === "/admin/runtime/audit") {
+    return pathname === "/admin/runtime/audit" || pathname.startsWith("/admin/runtime/audit/");
   }
   return isNavActive(pathname, item);
 }

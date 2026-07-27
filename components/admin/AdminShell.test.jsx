@@ -48,9 +48,9 @@ describe("AdminShell", () => {
     );
 
     expect(screen.getByRole("link", { name: /Overview/i })).toHaveAttribute("href", "/admin");
-    expect(screen.getByRole("link", { name: /Submissions/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Lead Pipeline/i })).toHaveAttribute(
       "href",
-      "/admin/submissions"
+      "/admin/lead-pipeline"
     );
     expect(screen.getByRole("link", { name: /^Projects$/i })).toHaveAttribute(
       "href",
@@ -68,6 +68,10 @@ describe("AdminShell", () => {
       "href",
       "/admin/ceo-brief"
     );
+    expect(screen.getByRole("link", { name: /Founder Inbox/i })).toHaveAttribute(
+      "href",
+      "/admin/inbox"
+    );
     expect(screen.getByRole("link", { name: /^Runtime$/i })).toHaveAttribute(
       "href",
       "/admin/runtime"
@@ -84,14 +88,12 @@ describe("AdminShell", () => {
       "href",
       "/admin/runtime/runs"
     );
-    expect(screen.getByRole("link", { name: /^Approvals$/i })).toHaveAttribute(
-      "href",
-      "/admin/runtime/approvals"
+    const approvals = screen.getAllByRole("link", { name: /^Approvals$/i });
+    expect(approvals.some((a) => a.getAttribute("href") === "/admin/runtime/approvals")).toBe(
+      true
     );
-    expect(screen.getByRole("link", { name: /^Audit$/i })).toHaveAttribute(
-      "href",
-      "/admin/runtime/audit"
-    );
+    const audits = screen.getAllByRole("link", { name: /^Audit$/i });
+    expect(audits.some((a) => a.getAttribute("href") === "/admin/runtime/audit")).toBe(true);
     expect(screen.getByRole("link", { name: /Analytics/i })).toHaveAttribute(
       "href",
       "/admin/analytics"
@@ -139,7 +141,7 @@ describe("AdminShell", () => {
     expect(aside.className).not.toContain("open");
   });
 
-  it("shows a newCount badge on Submissions when provided", () => {
+  it("shows a newCount badge on Lead Pipeline when provided", () => {
     render(
       <AdminShell title="Overview" newCount={3}>
         <p>body</p>

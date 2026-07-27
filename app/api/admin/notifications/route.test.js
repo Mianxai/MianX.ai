@@ -66,10 +66,10 @@ describe("GET /api/admin/notifications", () => {
     });
 
     const { GET } = await import("./route.js");
-    const res = await GET({});
+    const res = await GET(new Request("http://localhost/api/admin/notifications"));
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data).toEqual({ newSubmissions: 6 });
+    expect(data).toEqual({ newSubmissions: 6, inboxAttention: 0 });
     expect(JSON.stringify(data)).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(JSON.stringify(data)).not.toMatch(/eyJ|sk-/);
     vi.doUnmock("@/lib/admin-auth");
