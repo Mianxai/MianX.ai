@@ -76,6 +76,7 @@ export default function QueuePanel({ call, projectId }) {
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [ticking, setTicking] = useState(false);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
   const [confirming, setConfirming] = useState(null); // { id, action }
@@ -138,6 +139,21 @@ export default function QueuePanel({ call, projectId }) {
     void load({ background: true });
   }
 
+  async function runManualTick() {
+    setTicking(true);
+    const res = await call("/api/admin/runtime/tick", {
+      method: "POST",
+      body: JSON.stringify({ max_jobs: 5 }),
+    });
+    setTicking(false);
+    if (!res.ok) {
+      setError(errorMessage(res.data, "Could not run a worker tick."));
+      return;
+    }
+    setError("");
+    void load({ background: true });
+  }
+
   if (!projectId) {
     return <p className="runtime-muted">Select or create a project first.</p>;
   }
@@ -185,9 +201,22 @@ export default function QueuePanel({ call, projectId }) {
         <button
           type="button"
           className="header-btn-ghost"
+          data-testid="queue-run-tick"
+          onClick={() => void runManualTick()}
+          disabled={ticking || refreshing}
+        >
+          {ticking ? (
+            <MianxLoader variant="inline" label="Running tick…" />
+          ) : (
+            "Run tick"
+          )}
+        </button>
+        <button
+          type="button"
+          className="header-btn-ghost"
           data-testid="queue-refresh"
           onClick={() => void load({ background: true })}
-          disabled={refreshing}
+          disabled={refreshing || ticking}
         >
           {refreshing ? (
             <MianxLoader variant="inline" label="Refreshing queue…" />
@@ -206,7 +235,7 @@ export default function QueuePanel({ call, projectId }) {
       {(jobs || []).length === 0 ? (
         <p className="runtime-muted">
           {statusFilter === "all"
-            ? "No jobs in the queue yet. Jobs appear when a task is enqueued or a workflow starts. Queued jobs process only when the internal tick endpoint is invoked (manual or external scheduler) — this deployment does not claim automatic processing."
+            ? "No jobs in the queue yet. Jobs appear when a task is enqueued or a workflow starts. Queued jobs process when a worker tick runs (Run tick here, npm run runtime:tick, or an external scheduler). This deployment does not claim automatic processing."
             : `No ${statusFilter.replace("_", " ")} jobs.`}
         </p>
       ) : (

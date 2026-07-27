@@ -186,4 +186,35 @@ describe("QueuePanel", () => {
     await user.click(await screen.findByRole("button", { name: "Detail" }));
     expect(screen.getByLabelText("Job output").textContent).toContain('"score": 88');
   });
+
+  it("runs a manual worker tick then refreshes the queue", async () => {
+    const user = userEvent.setup();
+    const call = makeCall([
+      {
+        match: "/api/core/jobs?",
+        response: okList({
+          jobs: [job()],
+          counts: { queued: 1 },
+          total: 1,
+        }),
+      },
+      {
+        match: "/api/admin/runtime/tick",
+        response: {
+          ok: true,
+          status: 200,
+          data: { ok: true, tick: { claimed: 1, completed: 1 } },
+          method: "POST",
+        },
+      },
+    ]);
+    render(<QueuePanel call={call} projectId={PROJECT_ID} />);
+    await screen.findByTestId("queue-list");
+    await user.click(screen.getByTestId("queue-run-tick"));
+    await waitFor(() => {
+      expect(call.mock.calls.some(([path]) => path.includes("/api/admin/runtime/tick"))).toBe(
+        true
+      );
+    });
+  });
 });

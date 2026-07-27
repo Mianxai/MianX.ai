@@ -6,6 +6,7 @@ import { listAgentDefinitions } from "@/lib/core/agents";
 import { registerAgent } from "@/lib/core/runtime";
 import * as repo from "@/lib/core/repo";
 import { badRequest } from "@/lib/core/errors";
+import { rateLimit } from "@/lib/core/ratelimit";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,10 @@ export const GET = withErrorHandling(async (req) => {
 // Registers a catalog agent into a project as an active instance.
 export const POST = withErrorHandling(async (req) => {
   const { user } = await requireCapability(req, CAPABILITIES.MANAGE_AGENTS);
+  rateLimit(`agent-register:${actorFromUser(user)}`, {
+    max: 30,
+    windowMs: 60_000,
+  });
   const body = await parseJsonBody(req);
   const projectId = clip(body.project_id, 64);
   const slug = clip(body.slug, 100);
