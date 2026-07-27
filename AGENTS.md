@@ -86,6 +86,10 @@ Defines 20 departments and **445 planned role slots**. This is capacity
 planning — not 445 always-on processes. Executable agents remain in
 `lib/core/agents.js`. Validate with `npx vitest run lib/workforce`.
 
+Wave-1 executive control plane (active runtime): `lib/core/executive/` —
+Executive Orchestrator + C-Suite advisors, `executive-readiness` workflow,
+delegation safety, Founder approval for protected launch decisions.
+
 ### Mianx Core runtime loop (local)
 
 1. Apply migrations (`supabase db reset` or `supabase migration up`).

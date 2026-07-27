@@ -8,6 +8,7 @@ import {
   startLeadQualification,
   startProductPlanning,
   startReleaseReadiness,
+  startExecutiveObjective,
 } from "@/lib/core/workflow";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +44,12 @@ export const POST = withErrorHandling(async (req) => {
       projectId: safe.project_id,
       changeSummary: safe.change_summary,
       evidence: safe.evidence,
+      actor,
+    });
+  } else if (safe.workflow === "executive-readiness") {
+    result = await startExecutiveObjective({
+      projectId: safe.project_id,
+      objective: safe.objective,
       actor,
     });
   }
