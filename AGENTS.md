@@ -72,11 +72,29 @@ Gotchas:
   booting the app — Supabase-backed routes return a controlled 503
   configuration error instead of crashing when they are absent (see
   `lib/supabase.js`).
-- The login flow stores the Supabase access token in a client-set
-  `sb-access-token` cookie; `middleware.js` and the API routes read that
-  cookie.
+- The login flow stores the Supabase access token in an HttpOnly
+  `sb-access-token` cookie via `POST /api/admin/session`; `middleware.js`
+  rejects missing/expired cookie shapes and API routes validate the session
+  with Supabase Auth plus UUID membership checks.
 - Local anon/service_role keys printed by `supabase status` are shared
   insecure defaults — fine for local dev only, never production.
+
+### Mianx Core runtime loop (local)
+
+1. Apply migrations (`supabase db reset` or `supabase migration up`).
+2. Insert Founder `admin_memberships` row for your Auth user UUID (not by email).
+3. Start the app (`npm run dev` or production `npm run build && npm start`).
+4. Enqueue work from Admin → Runtime / Queue (or workflows/tasks APIs).
+5. Process the queue without claiming automatic cron:
+   - Admin Queue UI → **Run tick** (`POST /api/admin/runtime/tick`, requires
+     `manage_jobs`), or
+   - `INTERNAL_RUNTIME_SECRET=<≥16 chars> npm run runtime:tick`
+6. Provider calls use the hardened `lib/core/provider.js` path. Without
+   `ANTHROPIC_API_KEY`, jobs fail with a controlled provider status; tests use
+   the fake/deterministic provider.
+
+Pending hosted migrations must be applied by the Founder after
+`npx supabase db push --dry-run` review — never auto-applied from CI.
 
 ## Repository map
 
