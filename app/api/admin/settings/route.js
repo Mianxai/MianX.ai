@@ -3,6 +3,7 @@ import { withErrorHandling } from "@/lib/core/errors";
 import { requireAdmin, getAdminAccessModelStatus } from "@/lib/admin-auth";
 import { runtimeConfigStatus } from "@/lib/core/config";
 import { productionReadinessStatus } from "@/lib/core/production-readiness";
+import { resolveSchemaProbeFlags } from "@/lib/core/schema-probes";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { getSiteUrl } from "@/lib/site";
 
@@ -88,9 +89,18 @@ export const GET = withErrorHandling(async (req) => {
     founderActions.push({
       label: "Configure external or Pro scheduler for runtime tick",
       description:
+        runtime.scheduler?.founderGuidance ||
         "No platform cron is configured in-repo (Hobby rejects sub-daily schedules). Queue jobs do not process automatically until an external/Pro scheduler calls POST /api/internal/runtime/tick with the internal secret.",
     });
   }
+
+  const schemaFlags = await resolveSchemaProbeFlags();
+  const membershipPresent =
+    access.membershipTable === true
+      ? true
+      : access.membershipTable === false
+        ? false
+        : schemaFlags.membershipTablePresent;
 
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
@@ -114,6 +124,7 @@ export const GET = withErrorHandling(async (req) => {
         runtime.scheduler?.automaticProcessing
       ),
       platformCronConfigured: Boolean(runtime.scheduler?.platformCronConfigured),
+      schedulerGuidance: runtime.scheduler?.founderGuidance || null,
       internalWorkerConfigured: runtime.internalWorkerConfigured,
       cronSecretConfigured: runtime.cronSecretConfigured,
       providerCircuitState: runtime.providerCircuit?.state || "closed",
@@ -121,13 +132,8 @@ export const GET = withErrorHandling(async (req) => {
       runtimeVersion: process.env.npm_package_version || "0.1.0",
     },
     productionReadiness: productionReadinessStatus({
-      membershipTablePresent:
-        access.membershipTable === true
-          ? true
-          : access.membershipTable === false
-            ? false
-            : null,
-      runtimeJobsSchemaPresent: null,
+      membershipTablePresent: membershipPresent,
+      runtimeJobsSchemaPresent: schemaFlags.runtimeJobsSchemaPresent,
     }),
     access,
     founderActions,

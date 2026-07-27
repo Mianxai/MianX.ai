@@ -4,7 +4,7 @@ import {
   listAgentDefinitions,
   listActiveAgentDefinitions,
 } from "@/lib/core/agents";
-import { productionReadinessStatus } from "@/lib/core/production-readiness";
+import { productionReadinessStatusAsync } from "@/lib/core/production-readiness";
 
 // Reads env at request time only.
 export const dynamic = "force-dynamic";
@@ -16,12 +16,13 @@ export const dynamic = "force-dynamic";
 // `agentsCatalogTotal` also counts draft definitions, which are catalog-visible
 // contracts that the runtime refuses to register.
 export async function GET() {
+  const productionReadiness = await productionReadinessStatusAsync();
   return NextResponse.json({
     ok: true,
     service: "mianx-core",
     time: new Date().toISOString(),
     config: runtimeConfigStatus(),
-    productionReadiness: productionReadinessStatus(),
+    productionReadiness,
     agents: listActiveAgentDefinitions().length,
     agentsCatalogTotal: listAgentDefinitions().length,
   });
