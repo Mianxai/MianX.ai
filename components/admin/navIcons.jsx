@@ -45,6 +45,21 @@ export function NavIcon({ name }) {
           <path d="M12 7v2.5M10.2 13.5l-3.7 3.2M13.8 13.5l3.7 3.2" />
         </svg>
       );
+    case "objectives":
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="12" r="9" />
+          <circle cx="12" cy="12" r="5" />
+          <circle cx="12" cy="12" r="1.5" />
+        </svg>
+      );
+    case "brief":
+      return (
+        <svg {...props}>
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+      );
     case "runtime":
       return (
         <svg {...props}>
