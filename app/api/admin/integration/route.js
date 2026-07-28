@@ -24,9 +24,55 @@ import {
   auditRoutableWorkforce,
   assessProviderGate,
   measureConcurrencyProof,
+  saveRun,
+  buildProductionProofObjective,
+  assertExplicitFounderConfirmation,
+  integrationPersistenceStatus,
+  persistIntegrationRun,
+  loadIntegrationRun,
+  listPersistedIntegrationRuns,
+  mapProofStatusFromRun,
+  buildIntegrationReadinessAsync,
+  FOUNDER_PRODUCTION_PROOF_OBJECTIVE,
 } from "@/lib/core/integration";
 
 export const dynamic = "force-dynamic";
+
+async function assertDurableOrAllowTest() {
+  const status = await integrationPersistenceStatus();
+  if (status.failClosed && !status.durable) {
+    const err = new Error(
+      "Integration persistence unavailable — production is fail-closed for in-process fallback."
+    );
+    err.status = 503;
+    err.code = "INTEGRATION_PERSISTENCE_REQUIRED";
+    throw err;
+  }
+  return status;
+}
+
+async function hydrateRun(runId) {
+  if (!runId) return null;
+  let run = getRun(runId);
+  if (run) return run;
+  run = await loadIntegrationRun(runId);
+  return run;
+}
+
+async function persistSafe(run) {
+  if (!run) return { ok: false };
+  const result = await persistIntegrationRun(run);
+  if (result.failClosed && !result.ok) {
+    const err = new Error(
+      result.message ||
+        "Failed to persist integration run — refusing in-process-only production write."
+    );
+    err.status = 503;
+    err.code = "INTEGRATION_PERSIST_FAILED";
+    throw err;
+  }
+  return result;
+}
 
 export const GET = withErrorHandling(async (req) => {
   await requireAdmin(req);
@@ -35,8 +81,55 @@ export const GET = withErrorHandling(async (req) => {
   const projectId = url.searchParams.get("project_id");
   const runId = url.searchParams.get("run_id") || url.searchParams.get("id");
 
+  // Hydrate durable runs into process cache for inspectability after refresh.
+  if (projectId || action === "dashboard" || action === "runs" || action === "proof_status") {
+    const persisted = await listPersistedIntegrationRuns({
+      project_id: projectId || null,
+      limit: 40,
+    });
+    for (const run of persisted) {
+      if (run?.id && !getRun(run.id)) saveRun(run);
+    }
+  }
+
   if (action === "dashboard" || action === "overview") {
-    return NextResponse.json(getIntegrationDashboard({ project_id: projectId || null }));
+    const readiness = await buildIntegrationReadinessAsync({});
+    const dash = getIntegrationDashboard({ project_id: projectId || null });
+    return NextResponse.json({
+      ...dash,
+      readiness,
+      proof_template: FOUNDER_PRODUCTION_PROOF_OBJECTIVE,
+      persistence: readiness.persistence,
+    });
+  }
+  if (action === "proof_status") {
+    const readiness = await buildIntegrationReadinessAsync({});
+    const runs = listRuns({ project_id: projectId || null });
+    const proofRun =
+      runs.find((r) => r.proof?.is_production_proof || r.payload?.is_production_proof) ||
+      runs[0] ||
+      null;
+    return NextResponse.json({
+      ok: true,
+      proof_status: proofRun
+        ? mapProofStatusFromRun(proofRun)
+        : readiness.integrationProofStatus || "not_started",
+      run: proofRun
+        ? {
+            id: proofRun.id,
+            stage: proofRun.current_stage,
+            status: proofRun.status,
+            selected_agents: proofRun.allocation?.selected_agents || [],
+            task_count: proofRun.payload?.tasks?.length || 0,
+            evidence_count: proofRun.evidence?.count || 0,
+            memory_count: proofRun.memory?.count || 0,
+            learning_count: proofRun.learning?.count || 0,
+            recovery_count: proofRun.recovery_count || 0,
+          }
+        : null,
+      readiness,
+      proof_template: FOUNDER_PRODUCTION_PROOF_OBJECTIVE,
+    });
   }
   if (action === "runs") {
     return NextResponse.json({
@@ -49,23 +142,35 @@ export const GET = withErrorHandling(async (req) => {
     });
   }
   if (action === "run" && runId) {
-    const run = getRun(runId);
-    if (!run) return NextResponse.json({ ok: false, error: { message: "not found" } }, { status: 404 });
-    return NextResponse.json({ ok: true, run });
+    const run = await hydrateRun(runId);
+    if (!run) {
+      return NextResponse.json({ ok: false, error: { message: "not found" } }, { status: 404 });
+    }
+    if (projectId && run.project_id && run.project_id !== projectId) {
+      return NextResponse.json(
+        { ok: false, error: { message: "cross-project access denied" } },
+        { status: 403 }
+      );
+    }
+    saveRun(run);
+    return NextResponse.json({ ok: true, run, proof_status: mapProofStatusFromRun(run) });
   }
   if (action === "stages" && runId) {
+    await hydrateRun(runId);
     return NextResponse.json({
       ok: true,
       events: listStageEvents({ integration_run_id: runId, project_id: projectId || null }),
     });
   }
   if (action === "evidence" && runId) {
+    await hydrateRun(runId);
     return NextResponse.json({
       ok: true,
       manifest: getEvidenceManifest(runId),
     });
   }
   if (action === "memory" && runId) {
+    await hydrateRun(runId);
     return NextResponse.json({
       ok: true,
       entries: listMemoryEntries({
@@ -75,6 +180,7 @@ export const GET = withErrorHandling(async (req) => {
     });
   }
   if (action === "learning" && runId) {
+    await hydrateRun(runId);
     return NextResponse.json({
       ok: true,
       proposals: listLearningProposals({
@@ -84,12 +190,15 @@ export const GET = withErrorHandling(async (req) => {
     });
   }
   if (action === "proof" && runId) {
-    const run = getRun(runId);
-    if (!run) return NextResponse.json({ ok: false, error: { message: "not found" } }, { status: 404 });
+    const run = await hydrateRun(runId);
+    if (!run) {
+      return NextResponse.json({ ok: false, error: { message: "not found" } }, { status: 404 });
+    }
     return NextResponse.json({
       ok: true,
       proof_pack: run.proof_pack || buildProofPack(run),
       proof_level: "LEVEL_1_DETERMINISTIC_SIMULATION",
+      proof_status: mapProofStatusFromRun(run),
     });
   }
   if (action === "agents") {
@@ -103,6 +212,13 @@ export const GET = withErrorHandling(async (req) => {
       }),
     });
   }
+  if (action === "readiness") {
+    return NextResponse.json({
+      ok: true,
+      readiness: await buildIntegrationReadinessAsync({}),
+      persistence: await integrationPersistenceStatus(),
+    });
+  }
   return NextResponse.json({
     ok: true,
     engine_version: ENGINE_VERSION,
@@ -112,9 +228,54 @@ export const GET = withErrorHandling(async (req) => {
 
 export const POST = withErrorHandling(async (req) => {
   await requireAdmin(req);
+  await assertDurableOrAllowTest();
   const body = await req.json().catch(() => ({}));
   const action = body.action || "create";
   const actor = body.actor || "founder";
+
+  async function finish(runOrResult) {
+    const run = runOrResult?.run || runOrResult;
+    if (run?.id) {
+      run.proof_status = mapProofStatusFromRun(run);
+      saveRun(run);
+      await persistSafe(run);
+    }
+    return runOrResult;
+  }
+
+  if (action === "start_founder_proof") {
+    assertExplicitFounderConfirmation(body.confirmation);
+    if (!body.project_id) {
+      return NextResponse.json(
+        { ok: false, error: { message: "project_id required" } },
+        { status: 400 }
+      );
+    }
+    const objective = buildProductionProofObjective({
+      project_id: body.project_id,
+      organization_id: body.organization_id || null,
+    });
+    const result = createIntegrationRun(objective, {
+      actor,
+      idempotency_key: body.idempotency_key || `prod-proof:${body.project_id}`,
+    });
+    result.run.proof = {
+      is_production_proof: true,
+      started_by: actor,
+      started_at: new Date().toISOString(),
+    };
+    result.run.payload = {
+      ...(result.run.payload || {}),
+      is_production_proof: true,
+    };
+    await finish(result.run);
+    return NextResponse.json({
+      ok: true,
+      ...result,
+      proof_status: mapProofStatusFromRun(result.run),
+      note: "Production proof objective created. Clarification / plan / simulation still require Founder actions.",
+    });
+  }
 
   if (action === "create" || action === "create_objective") {
     const result = createIntegrationRun(body.objective || body, {
@@ -122,83 +283,87 @@ export const POST = withErrorHandling(async (req) => {
       idempotency_key: body.idempotency_key || null,
       force_cycle: Boolean(body.force_cycle),
     });
+    await finish(result.run);
     return NextResponse.json({ ok: true, ...result });
   }
   if (action === "clarify" || action === "submit_clarification") {
-    return NextResponse.json({
-      ok: true,
-      ...submitClarification(body.run_id, body.answers || body, { actor }),
-    });
+    const result = submitClarification(body.run_id, body.answers || body, { actor });
+    await finish(result.run);
+    return NextResponse.json({ ok: true, ...result });
   }
   if (action === "plan" || action === "generate_plan") {
-    return NextResponse.json({
-      ok: true,
-      run: generateIntegrationPlan(body.run_id, { actor }),
-    });
+    const run = generateIntegrationPlan(body.run_id, { actor });
+    await finish(run);
+    return NextResponse.json({ ok: true, run });
   }
   if (action === "approve_simulation") {
-    return NextResponse.json({
-      ok: true,
-      run: decideFounderApproval(body.run_id, "approve_simulation", {
-        actor,
-        note: body.note || "",
-        auto_approve: false,
-      }),
+    const run = decideFounderApproval(body.run_id, "approve_simulation", {
+      actor,
+      note: body.note || "",
+      auto_approve: false,
     });
+    await finish(run);
+    return NextResponse.json({ ok: true, run });
   }
   if (action === "reject") {
-    return NextResponse.json({
-      ok: true,
-      run: decideFounderApproval(body.run_id, "reject", { actor, note: body.note || "" }),
+    const run = decideFounderApproval(body.run_id, "reject", {
+      actor,
+      note: body.note || "",
     });
+    await finish(run);
+    return NextResponse.json({ ok: true, run });
   }
   if (action === "return_for_changes") {
-    return NextResponse.json({
-      ok: true,
-      run: decideFounderApproval(body.run_id, "return_for_changes", {
-        actor,
-        note: body.note || "",
-      }),
+    const run = decideFounderApproval(body.run_id, "return_for_changes", {
+      actor,
+      note: body.note || "",
     });
+    await finish(run);
+    return NextResponse.json({ ok: true, run });
   }
   if (action === "start_simulation") {
-    return NextResponse.json({
-      ok: true,
-      run: startIntegrationSimulation(body.run_id, { actor }),
-    });
+    const run = startIntegrationSimulation(body.run_id, { actor });
+    await finish(run);
+    return NextResponse.json({ ok: true, run });
   }
   if (action === "pause") {
-    return NextResponse.json({
-      ok: true,
-      run: pauseIntegrationRun(body.run_id, { actor }),
-    });
+    const run = pauseIntegrationRun(body.run_id, { actor });
+    await finish(run);
+    return NextResponse.json({ ok: true, run });
   }
   if (action === "resume") {
-    return NextResponse.json({
-      ok: true,
-      run: resumeIntegrationRun(body.run_id, { actor }),
-    });
+    const run = resumeIntegrationRun(body.run_id, { actor });
+    await finish(run);
+    return NextResponse.json({ ok: true, run });
   }
   if (action === "cancel") {
-    return NextResponse.json({
-      ok: true,
-      run: cancelIntegrationRun(body.run_id, { actor }),
-    });
+    const run = cancelIntegrationRun(body.run_id, { actor });
+    await finish(run);
+    return NextResponse.json({ ok: true, run });
   }
-  if (action === "recover") {
+  if (action === "recover" || action === "deterministic_recovery_test") {
+    const run = recoverIntegrationRun(body.run_id, { actor });
+    run.payload = {
+      ...(run.payload || {}),
+      deterministic_recovery_test: action === "deterministic_recovery_test",
+    };
+    await finish(run);
     return NextResponse.json({
       ok: true,
-      run: recoverIntegrationRun(body.run_id, { actor }),
+      run,
+      note:
+        action === "deterministic_recovery_test"
+          ? "Deterministic recovery testing — not a live outage."
+          : undefined,
     });
   }
   if (action === "final_review") {
-    return NextResponse.json({
-      ok: true,
-      run: decideFinalReview(body.run_id, body.decision || "approve", {
-        actor,
-        auto_approve: false,
-      }),
+    const run = decideFinalReview(body.run_id, body.decision || "approve", {
+      actor,
+      auto_approve: false,
     });
+    await finish(run);
+    return NextResponse.json({ ok: true, run });
   }
   if (action === "concurrency_proof") {
     return NextResponse.json({ ok: true, metrics: measureConcurrencyProof() });

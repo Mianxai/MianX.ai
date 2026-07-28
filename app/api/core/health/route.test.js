@@ -10,7 +10,14 @@ vi.mock("@/lib/core/schema-probes", () => ({
     runtimeJobsSchemaPresent: false,
     memoryEntriesSchemaPresent: false,
     learningCandidatesSchemaPresent: false,
+    integrationRunsSchemaPresent: false,
+    integrationStageEventsSchemaPresent: false,
+    integrationCheckpointsSchemaPresent: false,
+    integrationEvidenceManifestsSchemaPresent: false,
+    integrationFailureEventsSchemaPresent: false,
   })),
+  probeTablePresent: vi.fn(async () => "missing"),
+  resetSchemaProbeCache: vi.fn(),
 }));
 
 vi.mock("@/lib/core/memory", async (importOriginal) => {
@@ -65,6 +72,12 @@ describe("GET /api/core/health", () => {
     expect(data.config.scheduler.platformCronConfigured).toBe(true);
     expect(data.config.rateLimit.durable).toBe(false);
     expect(data.lastTick).toBeNull();
+    expect(data.integration).toBeTruthy();
+    expect(data.integration.pendingMigrationsKnown).toBeUndefined();
+    expect(data.integration.migrationReadiness?.pending).toEqual([]);
+    expect(JSON.stringify(data.integration)).not.toMatch(/20260728210000_phase_h/);
+    expect(data.integration.fabricated_live_execution).toBe(false);
+    expect(data.integration.simulationReady).toBe(false);
     const serialized = JSON.stringify(data);
     expect(serialized).not.toMatch(/service_role/i);
     expect(serialized).not.toMatch(/eyJ|https?:\/\//i);
