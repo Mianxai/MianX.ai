@@ -6,6 +6,7 @@ import {
   isAgentExecutable,
 } from "@/lib/core/agents";
 import { productionReadinessStatusAsync } from "@/lib/core/production-readiness";
+import { buildIntegrationReadiness } from "@/lib/core/integration";
 import * as repo from "@/lib/core/repo";
 
 // Reads env at request time only.
@@ -27,6 +28,10 @@ export async function GET() {
   const config = runtimeConfigStatus({ lastTickAt: lastTick?.at || null });
   const active = listActiveAgentDefinitions();
   const executable = active.filter(isAgentExecutable);
+
+  const integration = buildIntegrationReadiness({
+    lastTickAt: lastTick?.at || null,
+  });
 
   return NextResponse.json({
     ok: true,
@@ -51,5 +56,6 @@ export async function GET() {
     agentsExecutable: executable.length,
     agentsCatalogTotal: listAgentDefinitions().length,
     agentsRoutable: executable.length,
+    integration,
   });
 }

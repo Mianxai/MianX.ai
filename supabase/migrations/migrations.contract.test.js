@@ -53,12 +53,12 @@ describe("migration contract (static, not applied)", () => {
     // Exact list a Founder should see from `supabase db push --dry-run`
     // when only these are pending relative to a pre-runtime_jobs prod.
     const expectedTail = [
-      "20260727120000_admin_memberships_service_role_grant.sql",
       "20260728120000_phase_b_memory_learning.sql",
       "20260728150000_phase_d_execution_engine.sql",
       "20260728180000_phase_e_template_intelligence.sql",
       "20260728190000_phase_f_planning_intelligence.sql",
       "20260728200000_phase_g_workforce_runtime.sql",
+      "20260728210000_phase_h_integration_runtime.sql",
     ];
     expect(files.slice(-6)).toEqual(expectedTail);
   });
@@ -147,6 +147,21 @@ describe("migration contract (static, not applied)", () => {
     expect(sql).toMatch(/create table if not exists workforce_audit_events/i);
     expect(sql).toMatch(/enable row level security/i);
     expect(sql).toMatch(/grant all on table workforce_agent_states to service_role/i);
+    expect(sql).toMatch(/DO NOT apply without Founder approval/i);
+    expect(sql).not.toMatch(/^\s*drop table(?! if exists)/im);
+    expect(sql).not.toMatch(/truncate /i);
+    expect(sql).not.toMatch(/delete from /i);
+  });
+
+  it("phase_h integration runtime migration is additive with RLS", () => {
+    const sql = readMigration("20260728210000_phase_h_integration_runtime.sql");
+    expect(sql).toMatch(/create table if not exists integration_runs/i);
+    expect(sql).toMatch(/create table if not exists integration_stage_events/i);
+    expect(sql).toMatch(/create table if not exists integration_checkpoints/i);
+    expect(sql).toMatch(/create table if not exists integration_evidence_manifests/i);
+    expect(sql).toMatch(/create table if not exists integration_failure_events/i);
+    expect(sql).toMatch(/enable row level security/i);
+    expect(sql).toMatch(/grant all on table integration_runs to service_role/i);
     expect(sql).toMatch(/DO NOT apply without Founder approval/i);
     expect(sql).not.toMatch(/^\s*drop table(?! if exists)/im);
     expect(sql).not.toMatch(/truncate /i);

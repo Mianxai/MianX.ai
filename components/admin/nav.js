@@ -20,6 +20,7 @@ export const ADMIN_NAV_GROUPS = [
     label: "Control",
     items: [
       { href: "/admin/command-center", label: "Command Center", match: "prefix", icon: "command" },
+      { href: "/admin/integration", label: "E2E Integration", match: "prefix", icon: "runtime" },
       { href: "/admin/ceo-brief", label: "CEO Brief", match: "prefix", icon: "brief" },
       { href: "/admin/objectives", label: "Objectives", match: "prefix", icon: "objectives" },
       { href: "/admin/company-builder", label: "Company Builder", match: "prefix", icon: "workflows" },
