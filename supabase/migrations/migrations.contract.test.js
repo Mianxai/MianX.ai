@@ -53,11 +53,23 @@ describe("migration contract (static, not applied)", () => {
     // Exact list a Founder should see from `supabase db push --dry-run`
     // when only these are pending relative to a pre-runtime_jobs prod.
     const expectedTail = [
-      "20260725150000_runtime_jobs.sql",
       "20260726120000_admin_membership_viewer_role.sql",
       "20260727120000_admin_memberships_service_role_grant.sql",
+      "20260728120000_phase_b_memory_learning.sql",
     ];
     expect(files.slice(-3)).toEqual(expectedTail);
+  });
+
+  it("phase_b memory/learning migration is additive with RLS", () => {
+    const sql = readMigration("20260728120000_phase_b_memory_learning.sql");
+    expect(sql).toMatch(/create table if not exists memory_entries/i);
+    expect(sql).toMatch(/create table if not exists learning_candidates/i);
+    expect(sql).toMatch(/enable row level security/i);
+    expect(sql).toMatch(/grant all on table memory_entries to service_role/i);
+    expect(sql).toMatch(/grant all on table learning_candidates to service_role/i);
+    expect(sql).not.toMatch(/drop table (?!if exists)/i);
+    expect(sql).not.toMatch(/truncate /i);
+    expect(sql).not.toMatch(/delete from /i);
   });
 
   it("service_role grant migration is additive and non-destructive", () => {

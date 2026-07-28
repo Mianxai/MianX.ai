@@ -249,9 +249,30 @@ export default function CommandCenterClient({ title = "Command Center" }) {
                     <Link href={data.knowledge?.auditHref || "/admin/runtime/audit"}>
                       Audit
                     </Link>
+                    <Link href={data.knowledge?.memoryHref || "/admin/memory"}>
+                      Memory
+                    </Link>
+                    <Link href={data.knowledge?.learningHref || "/admin/learning"}>
+                      Learning
+                    </Link>
                     <Link href="/admin/ceo-brief">CEO Brief</Link>
                     <Link href="/admin/objectives">Objectives</Link>
                   </div>
+                  {data.memoryLearning?.available ? (
+                    <p className="cc-muted">
+                      Memory candidates: {data.memoryLearning.memoryCandidates ?? 0}
+                      {" · "}
+                      Active: {data.memoryLearning.memoryActive ?? 0}
+                      {" · "}
+                      Learning open: {data.memoryLearning.learningCandidates ?? 0}
+                      {" · "}
+                      Promoted: {data.memoryLearning.learningPromoted ?? 0}
+                    </p>
+                  ) : (
+                    <p className="cc-muted">
+                      {data.memoryLearning?.label || "Memory/learning unavailable"}
+                    </p>
+                  )}
                 </section>
               </aside>
             </div>

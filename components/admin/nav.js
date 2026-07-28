@@ -94,6 +94,18 @@ export const ADMIN_NAV = [
     icon: "knowledge",
   },
   {
+    href: "/admin/memory",
+    label: "Memory",
+    match: "prefix",
+    icon: "knowledge",
+  },
+  {
+    href: "/admin/learning",
+    label: "Learning",
+    match: "prefix",
+    icon: "objectives",
+  },
+  {
     href: "/admin/outputs",
     label: "Outputs",
     match: "prefix",
