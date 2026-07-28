@@ -53,9 +53,9 @@ describe("migration contract (static, not applied)", () => {
     // Exact list a Founder should see from `supabase db push --dry-run`
     // when only these are pending relative to a pre-runtime_jobs prod.
     const expectedTail = [
-      "20260726120000_admin_membership_viewer_role.sql",
       "20260727120000_admin_memberships_service_role_grant.sql",
       "20260728120000_phase_b_memory_learning.sql",
+      "20260728150000_phase_d_execution_engine.sql",
     ];
     expect(files.slice(-3)).toEqual(expectedTail);
   });
@@ -67,6 +67,23 @@ describe("migration contract (static, not applied)", () => {
     expect(sql).toMatch(/enable row level security/i);
     expect(sql).toMatch(/grant all on table memory_entries to service_role/i);
     expect(sql).toMatch(/grant all on table learning_candidates to service_role/i);
+    expect(sql).not.toMatch(/drop table (?!if exists)/i);
+    expect(sql).not.toMatch(/truncate /i);
+    expect(sql).not.toMatch(/delete from /i);
+  });
+
+  it("phase_d execution engine migration is additive with RLS", () => {
+    const sql = readMigration("20260728150000_phase_d_execution_engine.sql");
+    expect(sql).toMatch(/create table if not exists companies/i);
+    expect(sql).toMatch(/create table if not exists products/i);
+    expect(sql).toMatch(/create table if not exists execution_programs/i);
+    expect(sql).toMatch(/create table if not exists execution_items/i);
+    expect(sql).toMatch(/create table if not exists execution_dependencies/i);
+    expect(sql).toMatch(/create table if not exists workforce_allocations/i);
+    expect(sql).toMatch(/create table if not exists execution_events/i);
+    expect(sql).toMatch(/create table if not exists execution_checkpoints/i);
+    expect(sql).toMatch(/enable row level security/i);
+    expect(sql).toMatch(/grant all on table execution_programs to service_role/i);
     expect(sql).not.toMatch(/drop table (?!if exists)/i);
     expect(sql).not.toMatch(/truncate /i);
     expect(sql).not.toMatch(/delete from /i);
