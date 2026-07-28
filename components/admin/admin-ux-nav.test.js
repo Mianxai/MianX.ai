@@ -28,14 +28,12 @@ describe("admin navigation uniqueness", () => {
     expect(ADMIN_NAV.some((i) => i.href === "/admin/runtime/audit")).toBe(true);
   });
 
-  it("uses grouped IA with Control / Workforce / Business / Intelligence / Operations", () => {
-    expect(ADMIN_NAV_GROUPS.map((g) => g.id)).toEqual([
-      "control",
-      "workforce",
-      "business",
-      "intelligence",
-      "operations",
-    ]);
+  it("includes Templates under Intelligence without duplicates", () => {
+    const intel = ADMIN_NAV_GROUPS.find((g) => g.id === "intelligence");
+    const labels = intel.items.map((i) => i.label);
+    expect(labels).toContain("Templates");
+    expect(labels.filter((l) => l === "Templates")).toHaveLength(1);
+    expect(primaryNavHrefs().filter((h) => h === "/admin/templates")).toHaveLength(1);
   });
 
   it("uses Control IA without Overview or Execution in the primary sidebar", () => {

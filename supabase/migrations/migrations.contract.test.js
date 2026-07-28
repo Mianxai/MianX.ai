@@ -56,8 +56,9 @@ describe("migration contract (static, not applied)", () => {
       "20260727120000_admin_memberships_service_role_grant.sql",
       "20260728120000_phase_b_memory_learning.sql",
       "20260728150000_phase_d_execution_engine.sql",
+      "20260728180000_phase_e_template_intelligence.sql",
     ];
-    expect(files.slice(-3)).toEqual(expectedTail);
+    expect(files.slice(-4)).toEqual(expectedTail);
   });
 
   it("phase_b memory/learning migration is additive with RLS", () => {
@@ -85,6 +86,20 @@ describe("migration contract (static, not applied)", () => {
     expect(sql).toMatch(/enable row level security/i);
     expect(sql).toMatch(/grant all on table execution_programs to service_role/i);
     expect(sql).not.toMatch(/drop table (?!if exists)/i);
+    expect(sql).not.toMatch(/truncate /i);
+    expect(sql).not.toMatch(/delete from /i);
+  });
+
+  it("phase_e template intelligence migration is additive with RLS", () => {
+    const sql = readMigration("20260728180000_phase_e_template_intelligence.sql");
+    expect(sql).toMatch(/create table if not exists industry_templates/i);
+    expect(sql).toMatch(/create table if not exists template_relations/i);
+    expect(sql).toMatch(/create table if not exists template_versions/i);
+    expect(sql).toMatch(/create table if not exists template_reviews/i);
+    expect(sql).toMatch(/enable row level security/i);
+    expect(sql).toMatch(/grant all on table industry_templates to service_role/i);
+    expect(sql).toMatch(/DO NOT apply without Founder approval/i);
+    expect(sql).not.toMatch(/^\s*drop table(?! if exists)/im);
     expect(sql).not.toMatch(/truncate /i);
     expect(sql).not.toMatch(/delete from /i);
   });

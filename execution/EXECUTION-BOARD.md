@@ -1010,3 +1010,32 @@ no RestaurantOS/PoultryOS product build, no filler agents, no secret exposure.
 4. Merge / promote only with explicit Founder approval
 
 ---
+
+## 14. Phase E — Template Intelligence Engine (draft PR)
+
+Branch: `cursor/phase-e-template-intelligence-engine`  
+Base: `origin/main` after PR #43 (Admin UX) merge.
+
+### Delivered (code)
+
+- Template domain model + catalog engines (`lib/core/template-intelligence/`)
+- Additive migration `20260728180000_phase_e_template_intelligence.sql` (**not applied**)
+- Immutable versioning, relation graph, matcher, capability/department/module engines
+- Company Builder integration (objective → templates → blueprint → lineage)
+- Memory/learning bridges (candidates only; no auto-modify active templates)
+- Admin `/admin/templates` + `/api/admin/templates`; sidebar **Templates** under Intelligence
+- Deterministic scenarios A–J; docs: `doc/engineering/phase-e-template-intelligence.md`
+
+### Explicit non-goals (confirmed)
+
+No merge to main, no production deploy, no migration apply, no paid provider calls,
+no RestaurantOS/PoultryOS/HospitalOS product build, no filler agents, no secret exposure.
+
+### Founder actions remaining
+
+1. Review draft PR
+2. Approve Phase E migration dry-run / apply when ready
+3. Configure AI provider only when spend is authorised
+4. Merge / promote only with explicit Founder approval
+
+---
