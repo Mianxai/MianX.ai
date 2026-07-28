@@ -4,16 +4,18 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
+import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
 import CeoBriefPanel from "@/components/admin/command-center/CeoBriefPanel";
 import SchedulePanel from "@/components/admin/command-center/SchedulePanel";
 import StatusChip from "@/components/admin/command-center/StatusChip";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 async function fetchJson(path, router) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
   if (res.status === 401) {
-    router?.push("/admin/login");
+    router?.push(currentAdminLoginHref("/admin/ceo-brief"));
     return { ok: false, data: null };
   }
   let data = null;
@@ -114,9 +116,32 @@ export default function CeoBriefClient() {
               <section className="cc-card" aria-labelledby="brief-obj-h">
                 <h2 id="brief-obj-h">Objectives snapshot</h2>
                 {(data.objectives || []).length === 0 ? (
-                  <p className="cc-muted">
-                    {data.available ? "No activity yet" : "Select a project"}
-                  </p>
+                  <EmptyState
+                    title={data.available ? "No objectives yet" : "Select a project"}
+                    reason={
+                      data.available
+                        ? "No Founder objectives are recorded for this scope."
+                        : "CEO Brief objectives require a selected project."
+                    }
+                    nextAction={
+                      data.available
+                        ? "Issue an objective to populate this snapshot."
+                        : "Choose a project above, then open Objectives."
+                    }
+                    projectLabel={projectId || "none"}
+                    cta={
+                      <Link
+                        className="header-btn"
+                        href={
+                          projectId
+                            ? `/admin/objectives?project_id=${encodeURIComponent(projectId)}`
+                            : "/admin/objectives"
+                        }
+                      >
+                        Objectives
+                      </Link>
+                    }
+                  />
                 ) : (
                   <ul className="obj-list">
                     {data.objectives.map((o) => (

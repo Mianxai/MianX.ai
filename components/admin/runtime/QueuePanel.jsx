@@ -9,6 +9,8 @@
 // responses can never overwrite newer data.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import EmptyState from "@/components/admin/EmptyState";
 import MianxLoader from "@/components/shared/MianxLoader";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 
@@ -161,7 +163,14 @@ export default function QueuePanel({ call, projectId, health = null }) {
   }
 
   if (!projectId) {
-    return <p className="runtime-muted">Select or create a project first.</p>;
+    return (
+      <EmptyState
+        title="Select a project"
+        reason="The job queue is project-scoped."
+        nextAction="Select or create a project to inspect queued jobs."
+        projectLabel="none"
+      />
+    );
   }
   if (loading && jobs === null) {
     return <DelayedLoader active variant="section" label="Loading job queue…" />;
@@ -263,11 +272,32 @@ export default function QueuePanel({ call, projectId, health = null }) {
       )}
 
       {(jobs || []).length === 0 ? (
-        <p className="runtime-muted">
-          {statusFilter === "all"
-            ? "No jobs in the queue yet. Jobs appear when a task is enqueued or a workflow starts. Queued jobs process when a worker tick runs (Run tick here, npm run runtime:tick, or an external scheduler). This deployment does not claim automatic processing."
-            : `No ${statusFilter.replace("_", " ")} jobs.`}
-        </p>
+        <EmptyState
+          title={
+            statusFilter === "all"
+              ? "No jobs in the queue yet"
+              : `No ${statusFilter.replace("_", " ")} jobs`
+          }
+          reason={
+            statusFilter === "all"
+              ? "Jobs appear when a task is enqueued or a workflow starts. Queued jobs process when a worker tick runs (Run tick here, npm run runtime:tick, or an external scheduler). This deployment does not claim automatic processing."
+              : `No jobs currently in status “${statusFilter.replace("_", " ")}”.`
+          }
+          nextAction={
+            statusFilter === "all"
+              ? "Create a task and enqueue it, then use Run tick to process."
+              : "Try the All filter or refresh after a tick."
+          }
+          projectLabel={projectId}
+          cta={
+            <Link
+              className="header-btn"
+              href={`/admin/runtime/tasks?project_id=${encodeURIComponent(projectId)}`}
+            >
+              Open tasks
+            </Link>
+          }
+        />
       ) : (
         <ul className="runtime-list" data-testid="queue-list">
           {(jobs || []).map((job) => {

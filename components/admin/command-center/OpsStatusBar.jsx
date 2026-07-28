@@ -1,6 +1,8 @@
 "use client";
 
 import StatusChip from "./StatusChip";
+import StatusBadge, { schedulerTone } from "@/components/admin/StatusBadge";
+import ProviderSetupChip from "@/components/admin/ProviderSetupChip";
 
 export default function OpsStatusBar({
   schedule,
@@ -14,6 +16,7 @@ export default function OpsStatusBar({
   const pending = overview?.waitingApproval;
   const queued = overview?.queuedJobs;
   const running = overview?.runningJobs;
+  const schedTone = schedulerTone(schedule?.mode, schedule?.automaticProcessing);
   return (
     <section className="cc-ops-bar" aria-label="System operational state">
       <div className="cc-ops-item">
@@ -25,7 +28,7 @@ export default function OpsStatusBar({
       <div className="cc-ops-item">
         <span className="cc-ops-label">Scheduler</span>
         <span className="cc-ops-value">
-          <code>{schedule?.mode || "manual"}</code>
+          <StatusBadge tone={schedTone}>{schedule?.mode || "manual"}</StatusBadge>
         </span>
       </div>
       <div className="cc-ops-item">
@@ -37,7 +40,12 @@ export default function OpsStatusBar({
       <div className="cc-ops-item">
         <span className="cc-ops-label">Provider</span>
         <span className="cc-ops-value">
-          <code>{provider?.status || readiness?.provider || "unconfigured"}</code>
+          <ProviderSetupChip
+            providerStatus={provider?.status || readiness?.provider}
+          />
+          {(provider?.status || readiness?.provider) !== "unconfigured" ? (
+            <code>{provider?.status || readiness?.provider}</code>
+          ) : null}
         </span>
       </div>
       <div className="cc-ops-item">

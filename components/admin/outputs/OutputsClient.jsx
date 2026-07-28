@@ -4,13 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
+import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 async function fetchJson(path, router) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
   if (res.status === 401) {
-    router?.push("/admin/login");
+    router?.push(currentAdminLoginHref("/admin/outputs"));
     return { ok: false, data: null };
   }
   let data = null;
@@ -94,11 +96,31 @@ export default function OutputsClient() {
           </div>
         ) : null}
         {data && !data.available ? (
-          <p className="cc-unavailable">{data.label || data.note}</p>
+          <EmptyState
+            title="Outputs unavailable"
+            reason={data.label || data.note || "Output aggregation needs a configured runtime scope."}
+            nextAction="Select a project or open Runtime Runs directly."
+            projectLabel={projectId || "All projects"}
+            cta={
+              <Link className="header-btn" href="/admin/runtime/runs">
+                Open runs
+              </Link>
+            }
+          />
         ) : null}
         {data?.available ? (
           data.items.length === 0 ? (
-            <p className="cc-muted">No activity</p>
+            <EmptyState
+              title="No outputs yet"
+              reason="Aggregated from existing agent runs — not a separate output store."
+              nextAction="Enqueue and complete runs to populate this list."
+              projectLabel={projectId || "All projects"}
+              cta={
+                <Link className="header-btn" href="/admin/runtime/runs">
+                  Open runs
+                </Link>
+              }
+            />
           ) : (
             <ul className="inbox-list">
               {data.items.map((item) => (

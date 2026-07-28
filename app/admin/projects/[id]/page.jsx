@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import DelayedLoader from "@/components/shared/DelayedLoader";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 function errorMessage(data, fallback) {
   return data?.error?.message || data?.error || fallback;
@@ -23,10 +24,11 @@ export default function ProjectDetailPage() {
     setLoading(true);
     setError("");
     setNotConfigured(false);
+    const loginFallback = `/admin/projects/${id}`;
     try {
       let res = await fetch(`/api/core/projects/${id}`);
       if (res.status === 401) {
-        router.push("/admin/login");
+        router.push(currentAdminLoginHref(loginFallback));
         return;
       }
       if (res.status === 503) {
@@ -38,7 +40,7 @@ export default function ProjectDetailPage() {
         // Fallback: locate in list while detail route is unavailable.
         const listRes = await fetch("/api/core/projects");
         if (listRes.status === 401) {
-          router.push("/admin/login");
+          router.push(currentAdminLoginHref(loginFallback));
           return;
         }
         if (listRes.status === 503) {

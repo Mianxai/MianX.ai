@@ -8,6 +8,7 @@ import OverviewCards from "@/components/admin/OverviewCards";
 import MianxLoader from "@/components/shared/MianxLoader";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import { afterNextPaint } from "@/lib/after-paint";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 export default function AdminOverviewPage() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function AdminOverviewPage() {
         const res = await fetch("/api/admin/overview", { signal: ac.signal });
         if (seq !== loadSeqRef.current) return;
         if (res.status === 401) {
-          router.push("/admin/login");
+          router.push(currentAdminLoginHref("/admin"));
           return;
         }
         if (res.status === 503) {

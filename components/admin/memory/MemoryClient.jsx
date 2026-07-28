@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
+import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 async function fetchJson(path, router, opts) {
   const res = await fetch(path, {
@@ -13,7 +15,7 @@ async function fetchJson(path, router, opts) {
     ...opts,
   });
   if (res.status === 401) {
-    router?.push("/admin/login");
+    router?.push(currentAdminLoginHref("/admin/memory"));
     return { ok: false, data: null };
   }
   const data = await res.json().catch(() => null);
@@ -152,7 +154,17 @@ export default function MemoryClient() {
             ))}
           </ul>
         ) : data ? (
-          <p className="cc-muted">No activity yet</p>
+          <EmptyState
+            title="No memory entries"
+            reason="Scoped enterprise memory is empty for this filter. Candidates are not trusted until validated."
+            nextAction="Memory appears after verified runtime outcomes produce candidates."
+            projectLabel={projectId || "All projects"}
+            cta={
+              <Link className="header-btn-ghost" href="/admin/learning">
+                Learning candidates
+              </Link>
+            }
+          />
         ) : null}
         <p className="cc-muted" style={{ marginTop: "1rem" }}>
           <Link href="/admin/learning">Learning candidates →</Link>

@@ -3,14 +3,16 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Mianx.ai — Lead Pipeline",
+  title: "Mianx.ai — Leads",
   robots: { index: false, follow: false },
 };
 
-/** Lead Pipeline maps to existing submissions/leads — no duplicate table. */
-export default async function LeadPipelinePage({ searchParams }) {
+/** Legacy Lead Pipeline label → canonical /admin/leads */
+export default async function LeadPipelineRedirectPage({ searchParams }) {
   const sp = await searchParams;
-  const status = sp?.status;
-  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
-  redirect(`/admin/submissions${qs}`);
+  const q = new URLSearchParams();
+  if (sp?.status) q.set("status", sp.status);
+  if (sp?.project_id) q.set("project_id", sp.project_id);
+  const qs = q.toString();
+  redirect(qs ? `/admin/leads?${qs}` : "/admin/leads");
 }

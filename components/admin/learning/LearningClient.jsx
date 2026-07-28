@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
+import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 async function fetchJson(path, router, opts) {
   const res = await fetch(path, {
@@ -12,7 +15,7 @@ async function fetchJson(path, router, opts) {
     ...opts,
   });
   if (res.status === 401) {
-    router?.push("/admin/login");
+    router?.push(currentAdminLoginHref("/admin/learning"));
     return { ok: false, data: null };
   }
   const data = await res.json().catch(() => null);
@@ -148,7 +151,18 @@ export default function LearningClient() {
             ))}
           </ul>
         ) : data ? (
-          <p className="cc-muted">No activity yet</p>
+          <EmptyState
+            title="No learning candidates"
+            reason="No verified learning candidates for this scope. Unsafe capability or prompt self-modification proposals are rejected."
+            configuration="Promotion never rewrites agent system prompts."
+            nextAction="Candidates appear after reviewed runtime outcomes produce lessons."
+            projectLabel={projectId || "All projects"}
+            cta={
+              <Link className="header-btn-ghost" href="/admin/memory">
+                Open Memory
+              </Link>
+            }
+          />
         ) : null}
       </div>
     </AdminShell>

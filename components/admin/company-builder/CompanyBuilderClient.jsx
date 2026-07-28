@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
+import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 async function fetchJson(path, router, opts) {
   const res = await fetch(path, {
@@ -13,7 +15,7 @@ async function fetchJson(path, router, opts) {
     ...opts,
   });
   if (res.status === 401) {
-    router?.push("/admin/login");
+    router?.push(currentAdminLoginHref("/admin/company-builder"));
     return { ok: false, data: null };
   }
   const data = await res.json().catch(() => null);
@@ -194,7 +196,17 @@ export default function CompanyBuilderClient() {
             ))}
           </ul>
         ) : data ? (
-          <p className="cc-muted">No blueprints yet</p>
+          <EmptyState
+            title="No blueprints yet"
+            reason={
+              projectId
+                ? "No Company Builder blueprints for this project."
+                : "Select a project, then generate a planning blueprint."
+            }
+            configuration="Planning only — nothing executes before Founder approval."
+            nextAction="Enter a Founder objective and generate a blueprint."
+            projectLabel={projectId || "none"}
+          />
         ) : null}
 
         {bp ? (

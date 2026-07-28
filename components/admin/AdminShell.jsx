@@ -1,10 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
-import { ADMIN_NAV, isNavActive, isNavItemCurrent } from "@/components/admin/nav";
+import {
+  ADMIN_NAV_GROUPS,
+  isNavActive,
+  isNavItemCurrent,
+  withProjectQuery,
+} from "@/components/admin/nav";
 import { NavIcon } from "@/components/admin/navIcons";
 import { useAdminNotifications } from "@/components/admin/AdminNotificationProvider";
 import {
@@ -14,16 +19,40 @@ import {
 
 const MOBILE_MQ = "(max-width: 900px)";
 
-export default function AdminShell({
+export default function AdminShell(props) {
+  return (
+    <Suspense
+      fallback={
+        <div className="admin-app">
+          <main className="admin-main" id="main-content">
+            <div className="admin-header">
+              <div className="admin-header-left">
+                <div className="admin-header-titles">
+                  {props.title ? <h1>{props.title}</h1> : null}
+                </div>
+              </div>
+            </div>
+            <div className="admin-body">{props.children}</div>
+          </main>
+        </div>
+      }
+    >
+      <AdminShellInner {...props} />
+    </Suspense>
+  );
+}
+
+function AdminShellInner({
   children,
   title,
   actions = null,
   breadcrumbs = null,
-  /** Optional override for tests; production reads the shared provider. */
   newCount,
 }) {
   const pathname = usePathname() || "";
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const projectId = searchParams?.get("project_id") || "";
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const closeBtnRef = useRef(null);
@@ -41,7 +70,6 @@ export default function AdminShell({
 
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
-
   const drawerActive = isMobile && sidebarOpen;
   const sidebarHidden = isMobile && !sidebarOpen;
 
@@ -54,10 +82,8 @@ export default function AdminShell({
 
   useEffect(() => {
     if (!drawerActive) return undefined;
-
     const previouslyFocused = document.activeElement;
     closeBtnRef.current?.focus();
-
     function onKeyDown(e) {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -79,7 +105,6 @@ export default function AdminShell({
         first.focus();
       }
     }
-
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
@@ -89,7 +114,6 @@ export default function AdminShell({
     };
   }, [drawerActive, closeSidebar]);
 
-  // Close drawer on route change (mobile).
   useEffect(() => {
     closeSidebar();
   }, [pathname, closeSidebar]);
@@ -100,7 +124,7 @@ export default function AdminShell({
     try {
       await fetch("/api/admin/session", { method: "DELETE" });
     } catch {
-      /* best-effort cookie clear */
+      /* best-effort */
     }
     router.push("/admin/login");
     router.refresh();
@@ -120,18 +144,79 @@ export default function AdminShell({
     inboxAttention === 1 ? "" : "s"
   }`;
 
+  function renderNavItem(item) {
+    const current = isNavItemCurrent(pathname, item);
+    const showSubmissionsBadge = item.badgeKey === "newCount" && badgeText;
+    const showInboxBadge = item.badgeKey === "inboxCount" && inboxBadgeText;
+    const showBadge = showSubmissionsBadge || showInboxBadge;
+    const activeBadgeText = showInboxBadge ? inboxBadgeText : badgeText;
+    const activeBadgeLabel = showInboxBadge ? inboxBadgeLabel : badgeLabel;
+    const href = withProjectQuery(item.href, projectId);
+    return (
+      <li key={item.href}>
+        <Link
+          href={href}
+          prefetch
+          className={current ? "active" : undefined}
+          aria-current={
+            item.match === "exact"
+              ? pathname === item.href
+                ? "page"
+                : undefined
+              : isNavActive(pathname, item) && !item.children
+                ? "page"
+                : pathname === item.href
+                  ? "page"
+                  : undefined
+          }
+          onClick={closeSidebar}
+        >
+          <NavIcon name={item.icon} />
+          {item.label}
+          {showBadge && (
+            <span
+              className="sidebar-badge"
+              data-testid={showInboxBadge ? "inbox-badge" : "submissions-badge"}
+              aria-label={activeBadgeLabel}
+            >
+              {activeBadgeText}
+            </span>
+          )}
+        </Link>
+        {item.children?.length > 0 && (
+          <ul className="sidebar-nav-nested">
+            {item.children.map((child) => {
+              const childCurrent = isNavActive(pathname, child);
+              return (
+                <li key={child.href}>
+                  <Link
+                    href={withProjectQuery(child.href, projectId)}
+                    prefetch
+                    className={childCurrent ? "active" : undefined}
+                    aria-current={childCurrent ? "page" : undefined}
+                    onClick={closeSidebar}
+                  >
+                    {child.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </li>
+    );
+  }
+
   return (
     <div className="admin-app">
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
-
       <div
         className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`}
         onClick={closeSidebar}
         aria-hidden="true"
       />
-
       <aside
         ref={sidebarRef}
         className={`admin-sidebar ${sidebarOpen ? "open" : ""}`}
@@ -142,7 +227,11 @@ export default function AdminShell({
           : {})}
       >
         <div className="sidebar-logo">
-          <Link href="/admin" className="sidebar-logo-brand" onClick={closeSidebar}>
+          <Link
+            href={withProjectQuery("/admin", projectId)}
+            className="sidebar-logo-brand"
+            onClick={closeSidebar}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               className="sidebar-logo-img"
@@ -179,78 +268,20 @@ export default function AdminShell({
             </svg>
           </button>
         </div>
-
-        <ul className="sidebar-nav">
-          {ADMIN_NAV.map((item) => {
-            const current = isNavItemCurrent(pathname, item);
-            const showSubmissionsBadge = item.badgeKey === "newCount" && badgeText;
-            const showInboxBadge = item.badgeKey === "inboxCount" && inboxBadgeText;
-            const showBadge = showSubmissionsBadge || showInboxBadge;
-            const activeBadgeText = showInboxBadge ? inboxBadgeText : badgeText;
-            const activeBadgeLabel = showInboxBadge ? inboxBadgeLabel : badgeLabel;
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={current ? "active" : undefined}
-                  aria-current={
-                    item.match === "exact"
-                      ? pathname === item.href
-                        ? "page"
-                        : undefined
-                      : isNavActive(pathname, item) && !item.children
-                        ? "page"
-                        : pathname === item.href
-                          ? "page"
-                          : undefined
-                  }
-                  onClick={closeSidebar}
-                >
-                  <NavIcon name={item.icon} />
-                  {item.label}
-                  {showBadge && (
-                    <span
-                      className="sidebar-badge"
-                      data-testid={
-                        showInboxBadge ? "inbox-badge" : "submissions-badge"
-                      }
-                      aria-label={activeBadgeLabel}
-                    >
-                      {activeBadgeText}
-                    </span>
-                  )}
-                </Link>
-                {item.children?.length > 0 && (
-                  <ul className="sidebar-nav-nested">
-                    {item.children.map((child) => {
-                      const childCurrent = isNavActive(pathname, child);
-                      return (
-                        <li key={child.href}>
-                          <Link
-                            href={child.href}
-                            className={childCurrent ? "active" : undefined}
-                            aria-current={childCurrent ? "page" : undefined}
-                            onClick={closeSidebar}
-                          >
-                            {child.label}
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-
+        <nav className="sidebar-nav-groups" aria-label="Primary">
+          {ADMIN_NAV_GROUPS.map((group) => (
+            <div key={group.id} className="sidebar-nav-group">
+              <p className="sidebar-nav-group-label">{group.label}</p>
+              <ul className="sidebar-nav">{group.items.map(renderNavItem)}</ul>
+            </div>
+          ))}
+        </nav>
         <div className="sidebar-footer">
           <button type="button" className="sidebar-logout" onClick={logout}>
             Log out
           </button>
         </div>
       </aside>
-
       <main className="admin-main" id="main-content">
         <div className="admin-header">
           <div className="admin-header-left">
@@ -287,7 +318,9 @@ export default function AdminShell({
                       return (
                         <li key={`${crumb.label}-${i}`}>
                           {crumb.href && !last ? (
-                            <Link href={crumb.href}>{crumb.label}</Link>
+                            <Link href={withProjectQuery(crumb.href, projectId)}>
+                              {crumb.label}
+                            </Link>
                           ) : (
                             <span aria-current={last ? "page" : undefined}>
                               {crumb.label}

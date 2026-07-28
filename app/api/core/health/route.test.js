@@ -58,7 +58,8 @@ describe("GET /api/core/health", () => {
     expect(data.config.providerStatus).toBe("unconfigured");
     expect(data.agents).toBeGreaterThan(0);
     expect(data.agentsCatalogTotal).toBeGreaterThan(data.agents);
-    expect(data.config.scheduler.mode).toBe("manual");
+    // Secrets missing → unconfigured (manual reserved for explicit operator choice).
+    expect(data.config.scheduler.mode).toBe("unconfigured");
     expect(data.config.scheduler.automaticProcessing).toBe(false);
     // vercel.json daily cron is declared in-repo (not yet ACTIVE).
     expect(data.config.scheduler.platformCronConfigured).toBe(true);

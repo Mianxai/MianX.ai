@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { RUNTIME_TAB_PATHS } from "@/components/admin/nav";
+import EmptyState from "@/components/admin/EmptyState";
 import MianxLoader from "@/components/shared/MianxLoader";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import QueuePanel from "@/components/admin/runtime/QueuePanel";
 import { afterNextPaint } from "@/lib/after-paint";
 import { explainApproval } from "@/lib/core/approvals/explain";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 const TABS = [
   ["overview", "Overview"],
@@ -28,7 +31,7 @@ async function api(path, options, router) {
     ...options,
   });
   if (res.status === 401) {
-    router?.push("/admin/login");
+    router?.push(currentAdminLoginHref("/admin/runtime"));
     return { ok: false, status: 401, data: null };
   }
   let data = null;
@@ -553,7 +556,12 @@ function AgentsPanel({ call, projectId }) {
       <section aria-labelledby="instances-h">
         <h3 id="instances-h">Registered in this project</h3>
         {instances.length === 0 ? (
-          <p className="runtime-muted">No agents registered yet.</p>
+          <EmptyState
+            title="No agents registered"
+            reason="This project has no registered agent instances yet."
+            nextAction="Register an agent from the catalog (requires a selected project)."
+            projectLabel={projectId || "none"}
+          />
         ) : (
           <ul className="runtime-list">
             {instances.map((i) => (
@@ -648,7 +656,16 @@ function TasksPanel({ call, projectId }) {
     [tasks, statusFilter]
   );
 
-  if (!projectId) return <p className="runtime-muted">Select or create a project first.</p>;
+  if (!projectId) {
+    return (
+      <EmptyState
+        title="Select a project"
+        reason="Tasks are project-scoped."
+        nextAction="Select or create a project to create and enqueue tasks."
+        projectLabel="none"
+      />
+    );
+  }
   if (loading) {
     return <DelayedLoader active variant="section" label="Loading tasks…" />;
   }
@@ -674,7 +691,20 @@ function TasksPanel({ call, projectId }) {
       </div>
 
       {visible.length === 0 ? (
-        <p className="runtime-muted">No tasks match this filter.</p>
+        <EmptyState
+          title={tasks.length === 0 ? "No tasks yet" : "No matching tasks"}
+          reason={
+            tasks.length === 0
+              ? "Create a task below, or start work from Objectives / workflows."
+              : `No tasks with status “${statusFilter}”.`
+          }
+          nextAction={
+            tasks.length === 0
+              ? "After creating a task, enqueue it to the queue for a worker tick."
+              : "Clear or change the status filter."
+          }
+          projectLabel={projectId}
+        />
       ) : (
         <ul className="runtime-list">
           {visible.map((t) => (
@@ -901,12 +931,35 @@ function RunsPanel({ call, projectId }) {
     return res.data?.runs || [];
   }, [call, projectId]);
 
-  if (!projectId) return <p className="runtime-muted">Select a project first.</p>;
+  if (!projectId) {
+    return (
+      <EmptyState
+        title="Select a project"
+        reason="Runs are project-scoped."
+        nextAction="Select a project to inspect agent run history."
+        projectLabel="none"
+      />
+    );
+  }
   if (loading) {
     return <DelayedLoader active variant="section" label="Loading runs…" />;
   }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
-  if (items.length === 0) return <p className="runtime-muted">No runs yet.</p>;
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        title="No runs yet"
+        reason="Runs appear after queued jobs complete (or fail) for this project."
+        nextAction="Enqueue a task from Tasks, then process the queue with Run tick."
+        projectLabel={projectId}
+        cta={
+          <Link className="header-btn" href={`/admin/runtime/queue?project_id=${encodeURIComponent(projectId)}`}>
+            Open queue
+          </Link>
+        }
+      />
+    );
+  }
 
   return (
     <ul className="runtime-list">
@@ -981,12 +1034,35 @@ function ApprovalsPanel({ call, projectId }) {
     load();
   }
 
-  if (!projectId) return <p className="runtime-muted">Select a project first.</p>;
+  if (!projectId) {
+    return (
+      <EmptyState
+        title="Select a project"
+        reason="Approvals are project-scoped."
+        nextAction="Select a project to review pending protected-action requests."
+        projectLabel="none"
+      />
+    );
+  }
   if (loading) {
     return <DelayedLoader active variant="section" label="Loading approvals…" />;
   }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
-  if (items.length === 0) return <p className="runtime-muted">No approval requests.</p>;
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        title="No approval requests"
+        reason="Nothing is waiting for Founder decision in this project."
+        nextAction="Protected actions create approval cards here; Founder Inbox also surfaces attention items."
+        projectLabel={projectId}
+        cta={
+          <Link className="header-btn-ghost" href="/admin/inbox">
+            Founder Inbox
+          </Link>
+        }
+      />
+    );
+  }
 
   return (
     <ul className="runtime-list">
@@ -1060,12 +1136,29 @@ function AuditPanel({ call, projectId }) {
     return res.data?.logs || [];
   }, [call, projectId]);
 
-  if (!projectId) return <p className="runtime-muted">Select a project first.</p>;
+  if (!projectId) {
+    return (
+      <EmptyState
+        title="Select a project"
+        reason="Audit entries are project-scoped."
+        nextAction="Select a project to inspect the audit log."
+        projectLabel="none"
+      />
+    );
+  }
   if (loading) {
     return <DelayedLoader active variant="section" label="Loading audit log…" />;
   }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
-  if (items.length === 0) return <p className="runtime-muted">No audit entries yet.</p>;
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        title="No audit entries yet"
+        reason="Audit rows appear as runtime actions are recorded for this project."
+        projectLabel={projectId}
+      />
+    );
+  }
 
   return (
     <ul className="runtime-list runtime-audit">

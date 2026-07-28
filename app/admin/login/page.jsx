@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useRef, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { sanitizeAdminReturnTo } from "@/lib/admin-return-to";
 import LoginMachine from "@/components/admin/LoginMachine";
 import "./login.css";
 
@@ -11,8 +12,10 @@ function isValidEmail(value) {
   return /.+@.+\..+/.test(value.trim());
 }
 
-export default function AdminLoginPage() {
+function AdminLoginInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = sanitizeAdminReturnTo(searchParams?.get("returnTo"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +35,6 @@ export default function AdminLoginPage() {
   const passwordValid = password.length > 0;
   const formValid = emailValid && passwordValid;
 
-  // Drives the mechanical scene without ever gating authentication.
   const stage = useMemo(() => {
     if (success) return "success";
     if (submitting) return "submitting";
@@ -117,7 +119,7 @@ export default function AdminLoginPage() {
       // Mark success and navigate immediately — the success animation plays out
       // during navigation and never adds an artificial delay.
       setSuccess(true);
-      router.push("/admin");
+      router.push(returnTo || "/admin");
       router.refresh();
     } catch (err) {
       setSubmitting(false);
@@ -256,5 +258,13 @@ export default function AdminLoginPage() {
         </Link>
       </section>
     </main>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<main className="login-shell"><p className="login-subtitle">Loading…</p></main>}>
+      <AdminLoginInner />
+    </Suspense>
   );
 }

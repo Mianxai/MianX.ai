@@ -6,11 +6,12 @@ import AdminShell from "@/components/admin/AdminShell";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
 import SchedulePanel from "@/components/admin/command-center/SchedulePanel";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 async function fetchJson(path, router) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
   if (res.status === 401) {
-    router?.push("/admin/login");
+    router?.push(currentAdminLoginHref("/admin/schedule"));
     return { ok: false, data: null };
   }
   let data = null;

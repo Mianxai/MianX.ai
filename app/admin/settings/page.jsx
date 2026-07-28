@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import MianxLoader from "@/components/shared/MianxLoader";
 import DelayedLoader from "@/components/shared/DelayedLoader";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 function yesNo(value) {
   if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -113,7 +114,7 @@ export default function SettingsPage() {
     try {
       const res = await fetch("/api/admin/settings");
       if (res.status === 401) {
-        router.push("/admin/login");
+        router.push(currentAdminLoginHref("/admin/settings"));
         return;
       }
       if (res.status === 503) {

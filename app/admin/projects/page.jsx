@@ -7,6 +7,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import MianxLoader from "@/components/shared/MianxLoader";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import { slugFromName, evaluateSlugInput } from "@/lib/slug";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 function errorMessage(data, fallback) {
   return data?.error?.message || data?.error || fallback;
@@ -28,7 +29,7 @@ export default function ProjectsPage() {
     try {
       const res = await fetch("/api/core/projects");
       if (res.status === 401) {
-        router.push("/admin/login");
+        router.push(currentAdminLoginHref("/admin/projects"));
         return;
       }
       if (res.status === 503) {
@@ -63,7 +64,7 @@ export default function ProjectsPage() {
         body: JSON.stringify({ archived: true }),
       });
       if (res.status === 401) {
-        router.push("/admin/login");
+        router.push(currentAdminLoginHref("/admin/projects"));
         return;
       }
       const data = await res.json().catch(() => ({}));
@@ -268,7 +269,7 @@ function NewProjectModal({ onClose, onCreated, router }) {
         body: JSON.stringify(body),
       });
       if (res.status === 401) {
-        router.push("/admin/login");
+        router.push(currentAdminLoginHref("/admin/projects"));
         return;
       }
       const data = await res.json().catch(() => ({}));

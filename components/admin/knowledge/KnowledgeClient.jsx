@@ -4,13 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
+import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 async function fetchJson(path, router) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
   if (res.status === 401) {
-    router?.push("/admin/login");
+    router?.push(currentAdminLoginHref("/admin/knowledge"));
     return { ok: false, data: null };
   }
   let data = null;
@@ -118,7 +120,17 @@ export default function KnowledgeClient() {
                     ))}
                   </ul>
                 ) : section.available !== false ? (
-                  <p className="cc-muted">No activity</p>
+                  <EmptyState
+                    title={`No ${section.label || key} yet`}
+                    reason="No audit or run results in this section for the current scope."
+                    nextAction="Run project work, then reopen Knowledge to inspect stored results."
+                    projectLabel={projectId || "All projects"}
+                    cta={
+                      <Link className="header-btn-ghost" href={section.href}>
+                        Open
+                      </Link>
+                    }
+                  />
                 ) : null}
               </section>
             ))}

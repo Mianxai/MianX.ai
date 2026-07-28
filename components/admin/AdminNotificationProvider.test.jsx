@@ -19,6 +19,7 @@ let pathname = "/admin";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, refresh, replace: vi.fn() }),
   usePathname: () => pathname,
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/lib/supabase", () => ({

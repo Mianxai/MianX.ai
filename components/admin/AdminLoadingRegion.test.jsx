@@ -5,6 +5,7 @@ import { render } from "@testing-library/react";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }),
   usePathname: () => "/admin",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/lib/supabase", () => ({
