@@ -83,9 +83,9 @@ If last tick is older than the expected interval, status remains **warning** —
 
 If backend is in-memory, report `durable: false` / `configured: false`. Live provider execution remains false while required production controls are absent.
 
-## Limitations (honest)
+## Test integrity
 
-- This closeout does not rotate scheduler secrets or force a tick.
-- This closeout does not configure a paid provider.
-- Preview/unit simulations must not be mistaken for production proof completion.
-- No Phase I scope.
+See `docs/operations/PHASE-H-TEST-INTEGRITY.md` for the 933 → 920 reconciliation
+and the optional Chrome harness command. Canonical `npm test` must include
+harness pure-logic cases; real Chrome launches are opt-in via
+`MIANX_RUN_CHROME_HARNESS=1`.
