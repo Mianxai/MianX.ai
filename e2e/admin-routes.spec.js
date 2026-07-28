@@ -112,6 +112,17 @@ test.describe("admin authenticated route sweep", () => {
     await expect(leads).toHaveAttribute("aria-current", "page");
     await expect(nav.getByRole("link", { name: /^agents$/i })).toHaveCount(1);
   });
+
+  test("Templates intelligence page loads overview and kind tabs", async ({ page }) => {
+    await page.goto("/admin/templates");
+    await expect(page).toHaveURL(/\/admin\/templates/);
+    await expect(page.getByRole("heading", { name: /template intelligence/i })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: /primary/i }).getByRole("link", { name: /^templates$/i })).toHaveCount(1);
+    await expect(page.getByText(/deterministic catalog/i).first()).toBeVisible();
+    await page.getByRole("tab", { name: /^industries$/i }).click();
+    await expect(page).toHaveURL(/kind=industry/);
+    await expect(page.getByText(/generic industry platform|generic-platform/i).first()).toBeVisible();
+  });
 });
 
 test.describe("admin shell session cookie", () => {

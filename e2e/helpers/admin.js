@@ -36,6 +36,7 @@ export const CANONICAL_ADMIN_ROUTES = [
   "/admin/learning",
   "/admin/outputs",
   "/admin/analytics",
+  "/admin/templates",
   "/admin/runtime",
   "/admin/runtime/agents",
   "/admin/runtime/tasks",
@@ -167,6 +168,49 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
     }
     if (path.startsWith("/api/admin/objectives")) {
       return json(route, 200, { objectives: [], items: [], projects: PROJECTS });
+    }
+    if (path.startsWith("/api/admin/templates")) {
+      const action = url.searchParams.get("action");
+      const kind = url.searchParams.get("kind");
+      if (action === "overview" || (!kind && !action)) {
+        return json(route, 200, {
+          ok: true,
+          engine_version: "phase-e-test",
+          counts: {
+            industry: 2,
+            business_model: 7,
+            capability: 8,
+            module: 14,
+            workflow: 4,
+            compliance: 2,
+            architecture: 9,
+            risk: 5,
+            kpi: 4,
+          },
+          note: "Template Intelligence is deterministic catalog logic. Provider optional.",
+        });
+      }
+      if (action === "relations") {
+        return json(route, 200, { ok: true, relations: [] });
+      }
+      if (action === "versions") {
+        return json(route, 200, { ok: true, versions: [] });
+      }
+      return json(route, 200, {
+        ok: true,
+        items: [
+          {
+            id: "tpl-1",
+            kind: kind || "industry",
+            slug: "generic-platform",
+            name: "Generic industry platform",
+            status: "active",
+            version: 1,
+            description: "Reusable platform template",
+          },
+        ],
+        projects: PROJECTS,
+      });
     }
     if (path.startsWith("/api/admin/")) {
       return json(route, 200, {
