@@ -63,6 +63,7 @@ export const ADMIN_NAV_GROUPS = [
     items: [
       { href: "/admin/knowledge", label: "Knowledge", match: "prefix", icon: "knowledge" },
       { href: "/admin/templates", label: "Templates", match: "prefix", icon: "workflows" },
+      { href: "/admin/planning", label: "Planning", match: "prefix", icon: "objectives" },
       { href: "/admin/memory", label: "Memory", match: "prefix", icon: "knowledge" },
       { href: "/admin/learning", label: "Learning", match: "prefix", icon: "objectives" },
       { href: "/admin/outputs", label: "Outputs", match: "prefix", icon: "outputs" },

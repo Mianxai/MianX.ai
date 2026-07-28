@@ -36,6 +36,14 @@ describe("admin navigation uniqueness", () => {
     expect(primaryNavHrefs().filter((h) => h === "/admin/templates")).toHaveLength(1);
   });
 
+  it("includes Planning under Intelligence without duplicates", () => {
+    const intel = ADMIN_NAV_GROUPS.find((g) => g.id === "intelligence");
+    const labels = intel.items.map((i) => i.label);
+    expect(labels).toContain("Planning");
+    expect(labels.filter((l) => l === "Planning")).toHaveLength(1);
+    expect(primaryNavHrefs().filter((h) => h === "/admin/planning")).toHaveLength(1);
+  });
+
   it("uses Control IA without Overview or Execution in the primary sidebar", () => {
     const control = ADMIN_NAV_GROUPS.find((g) => g.id === "control");
     expect(control.items.map((i) => i.label)).toEqual([
