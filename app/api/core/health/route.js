@@ -6,7 +6,7 @@ import {
   isAgentExecutable,
 } from "@/lib/core/agents";
 import { productionReadinessStatusAsync } from "@/lib/core/production-readiness";
-import { buildIntegrationReadiness } from "@/lib/core/integration";
+import { buildIntegrationReadinessAsync } from "@/lib/core/integration";
 import * as repo from "@/lib/core/repo";
 
 // Reads env at request time only.
@@ -29,7 +29,7 @@ export async function GET() {
   const active = listActiveAgentDefinitions();
   const executable = active.filter(isAgentExecutable);
 
-  const integration = buildIntegrationReadiness({
+  const integration = await buildIntegrationReadinessAsync({
     lastTickAt: lastTick?.at || null,
   });
 

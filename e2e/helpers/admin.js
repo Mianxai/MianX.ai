@@ -267,20 +267,61 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
     }
     if (path.startsWith("/api/admin/integration")) {
       if (method === "POST") {
+        let body = {};
+        try {
+          body = route.request().postDataJSON() || {};
+        } catch {
+          body = {};
+        }
+        if (body.action === "start_founder_proof" && !body.confirmation) {
+          return json(route, 400, {
+            ok: false,
+            error: { message: "Production proof requires explicit Founder confirmation" },
+          });
+        }
         return json(route, 200, {
           ok: true,
           run: {
             id: "irun-e2e-1",
-            current_stage: "founder_approval_required",
+            current_stage:
+              body.action === "start_founder_proof"
+                ? "clarification_required"
+                : "founder_approval_required",
             status: "awaiting_approval",
             execution_mode: "deterministic_simulation",
             project_id: projectId,
-            objective: { title: "E2E integration objective" },
+            objective: {
+              title: "Secure Internal Employee Onboarding Workflow",
+            },
+            proof: { is_production_proof: body.action === "start_founder_proof" },
+            allocation: {
+              count: 5,
+              activated_all_36: false,
+              selection_reasons: [
+                { slug: "executive-ceo", selected: true, reason: "hierarchical_delegation_anchor" },
+              ],
+              rejected_agents: [
+                { slug: "legal-counsel", selected: false, reason: "not_required_by_approved_plan" },
+              ],
+            },
+            protected_actions: [
+              {
+                action: "production_deployment",
+                blocked: true,
+                executed: false,
+              },
+            ],
+            evidence: { count: 0 },
+            memory: { count: 0 },
+            learning: { count: 0 },
+            recovery_count: 0,
             correlation_id: "corr-e2e",
             trace_id: "trace-e2e",
             fabricated_execution: false,
             provider_called: false,
           },
+          proof_status:
+            body.action === "start_founder_proof" ? "clarification_required" : "awaiting_plan_approval",
         });
       }
       const action = url.searchParams.get("action") || "dashboard";
@@ -309,6 +350,32 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
         engine_version: "phase-h-test",
         proof_level: "LEVEL_1_DETERMINISTIC_SIMULATION",
         live_execution_ready: false,
+        proof_status: "awaiting_final_review",
+        proof_template: {
+          title: "Secure Internal Employee Onboarding Workflow",
+          execution_mode: "deterministic_simulation",
+          protected_actions: ["production_deployment"],
+        },
+        readiness: {
+          simulationReady: true,
+          integrationPersistenceReady: true,
+          integrationProofStatus: "awaiting_final_review",
+          providerStatus: "unconfigured",
+          routableAgentCount: 36,
+          persistence: {
+            durable: true,
+            backend: "supabase",
+            reason: null,
+            failClosed: false,
+          },
+          schedulerStatus: { mode: "warning" },
+          lastSchedulerTick: null,
+        },
+        persistence: {
+          durable: true,
+          backend: "supabase",
+          reason: null,
+        },
         routable_agent_audit: {
           expected: 36,
           actual_executable: 36,

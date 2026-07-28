@@ -67,6 +67,46 @@ test.describe("Phase H Founder acceptance journey", () => {
     expect(bad).toEqual([]);
   });
 
+  test("production proof panel: preview, confirm dialog, allocation, recovery labels", async ({
+    page,
+  }) => {
+    await page.goto("/admin/integration?project_id=proj-1");
+    await page.waitForLoadState("domcontentloaded");
+
+    await expect(page.getByTestId("production-proof-panel")).toBeVisible();
+    await expect(page.getByTestId("proof-status-text")).toBeVisible();
+    await expect(page.getByTestId("proof-objective-template")).toBeVisible();
+    await expect(page.getByTestId("start-founder-proof")).toBeVisible();
+
+    await page.getByTestId("start-founder-proof").click();
+    const dialog = page.getByTestId("proof-confirm-dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: /Confirm production proof/i })).toBeVisible();
+    await expect(page.getByTestId("proof-confirm-yes")).toBeFocused();
+
+    await page.getByTestId("proof-confirm-yes").click();
+    await expect(page.getByTestId("integration-dashboard")).toBeVisible();
+
+    await page.getByRole("tab", { name: "Simulation" }).click();
+    await expect(page.getByTestId("agent-allocation")).toBeVisible();
+    await expect(page.getByText(/activated_all_36/i)).toBeVisible();
+    await expect(page.getByTestId("deterministic-recovery-test")).toBeVisible();
+    await expect(page.getByText(/Deterministic recovery test/i).first()).toBeVisible();
+    await expect(page.getByTestId("simulation-progress")).toBeVisible();
+
+    await page.getByRole("tab", { name: "Evidence" }).click();
+    await page.getByRole("tab", { name: "Memory" }).click();
+    await page.getByRole("tab", { name: "Learning" }).click();
+    await page.getByRole("tab", { name: "Proof Pack" }).click();
+    await expect(page.getByTestId("integration-proof")).toBeVisible();
+    await expect(page.getByText(/Lineage/i)).toBeVisible();
+
+    // Persisted refresh (mocked API) — Control Room hosts the proof panel
+    await page.goto("/admin/integration?project_id=proj-1");
+    await page.waitForLoadState("domcontentloaded");
+    await expect(page.getByTestId("production-proof-panel")).toBeVisible();
+  });
+
   for (const vp of VIEWPORTS) {
     test(`responsive ${vp.name} Founder integration shell`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
@@ -74,6 +114,7 @@ test.describe("Phase H Founder acceptance journey", () => {
       await page.waitForLoadState("domcontentloaded");
       await expect(page.locator("#main-content, main, .admin-main").first()).toBeVisible();
       await expect(page.getByTestId("integration-truth-banner")).toBeVisible();
+      await expect(page.getByTestId("production-proof-panel")).toBeVisible();
     });
   }
 });

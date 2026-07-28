@@ -76,6 +76,8 @@ export default function IntegrationClient() {
   );
   const [executionMode, setExecutionMode] = useState("deterministic_simulation");
   const [providerGate, setProviderGate] = useState(null);
+  const [proofConfirmOpen, setProofConfirmOpen] = useState(false);
+  const [proofStatus, setProofStatus] = useState("not_started");
 
   const setTab = useCallback(
     (next, extra = {}) => {
@@ -102,6 +104,11 @@ export default function IntegrationClient() {
       return;
     }
     setDash(dashRes.data);
+    setProofStatus(
+      dashRes.data?.readiness?.integrationProofStatus ||
+        dashRes.data?.proof_status ||
+        "not_started"
+    );
 
     const activeRunId = runIdParam || dashRes.data?.runs?.[0]?.id;
     if (activeRunId) {
@@ -109,7 +116,10 @@ export default function IntegrationClient() {
         `/api/admin/integration?action=run&run_id=${encodeURIComponent(activeRunId)}${q}`,
         router
       );
-      if (runRes.ok) setRun(runRes.data?.run || null);
+      if (runRes.ok) {
+        setRun(runRes.data?.run || null);
+        if (runRes.data?.proof_status) setProofStatus(runRes.data.proof_status);
+      }
       if (tab === "evidence") {
         const ev = await getJson(
           `/api/admin/integration?action=evidence&run_id=${encodeURIComponent(activeRunId)}`,
@@ -211,10 +221,169 @@ export default function IntegrationClient() {
             Live execution ready:{" "}
             <StatusBadge status={dash?.live_execution_ready ? "ready" : "blocked"} />
           </p>
+
+          <section
+            className="admin-panel admin-proof-panel"
+            data-testid="production-proof-panel"
+            aria-labelledby="production-proof-heading"
+          >
+            <h2 id="production-proof-heading">Production Founder Proof</h2>
+            <p role="status">
+              Proof status: <StatusBadge status={proofStatus} />{" "}
+              <span data-testid="proof-status-text">{proofStatus}</span>
+            </p>
+            <dl className="admin-kv" data-testid="proof-readiness-grid">
+              <div>
+                <dt>Current integration run</dt>
+                <dd>
+                  <code>{run?.id || dash?.runs?.[0]?.id || "none"}</code>
+                </dd>
+              </div>
+              <div>
+                <dt>Production persistence</dt>
+                <dd data-testid="persistence-status">
+                  {dash?.readiness?.persistence?.durable
+                    ? `durable (${dash.readiness.persistence.backend})`
+                    : dash?.readiness?.persistence?.reason ||
+                      dash?.persistence?.reason ||
+                      "unknown / not probed"}
+                  {dash?.readiness?.persistence?.failClosed ? " · fail-closed" : ""}
+                </dd>
+              </div>
+              <div>
+                <dt>Simulation readiness</dt>
+                <dd>
+                  {String(
+                    dash?.readiness?.simulationReady ?? dash?.simulation_ready ?? false
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>Provider status</dt>
+                <dd>{dash?.readiness?.providerStatus || "unconfigured"}</dd>
+              </div>
+              <div>
+                <dt>Routable agent count</dt>
+                <dd>{dash?.readiness?.routableAgentCount ?? dash?.routable_agent_audit?.actual_routable ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>Scheduler status</dt>
+                <dd>
+                  {dash?.readiness?.schedulerStatus?.mode || "unknown"}
+                  {dash?.readiness?.lastSchedulerTick
+                    ? ` · last tick ${dash.readiness.lastSchedulerTick}`
+                    : ""}
+                </dd>
+              </div>
+              <div>
+                <dt>Current stage</dt>
+                <dd>{run?.current_stage || "—"}</dd>
+              </div>
+              <div>
+                <dt>Selected agents</dt>
+                <dd>{run?.allocation?.count ?? run?.allocation?.selected_agents?.length ?? 0}</dd>
+              </div>
+              <div>
+                <dt>Task / evidence / memory / learning / recovery</dt>
+                <dd>
+                  {run?.payload?.tasks?.length || run?.task_count || 0} /{" "}
+                  {run?.evidence?.count || 0} / {run?.memory?.count || 0} /{" "}
+                  {run?.learning?.count || 0} / {run?.recovery_count || 0}
+                </dd>
+              </div>
+              <div>
+                <dt>Final Founder review</dt>
+                <dd>
+                  {run?.current_stage === "founder_final_review"
+                    ? "awaiting explicit Founder decision"
+                    : run?.current_stage === "completed"
+                      ? "approved"
+                      : run?.current_stage === "rejected"
+                        ? "rejected"
+                        : "not reached"}
+                </dd>
+              </div>
+            </dl>
+
+            <details data-testid="proof-objective-template" open>
+              <summary>Proof objective template</summary>
+              <pre className="admin-pre">
+                {JSON.stringify(
+                  dash?.proof_template || {
+                    title: "Secure Internal Employee Onboarding Workflow",
+                    execution_mode: "deterministic_simulation",
+                    protected_actions: ["production_deployment"],
+                  },
+                  null,
+                  2
+                )}
+              </pre>
+            </details>
+
+            <div className="admin-actions">
+              <button
+                type="button"
+                data-testid="start-founder-proof"
+                disabled={busy || !projectId}
+                aria-haspopup="dialog"
+                onClick={() => setProofConfirmOpen(true)}
+              >
+                Start Founder Proof
+              </button>
+            </div>
+            {!projectId ? (
+              <p role="status">Select a project before starting the production proof.</p>
+            ) : null}
+
+            {proofConfirmOpen ? (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="proof-confirm-title"
+                data-testid="proof-confirm-dialog"
+                className="admin-dialog"
+              >
+                <h3 id="proof-confirm-title">Confirm production proof start</h3>
+                <p>
+                  This creates a durable production integration run for the Secure Internal
+                  Employee Onboarding Workflow objective. It will not auto-approve simulation,
+                  will not call a live provider, and will not execute production_deployment.
+                </p>
+                <div className="admin-actions">
+                  <button
+                    type="button"
+                    data-testid="proof-confirm-yes"
+                    autoFocus
+                    disabled={busy}
+                    onClick={async () => {
+                      setProofConfirmOpen(false);
+                      await act({
+                        action: "start_founder_proof",
+                        project_id: projectId,
+                        confirmation: true,
+                        actor: "founder",
+                      });
+                    }}
+                  >
+                    Confirm — start proof
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="proof-confirm-no"
+                    disabled={busy}
+                    onClick={() => setProofConfirmOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </section>
+
           {!dash?.runs?.length ? (
             <EmptyState
               title="No integration runs"
-              description="Create a Founder objective to start the end-to-end proof chain."
+              description="Create a Founder objective or start the production proof above."
             />
           ) : (
             <ul className="admin-list">
@@ -485,6 +654,16 @@ export default function IntegrationClient() {
               </button>
               <button
                 type="button"
+                data-testid="deterministic-recovery-test"
+                disabled={busy}
+                onClick={() =>
+                  act({ action: "deterministic_recovery_test", run_id: run.id })
+                }
+              >
+                Deterministic recovery test
+              </button>
+              <button
+                type="button"
                 disabled={busy}
                 onClick={() => act({ action: "cancel", run_id: run.id })}
               >
@@ -492,6 +671,10 @@ export default function IntegrationClient() {
               </button>
             </div>
           ) : null}
+          <p className="admin-note" role="note">
+            Deterministic recovery test creates/restores a checkpoint without simulating a live
+            outage. It increments recovery count and writes an audit event.
+          </p>
           {run?.current_stage === "founder_final_review" ? (
             <div className="admin-actions">
               <button
@@ -515,11 +698,67 @@ export default function IntegrationClient() {
             </div>
           ) : null}
           {run?.allocation ? (
-            <p>
-              Allocated agents: {run.allocation.count} (not all 36). Delegation:{" "}
-              {run.delegation?.chain?.map((c) => `${c.from}→${c.to}`).join(", ")}
-            </p>
+            <div data-testid="agent-allocation">
+              <p>
+                Available/routable workforce: 36. Participating: {run.allocation.count}.{" "}
+                activated_all_36: {String(run.allocation.activated_all_36)}
+              </p>
+              <details open>
+                <summary>Why each participating agent was selected</summary>
+                <pre className="admin-pre">
+                  {JSON.stringify(run.allocation.selection_reasons || [], null, 2)}
+                </pre>
+              </details>
+              <details>
+                <summary>High-ranking agents not selected (sample)</summary>
+                <pre className="admin-pre">
+                  {JSON.stringify((run.allocation.rejected_agents || []).slice(0, 8), null, 2)}
+                </pre>
+              </details>
+              <p>
+                Delegation:{" "}
+                {run.delegation?.chain?.map((c) => `${c.from}→${c.to}`).join(", ") || "—"}
+              </p>
+            </div>
           ) : null}
+          {run?.protected_actions || run?.proof_pack?.protected_actions ? (
+            <div data-testid="protected-actions">
+              <h3>Protected actions</h3>
+              <pre className="admin-pre">
+                {JSON.stringify(
+                  run.protected_actions || run.proof_pack?.protected_actions,
+                  null,
+                  2
+                )}
+              </pre>
+            </div>
+          ) : null}
+          <div data-testid="simulation-progress">
+            <h3>Persisted simulation progress</h3>
+            <pre className="admin-pre">
+              {JSON.stringify(
+                {
+                  active_stage: run?.current_stage,
+                  status: run?.status,
+                  ready_tasks: run?.progress?.ready || 0,
+                  running_tasks: run?.progress?.running || 0,
+                  blocked_tasks: run?.progress?.blocked || 0,
+                  completed_tasks:
+                    run?.progress?.completed ?? (run?.verification?.ok ? 1 : 0),
+                  failed_verification: run?.verification?.ok === false,
+                  delegations: run?.delegation?.chain || [],
+                  reviewer_decisions: run?.approval_package?.decision || run?.final_review?.decision,
+                  evidence_count: run?.evidence?.count || 0,
+                  memory_writes: run?.memory?.count || 0,
+                  learning_proposals: run?.learning?.count || 0,
+                  recovery_count: run?.recovery_count || 0,
+                  note: "No fabricated live agent prose.",
+                },
+                null,
+                2
+              )}
+            </pre>
+          </div>
         </section>
       ) : null}
 
@@ -547,6 +786,42 @@ export default function IntegrationClient() {
       {!loading && tab === "proof" ? (
         <section className="admin-panel" data-testid="integration-proof">
           <h2>Founder Proof Pack</h2>
+          <p role="status">
+            Proof status: <span data-testid="proof-pack-status">{proofStatus}</span>
+          </p>
+          <details open>
+            <summary>Lineage (objective → final review)</summary>
+            <pre className="admin-pre">
+              {JSON.stringify(
+                {
+                  objective: run?.objective,
+                  clarification: run?.clarification || run?.objective?.unresolved_questions,
+                  templates: run?.template_plan,
+                  plan: run?.planning_plan,
+                  capabilities: run?.planning_plan?.capability_plan,
+                  roadmap: run?.planning_plan?.roadmap,
+                  wbs: run?.planning_plan?.wbs,
+                  approval: run?.approval_package,
+                  execution_run: run?.simulation_id,
+                  tasks: run?.payload?.tasks || run?.tasks,
+                  agents: run?.allocation,
+                  delegation: run?.delegation,
+                  evidence: run?.evidence,
+                  memory: run?.memory,
+                  learning: run?.learning,
+                  final_review: run?.final_review,
+                  protected_actions: run?.protected_actions || run?.proof_pack?.protected_actions,
+                  live_provider_limitations: {
+                    provider_called: run?.provider_called === true,
+                    fabricated_execution: run?.fabricated_execution === true,
+                    live_execution_ready: false,
+                  },
+                },
+                null,
+                2
+              )}
+            </pre>
+          </details>
           <pre className="admin-pre">{JSON.stringify(proof || run?.proof_pack, null, 2)}</pre>
         </section>
       ) : null}
