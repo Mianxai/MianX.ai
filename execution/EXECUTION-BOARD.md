@@ -1039,3 +1039,31 @@ no RestaurantOS/PoultryOS/HospitalOS product build, no filler agents, no secret 
 4. Merge / promote only with explicit Founder approval
 
 ---
+
+## 15. Phase F — Planning Intelligence Engine (draft PR)
+
+Branch: `cursor/phase-f-planning-intelligence-engine`  
+Base: `origin/main` after PR #44 (Template Intelligence) merge.
+
+### Delivered (code)
+
+- Planning domain + graph (topo, cycles, critical path, waves, impact)
+- Roadmap / capability / WBS / approval / execution-preview engines
+- Company Builder planning workspace tabs + `/admin/planning`
+- Additive migration `20260728190000_phase_f_planning_intelligence.sql` (**not applied**)
+- Memory/learning bridges (candidates only; no auto-modify approved plans)
+- Deterministic scenarios A–K; docs: `doc/engineering/phase-f-planning-intelligence.md`
+
+### Explicit non-goals (confirmed)
+
+No merge to main, no production deploy, no migration apply, no paid provider calls,
+no industry product builds, no fabricated execution, no secret exposure.
+
+### Founder actions remaining
+
+1. Review draft PR
+2. Approve Phase F migration dry-run / apply when ready
+3. Configure AI provider only when spend is authorised
+4. Merge / promote only with explicit Founder approval
+
+---

@@ -37,6 +37,7 @@ export const CANONICAL_ADMIN_ROUTES = [
   "/admin/outputs",
   "/admin/analytics",
   "/admin/templates",
+  "/admin/planning",
   "/admin/runtime",
   "/admin/runtime/agents",
   "/admin/runtime/tasks",
@@ -211,6 +212,27 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
         ],
         projects: PROJECTS,
       });
+    }
+    if (path.startsWith("/api/admin/planning")) {
+      const action = url.searchParams.get("action");
+      if (action === "overview" || !action) {
+        return json(route, 200, {
+          ok: true,
+          engine_version: "phase-f-test",
+          counts: { plans: 0, pending_approval: 0, approved: 0 },
+          note: "Planning Intelligence is read-mostly until Founder approval. Nothing executes.",
+        });
+      }
+      if (action === "list" || action === "plans") {
+        return json(route, 200, { ok: true, plans: [] });
+      }
+      if (action === "approvals") {
+        return json(route, 200, { ok: true, approvals: [] });
+      }
+      if (action === "history") {
+        return json(route, 200, { ok: true, audit: [], memory: [], learning: [] });
+      }
+      return json(route, 200, { ok: true, plans: [], projects: PROJECTS });
     }
     if (path.startsWith("/api/admin/")) {
       return json(route, 200, {

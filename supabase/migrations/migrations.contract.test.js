@@ -57,8 +57,9 @@ describe("migration contract (static, not applied)", () => {
       "20260728120000_phase_b_memory_learning.sql",
       "20260728150000_phase_d_execution_engine.sql",
       "20260728180000_phase_e_template_intelligence.sql",
+      "20260728190000_phase_f_planning_intelligence.sql",
     ];
-    expect(files.slice(-4)).toEqual(expectedTail);
+    expect(files.slice(-5)).toEqual(expectedTail);
   });
 
   it("phase_b memory/learning migration is additive with RLS", () => {
@@ -98,6 +99,30 @@ describe("migration contract (static, not applied)", () => {
     expect(sql).toMatch(/create table if not exists template_reviews/i);
     expect(sql).toMatch(/enable row level security/i);
     expect(sql).toMatch(/grant all on table industry_templates to service_role/i);
+    expect(sql).toMatch(/DO NOT apply without Founder approval/i);
+    expect(sql).not.toMatch(/^\s*drop table(?! if exists)/im);
+    expect(sql).not.toMatch(/truncate /i);
+    expect(sql).not.toMatch(/delete from /i);
+  });
+
+  it("phase_f planning intelligence migration is additive with RLS", () => {
+    const sql = readMigration("20260728190000_phase_f_planning_intelligence.sql");
+    expect(sql).toMatch(/create table if not exists planning_plans/i);
+    expect(sql).toMatch(/create table if not exists planning_roadmaps/i);
+    expect(sql).toMatch(/create table if not exists planning_capabilities/i);
+    expect(sql).toMatch(/create table if not exists planning_milestones/i);
+    expect(sql).toMatch(/create table if not exists planning_wbs_nodes/i);
+    expect(sql).toMatch(/create table if not exists planning_dependencies/i);
+    expect(sql).toMatch(/create table if not exists planning_approval_gates/i);
+    expect(sql).toMatch(/create table if not exists planning_deliverables/i);
+    expect(sql).toMatch(/create table if not exists planning_risks/i);
+    expect(sql).toMatch(/create table if not exists planning_evidence/i);
+    expect(sql).toMatch(/create table if not exists planning_execution_previews/i);
+    expect(sql).toMatch(/create table if not exists planning_memory_links/i);
+    expect(sql).toMatch(/create table if not exists planning_learning_proposals/i);
+    expect(sql).toMatch(/create table if not exists planning_audit_events/i);
+    expect(sql).toMatch(/enable row level security/i);
+    expect(sql).toMatch(/grant all on table planning_plans to service_role/i);
     expect(sql).toMatch(/DO NOT apply without Founder approval/i);
     expect(sql).not.toMatch(/^\s*drop table(?! if exists)/im);
     expect(sql).not.toMatch(/truncate /i);

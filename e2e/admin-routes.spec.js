@@ -123,6 +123,14 @@ test.describe("admin authenticated route sweep", () => {
     await expect(page).toHaveURL(/kind=industry/);
     await expect(page.getByText(/generic industry platform|generic-platform/i).first()).toBeVisible();
   });
+
+  test("Planning intelligence page loads overview", async ({ page }) => {
+    await page.goto("/admin/planning");
+    await expect(page).toHaveURL(/\/admin\/planning/);
+    await expect(page.getByRole("heading", { name: /planning intelligence/i })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: /primary/i }).getByRole("link", { name: /^planning$/i })).toHaveCount(1);
+    await expect(page.getByText(/nothing executes/i).first()).toBeVisible();
+  });
 });
 
 test.describe("admin shell session cookie", () => {

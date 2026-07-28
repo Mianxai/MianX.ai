@@ -36,6 +36,7 @@ export default function CompanyBuilderClient() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [planTab, setPlanTab] = useState("overview");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -111,6 +112,19 @@ export default function CompanyBuilderClient() {
   }
 
   const bp = selected;
+  const planningTabs = [
+    "overview",
+    "roadmap",
+    "capabilities",
+    "departments",
+    "risks",
+    "dependencies",
+    "deliverables",
+    "evidence",
+    "approval",
+    "execution_preview",
+  ];
+  const pi = bp?.planning_package || bp?.planning_intelligence;
 
   return (
     <AdminShell
@@ -224,6 +238,125 @@ export default function CompanyBuilderClient() {
               {bp.backlog?.counts?.tasks || 0} · Planned agent runs:{" "}
               {bp.backlog?.counts?.agent_runs || 0}
             </p>
+            <p className="cc-muted">
+              Planning package: {bp.planning_intelligence?.plan_id || "—"} · status:{" "}
+              {bp.planning_intelligence?.status || bp.planning_package?.status || "—"} ·
+              approval: {bp.planning_intelligence?.approval_status || "—"} · executes: false
+            </p>
+
+            {bp.planning_package ? (
+              <>
+                <div className="admin-tabs" role="tablist" aria-label="Planning workspace">
+                  {planningTabs.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      role="tab"
+                      aria-selected={planTab === t}
+                      className={planTab === t ? "active" : ""}
+                      onClick={() => setPlanTab(t)}
+                    >
+                      {t.replace(/_/g, " ")}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ marginTop: "0.75rem" }}>
+                  {planTab === "overview" ? (
+                    <p className="cc-muted">
+                      {bp.planning_package.note} Engine:{" "}
+                      {bp.planning_package.engine_version}
+                    </p>
+                  ) : null}
+                  {planTab === "roadmap" ? (
+                    <ol>
+                      {(bp.planning_package.roadmap?.payload?.milestone_objects || []).map(
+                        (m) => (
+                          <li key={m.id}>{m.name}</li>
+                        )
+                      )}
+                    </ol>
+                  ) : null}
+                  {planTab === "capabilities" ? (
+                    <p className="cc-muted">
+                      {(
+                        bp.planning_package.capability_plan?.required_capabilities || []
+                      ).join(", ") || "—"}
+                    </p>
+                  ) : null}
+                  {planTab === "departments" ? (
+                    <ul>
+                      {(
+                        bp.planning_package.capability_plan?.department_ownership || []
+                      ).map((d) => (
+                        <li key={d.slug || d.id || d}>{d.name || d.slug || d}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {planTab === "risks" ? (
+                    <ul>
+                      {(bp.planning_package.risks || []).map((r) => (
+                        <li key={r.id || r.slug}>{r.name || r.slug}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {planTab === "dependencies" ? (
+                    <p className="cc-muted">
+                      {(bp.planning_package.dependencies || []).length} planning edges
+                    </p>
+                  ) : null}
+                  {planTab === "deliverables" ? (
+                    <ul>
+                      {(bp.planning_package.deliverables || []).map((d) => (
+                        <li key={d.id}>{d.name}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {planTab === "evidence" ? (
+                    <ul>
+                      {(bp.planning_package.evidence || []).map((e) => (
+                        <li key={e.id}>{e.name}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {planTab === "approval" ? (
+                    <p className="cc-muted">
+                      Gate: {bp.planning_package.approval_gate?.status || "pending"} —{" "}
+                      {bp.planning_package.approval_gate?.name}
+                    </p>
+                  ) : null}
+                  {planTab === "execution_preview" ? (
+                    <div>
+                      <p className="cc-muted">
+                        {bp.planning_package.execution_preview?.note}
+                      </p>
+                      <p>
+                        Waves:{" "}
+                        {bp.planning_package.execution_preview?.execution_waves?.length ||
+                          0}{" "}
+                        · Tasks:{" "}
+                        {bp.planning_package.execution_preview?.estimated_workload
+                          ?.tasks || 0}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+                <p style={{ marginTop: "0.5rem" }}>
+                  <Link
+                    className="header-btn-ghost"
+                    href={
+                      bp.project_id
+                        ? `/admin/planning?project_id=${encodeURIComponent(bp.project_id)}`
+                        : "/admin/planning"
+                    }
+                  >
+                    Open Planning Intelligence
+                  </Link>
+                </p>
+              </>
+            ) : pi ? (
+              <p className="cc-muted">Planning summary attached (detail in Planning).</p>
+            ) : null}
+
             <p className="cc-muted">
               Dependency edges: {bp.dependency_graph?.stats?.edge_count || 0} ·
               acyclic: {String(bp.dependency_graph?.acyclic)} · Roadmap waves:{" "}
