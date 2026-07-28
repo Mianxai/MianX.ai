@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
@@ -24,27 +25,80 @@ export default function MemoryClient() {
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
   const [data, setData] = useState(null);
+  const [projects, setProjects] = useState([]);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError("");
     const q = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
-    const res = await fetchJson(`/api/admin/memory${q}`, router);
+    const [memRes, ccRes] = await Promise.all([
+      fetchJson(`/api/admin/memory${q}`, router),
+      fetchJson("/api/admin/command-center", router),
+    ]);
     setLoading(false);
-    if (!res.ok) {
-      setError(res.data?.error?.message || "Failed to load memory");
+    if (!memRes.ok) {
+      setError(memRes.data?.error?.message || "Failed to load memory");
       return;
     }
-    setData(res.data);
+    setData(memRes.data);
+    if (ccRes.ok && Array.isArray(ccRes.data?.projects)) {
+      setProjects(ccRes.data.projects);
+    }
   }, [projectId, router]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  function onProject(id) {
+    const next = new URLSearchParams();
+    if (id) next.set("project_id", id);
+    const qs = next.toString();
+    router.replace(qs ? `/admin/memory?${qs}` : "/admin/memory");
+  }
+
+  async function decide(id, decision) {
+    setBusy(id + decision);
+    setSuccess("");
+    setError("");
+    const res = await fetchJson("/api/admin/memory", router, {
+      method: "POST",
+      body: JSON.stringify({ id, decision }),
+    });
+    setBusy("");
+    if (!res.ok) {
+      setError(res.data?.error?.message || "Decision failed");
+      return;
+    }
+    setSuccess(`Memory ${decision}`);
+    await load();
+  }
+
   return (
-    <AdminShell title="Memory">
+    <AdminShell
+      title="Memory"
+      actions={
+        <label className="cc-project-select">
+          <span className="sr-only">Project filter</span>
+          <select
+            value={projectId}
+            onChange={(e) => onProject(e.target.value)}
+            aria-label="Filter by project"
+          >
+            <option value="">All projects</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      }
+    >
       <div className="cc-page">
         <p className="cc-muted">
           Scoped enterprise memory. Candidates are not trusted until validated.
@@ -58,6 +112,11 @@ export default function MemoryClient() {
         {error ? (
           <div className="cc-banner cc-banner-error" role="alert">
             {error}
+          </div>
+        ) : null}
+        {success ? (
+          <div className="cc-banner" role="status">
+            {success}
           </div>
         ) : null}
         {data?.note ? <p className="cc-muted">{data.note}</p> : null}
@@ -76,12 +135,28 @@ export default function MemoryClient() {
                     {` · confidence ${item.confidence}`}
                   </p>
                 </div>
+                <div style={{ display: "grid", gap: "0.35rem" }}>
+                  {["validate", "activate", "reject"].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      className="header-btn-ghost"
+                      disabled={Boolean(busy)}
+                      onClick={() => decide(item.id, d)}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
               </li>
             ))}
           </ul>
         ) : data ? (
           <p className="cc-muted">No activity yet</p>
         ) : null}
+        <p className="cc-muted" style={{ marginTop: "1rem" }}>
+          <Link href="/admin/learning">Learning candidates →</Link>
+        </p>
       </div>
     </AdminShell>
   );
