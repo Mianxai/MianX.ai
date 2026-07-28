@@ -979,11 +979,34 @@ deleted; nothing was redesigned.
 
 ---
 
-## 12. Next READY phase
+## 13. Phase D — Autonomous Execution Engine Foundation (in progress / draft PR)
 
-**Phase B — Runtime Architecture ADR and Mianx Core foundation.**
+Branch: `cursor/phase-d-autonomous-execution-engine`  
+Base: `origin/main` after PR #39 (Company Builder) merge (`d5c47c0`).
 
-Not started. Per instruction, no Telepizza/Poultry work and no bulk agent
-generation begins until Phase B (and subsequent phases) are explicitly
-approved and executed, and not before both the §9.10 and this gate's
-Founder decisions are resolved.
+### Delivered (code)
+
+- Durable execution domain + state machine (`lib/core/execution-engine/`)
+- Additive migration `20260728150000_phase_d_execution_engine.sql` (**not applied**)
+- Approval → materialise execution program (Company Builder decide → Phase D)
+- Dependency-aware bounded orchestrator, workforce allocation, agent-run contract
+- Provider-independent adapter (truthful unconfigured; fake provider tests only)
+- Handoffs, reviews, retry/DLQ, pause/resume/cancel, fairness, checkpoints
+- Memory/learning bridge, Founder Inbox + Control Room execution panel
+- Admin API `/api/admin/execution` + unauthorised access tests
+- Deterministic E2E scenarios A–H
+- Docs: `scripts/PHASE-D-EXECUTION-ENGINE.md`
+
+### Explicit non-goals (confirmed)
+
+No merge to main, no production deploy, no migration apply, no paid provider calls,
+no RestaurantOS/PoultryOS product build, no filler agents, no secret exposure.
+
+### Founder actions remaining
+
+1. Review draft PR
+2. Approve migration dry-run / apply when ready
+3. Configure AI provider only when spend is authorised
+4. Merge / promote only with explicit Founder approval
+
+---
