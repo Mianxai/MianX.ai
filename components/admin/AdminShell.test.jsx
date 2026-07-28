@@ -72,13 +72,14 @@ describe("AdminShell", () => {
       "href",
       "/admin/inbox"
     );
+    const agentLinks = screen.getAllByRole("link", { name: /^Agents$/i });
+    expect(agentLinks.some((a) => a.getAttribute("href") === "/admin/agents")).toBe(true);
+    expect(agentLinks.some((a) => a.getAttribute("href") === "/admin/runtime/agents")).toBe(
+      true
+    );
     expect(screen.getByRole("link", { name: /^Runtime$/i })).toHaveAttribute(
       "href",
       "/admin/runtime"
-    );
-    expect(screen.getByRole("link", { name: /^Agents$/i })).toHaveAttribute(
-      "href",
-      "/admin/runtime/agents"
     );
     expect(screen.getByRole("link", { name: /^Tasks$/i })).toHaveAttribute(
       "href",

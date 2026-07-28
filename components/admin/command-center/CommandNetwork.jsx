@@ -1,188 +1,175 @@
 "use client";
 
-const STATUS_LABEL = {
-  working: "Working",
-  idle: "Idle",
-  waiting: "Waiting",
-  blocked: "Blocked",
-  approval_required: "Approval required",
-  failed: "Failed",
-  paused: "Paused",
-};
+import StatusChip from "./StatusChip";
+import {
+  partitionNetworkAgents,
+  selectVisibleNetworkAgents,
+} from "@/lib/core/command-center/visible-agents";
 
 /**
- * SVG hierarchy network — Founder → CEO → department agents.
- * Connections follow real reportsTo edges only.
+ * Compact specialist / C-suite card for the Agent Network.
+ */
+export function SpecialistAgentCard({ agent, selected, onSelect }) {
+  if (!agent) return null;
+  const role =
+    agent.hierarchyLevel === "L2"
+      ? "Department lead"
+      : agent.purpose
+        ? agent.purpose.slice(0, 72) + (agent.purpose.length > 72 ? "…" : "")
+        : agent.workforceSlug || agent.slug;
+
+  return (
+    <button
+      type="button"
+      className={`cc-spec-card cc-status-${agent.status || "idle"}${
+        selected ? " selected" : ""
+      }${agent.status === "working" ? " is-working" : ""}`}
+      onClick={() => onSelect?.(agent.slug)}
+      aria-pressed={selected}
+      aria-label={`${agent.name}, ${agent.status || "idle"}`}
+    >
+      <span className="cc-spec-card-top">
+        <strong className="cc-spec-name">{agent.name}</strong>
+        <StatusChip status={agent.status || "idle"} />
+      </span>
+      <span className="cc-spec-role">{role}</span>
+      <span className="cc-spec-meta">
+        <span className="cc-spec-dept">{agent.department || "—"}</span>
+        {agent.live?.currentWorkflow ? (
+          <span> · {agent.live.currentWorkflow}</span>
+        ) : agent.live?.projectId ? (
+          <span> · project scoped</span>
+        ) : (
+          <span> · No activity yet</span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Premium HTML hierarchy: Founder → CEO → C-Suite → Specialists.
+ * Progressive disclosure — never dumps full capacity slots.
+ * Connections follow real reporting relationships only.
  */
 export default function CommandNetwork({
   hierarchy,
   agents,
   selectedSlug,
   onSelect,
+  department = "all",
 }) {
-  const width = 920;
-  const height = 520;
-  const cx = width / 2;
-
-  const founder = { id: "founder", x: cx, y: 36, label: hierarchy.root.label };
-  const ceo = {
-    id: "executive-ceo",
-    x: cx,
-    y: 110,
-    label: hierarchy.orchestrator.label,
-  };
-
-  // Group agents by department for layout rings
-  const byDept = new Map();
-  for (const a of agents) {
-    if (!byDept.has(a.department)) byDept.set(a.department, []);
-    byDept.get(a.department).push(a);
-  }
-  const deptKeys = [...byDept.keys()].sort();
-  const positions = new Map();
-  positions.set("founder", founder);
-  positions.set("executive-ceo", ceo);
-
-  const cSuite = agents.filter(
-    (a) => a.reportsTo === "executive-ceo" || a.hierarchyLevel === "L2"
-  );
-  const rest = agents.filter((a) => !cSuite.some((c) => c.slug === a.slug));
-
-  cSuite.forEach((a, i) => {
-    const n = Math.max(cSuite.length, 1);
-    const angle = Math.PI * (0.15 + (0.7 * i) / Math.max(n - 1, 1));
-    positions.set(a.slug, {
-      id: a.slug,
-      x: cx + Math.cos(angle) * 280,
-      y: 210 + Math.sin(angle) * 40,
-      agent: a,
-    });
+  const visible = selectVisibleNetworkAgents(agents, {
+    department,
+    maxSpecialists: department && department !== "all" ? 48 : 10,
   });
+  const { ceo, cSuite, specialists } = partitionNetworkAgents(visible);
+  const ceoStatus = ceo?.status || "idle";
+  const hidden =
+    Math.max(0, (agents?.length || 0) - visible.length);
 
-  rest.forEach((a, i) => {
-    const cols = Math.min(8, Math.max(4, Math.ceil(Math.sqrt(rest.length))));
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    positions.set(a.slug, {
-      id: a.slug,
-      x: 60 + col * ((width - 120) / Math.max(cols - 1, 1)),
-      y: 300 + row * 56,
-      agent: a,
-    });
-  });
-
-  const edgePairs = hierarchy.edges
-    .map((e) => {
-      const from = positions.get(e.from);
-      const to = positions.get(e.to);
-      if (!from || !to) return null;
-      return { ...e, from, to };
-    })
-    .filter(Boolean);
-
-  const activeEdges = edgePairs.filter((e) => {
-    const a = e.to.agent || e.from.agent;
-    return a?.status === "working";
-  });
+  const edgeHint =
+    department && department !== "all"
+      ? `Department drill-down: ${department}`
+      : "Company view: CEO + C-suite + active/priority specialists";
 
   return (
     <section className="cc-card cc-network" aria-labelledby="cc-network-h">
-      <h2 id="cc-network-h" className="sr-only">
-        Agent network
-      </h2>
-      <p className="cc-muted cc-network-hint">
-        Hierarchy: Founder → CEO → C-Suite / departments. Lines are real reporting edges.
-        Departments in view: {deptKeys.length}.
-      </p>
-      <svg
-        className="cc-network-svg"
-        viewBox={`0 0 ${width} ${height}`}
-        role="img"
-        aria-label="MianX agent hierarchy network"
-      >
-        <defs>
-          <linearGradient id="cc-edge" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="rgba(79,124,255,0.35)" />
-            <stop offset="100%" stopColor="rgba(34,211,238,0.35)" />
-          </linearGradient>
-        </defs>
-        {edgePairs.map((e, i) => (
-          <line
-            key={`${e.from.id}-${e.to.id}-${i}`}
-            x1={e.from.x}
-            y1={e.from.y}
-            x2={e.to.x}
-            y2={e.to.y}
-            className={
-              activeEdges.includes(e) ? "cc-edge cc-edge-active" : "cc-edge"
-            }
-          />
-        ))}
-        <NetworkNode
-          x={founder.x}
-          y={founder.y}
-          label="Founder"
-          kind="human"
-          status="authority"
-        />
-        <NetworkNode
-          x={ceo.x}
-          y={ceo.y}
-          label="CEO"
-          kind="executive"
-          status={
-            agents.find((a) => a.slug === "executive-ceo")?.status || "idle"
-          }
-          selected={selectedSlug === "executive-ceo"}
-          onSelect={() => onSelect?.("executive-ceo")}
-        />
-        {[...positions.entries()]
-          .filter(([id]) => id !== "founder" && id !== "executive-ceo")
-          .map(([id, pos]) => (
-            <NetworkNode
-              key={id}
-              x={pos.x}
-              y={pos.y}
-              label={pos.agent?.name?.split(" ")[0] || id}
-              kind="agent"
-              status={pos.agent?.status || "idle"}
-              selected={selectedSlug === id}
-              onSelect={() => onSelect?.(id)}
-            />
-          ))}
-      </svg>
-    </section>
-  );
-}
+      <div className="cc-network-head">
+        <h2 id="cc-network-h">Agent network</h2>
+        <p className="cc-muted cc-network-hint">
+          {edgeHint}. Lines and cards follow real reporting edges only.
+          {hidden > 0
+            ? ` Showing ${visible.length} of ${agents.length} executable agents — open a department to drill down.`
+            : null}
+        </p>
+      </div>
 
-function NetworkNode({ x, y, label, kind, status, selected, onSelect }) {
-  const r = kind === "human" ? 22 : kind === "executive" ? 20 : 14;
-  const interactive = Boolean(onSelect);
-  return (
-    <g
-      className={`cc-node cc-node-${kind} cc-status-${status}${selected ? " selected" : ""}`}
-      transform={`translate(${x} ${y})`}
-      tabIndex={interactive ? 0 : undefined}
-      role={interactive ? "button" : undefined}
-      aria-label={
-        interactive
-          ? `${label}, status ${STATUS_LABEL[status] || status}`
-          : label
-      }
-      onClick={onSelect}
-      onKeyDown={(e) => {
-        if (!onSelect) return;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect();
-        }
-      }}
-    >
-      <circle r={r} className="cc-node-circle" />
-      <text y={r + 14} textAnchor="middle" className="cc-node-label">
-        {label.length > 14 ? `${label.slice(0, 12)}…` : label}
-      </text>
-      <title>{`${label} — ${STATUS_LABEL[status] || status}`}</title>
-    </g>
+      <ul className="cc-hierarchy" aria-label="Company hierarchy">
+        <li className="cc-hierarchy-tier">
+          <div className="cc-founder-node" aria-label="Founder, human authority">
+            <span className="cc-founder-badge">Founder</span>
+            <span className="cc-founder-sub">Human authority</span>
+          </div>
+        </li>
+
+        <li className="cc-hierarchy-link" aria-hidden="true">
+          <span className="cc-hierarchy-line" />
+        </li>
+
+        <li className="cc-hierarchy-tier">
+          <button
+            type="button"
+            className={`cc-ceo-node cc-status-${ceoStatus}${
+              selectedSlug === "executive-ceo" ? " selected" : ""
+            }${ceoStatus === "working" ? " is-working" : ""}`}
+            onClick={() => onSelect?.("executive-ceo")}
+            aria-pressed={selectedSlug === "executive-ceo"}
+            aria-label={`Executive CEO / Orchestrator, ${ceoStatus}`}
+          >
+            <span className="cc-eyebrow">Command layer</span>
+            <span className="cc-ceo-node-title">
+              {hierarchy?.orchestrator?.label || "Executive Orchestrator / CEO"}
+            </span>
+            <span className="cc-ceo-node-meta">
+              {ceo?.purpose
+                ? ceo.purpose.slice(0, 120) + (ceo.purpose.length > 120 ? "…" : "")
+                : "Data unavailable"}
+            </span>
+            <StatusChip status={ceoStatus} />
+          </button>
+        </li>
+
+        {cSuite.length > 0 ? (
+          <>
+            <li className="cc-hierarchy-link cc-hierarchy-link-branch" aria-hidden="true">
+              <span className="cc-hierarchy-line" />
+            </li>
+            <li className="cc-hierarchy-tier">
+              <h3 className="cc-hierarchy-label">C-Suite / department leads</h3>
+              <ul className="cc-spec-grid cc-spec-grid-csuite">
+                {cSuite.map((agent) => (
+                  <li key={agent.slug}>
+                    <SpecialistAgentCard
+                      agent={agent}
+                      selected={selectedSlug === agent.slug}
+                      onSelect={onSelect}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </li>
+          </>
+        ) : null}
+
+        {specialists.length > 0 ? (
+          <>
+            <li className="cc-hierarchy-link cc-hierarchy-link-branch" aria-hidden="true">
+              <span className="cc-hierarchy-line" />
+            </li>
+            <li className="cc-hierarchy-tier">
+              <h3 className="cc-hierarchy-label">Specialist agents</h3>
+              <ul className="cc-spec-grid">
+                {specialists.map((agent) => (
+                  <li key={agent.slug}>
+                    <SpecialistAgentCard
+                      agent={agent}
+                      selected={selectedSlug === agent.slug}
+                      onSelect={onSelect}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </li>
+          </>
+        ) : (
+          <li className="cc-muted" style={{ textAlign: "center", marginTop: "0.75rem", listStyle: "none" }}>
+            {department && department !== "all"
+              ? "No specialist agents in this department."
+              : "No activity yet — select a department to explore the catalog."}
+          </li>
+        )}
+      </ul>
+    </section>
   );
 }

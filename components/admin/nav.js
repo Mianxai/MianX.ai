@@ -45,8 +45,8 @@ export const ADMIN_NAV = [
     badgeKey: "inboxCount",
   },
   {
-    href: "/admin/agent-network",
-    label: "Agent Network",
+    href: "/admin/agents",
+    label: "Agents",
     match: "prefix",
     icon: "network",
   },

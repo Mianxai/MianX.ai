@@ -45,7 +45,16 @@ body{margin:0;background:var(--bg-dark);color:var(--text-primary)}
         <div class="cc-network-desktop">
           <section class="cc-card cc-network" aria-labelledby="cc-network-h">
             <h2 id="cc-network-h">Agent network</h2>
-            <svg class="cc-network-svg" viewBox="0 0 920 400" role="img" aria-label="network"><circle cx="460" cy="40" r="20"></circle></svg>
+            <div class="cc-hierarchy">
+              <div class="cc-founder-node"><span class="cc-founder-badge">Founder</span></div>
+              <div class="cc-hierarchy-link"><span class="cc-hierarchy-line"></span></div>
+              <button type="button" class="cc-ceo-node"><span class="cc-ceo-node-title">CEO</span></button>
+              <div class="cc-hierarchy-link"><span class="cc-hierarchy-line"></span></div>
+              <ul class="cc-spec-grid">
+                <li><button type="button" class="cc-spec-card"><strong class="cc-spec-name">CTO</strong></button></li>
+                <li><button type="button" class="cc-spec-card"><strong class="cc-spec-name">CPO</strong></button></li>
+              </ul>
+            </div>
           </section>
         </div>
         <div class="cc-network-mobile">

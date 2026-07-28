@@ -33,7 +33,7 @@ async function fetchJson(path, router) {
   return { ok: res.ok, status: res.status, data };
 }
 
-export default function CommandCenterClient() {
+export default function CommandCenterClient({ title = "Command Center" }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
@@ -87,9 +87,11 @@ export default function CommandCenterClient() {
         else next.set(k, v);
       }
       const qs = next.toString();
-      router.replace(qs ? `/admin/command-center?${qs}` : "/admin/command-center");
+      const base =
+        title === "Agents" ? "/admin/agents" : "/admin/command-center";
+      router.replace(qs ? `${base}?${qs}` : base);
     },
-    [router, searchParams]
+    [router, searchParams, title]
   );
 
   const ceoAgent = useMemo(
@@ -134,7 +136,7 @@ export default function CommandCenterClient() {
   );
 
   return (
-    <AdminShell title="Command Center" actions={actions}>
+    <AdminShell title={title} actions={actions}>
       <div className="cc-page">
         {loading && !data ? (
           <DelayedLoader delayMs={200}>
@@ -167,8 +169,13 @@ export default function CommandCenterClient() {
             <div className="cc-layout">
               <DepartmentRail
                 departments={data.departments}
+                agents={data.agents}
                 active={department}
-                onSelect={(slug) => replaceParams({ department: slug, agent: null })}
+                selectedSlug={agentSlug}
+                onSelectDepartment={(slug) =>
+                  replaceParams({ department: slug, agent: null })
+                }
+                onSelectAgent={(slug) => replaceParams({ agent: slug })}
               />
 
               <div className="cc-main-col">
@@ -202,6 +209,7 @@ export default function CommandCenterClient() {
                     <CommandNetwork
                       hierarchy={data.hierarchy}
                       agents={data.agents}
+                      department={department}
                       selectedSlug={agentSlug}
                       onSelect={(slug) => replaceParams({ agent: slug })}
                     />
