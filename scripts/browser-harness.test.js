@@ -1,9 +1,10 @@
 /**
  * Regression tests for the deterministic browser verification harness.
  *
- * The pure-logic tests always run. The tests that need a real browser are
- * skipped (loudly, via the suite name) when no Chrome/Chromium binary is
- * available, rather than silently passing.
+ * Pure-logic tests always run under `npm test`.
+ * Real Chrome launches run only when MIANX_RUN_CHROME_HARNESS=1 and a Chrome
+ * binary is discoverable (optional environment suite — see
+ * docs/operations/PHASE-H-TEST-INTEGRITY.md).
  */
 
 import { afterAll, afterEach, describe, expect, it } from "vitest";
@@ -34,11 +35,16 @@ import { runSequential } from "./verify-browser-harness.mjs";
 const REPO_ROOT = resolve(import.meta.dirname, "..");
 const COLLISION_PORTS = [9333, 9334, 9335, 9336];
 const chromePath = findChromePath();
-const describeBrowserChrome = chromePath
-  ? typeof describe.sequential === "function"
-    ? describe.sequential
-    : describe
-  : describe.skip;
+// Real Chrome launches are an optional environment/browser suite.
+// Pure-logic harness tests above always run in `npm test`.
+// Opt in explicitly: MIANX_RUN_CHROME_HARNESS=1 npm run test:browser-harness:chrome
+const runChromeHarness = process.env.MIANX_RUN_CHROME_HARNESS === "1";
+const describeBrowserChrome =
+  chromePath && runChromeHarness
+    ? typeof describe.sequential === "function"
+      ? describe.sequential
+      : describe
+    : describe.skip;
 
 
 /** Runs a verifier body without leaking its exit code into the test process. */
