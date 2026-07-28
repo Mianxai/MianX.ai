@@ -17,6 +17,7 @@ import AgentListFallback from "@/components/admin/command-center/AgentListFallba
 import OpsStatusBar from "@/components/admin/command-center/OpsStatusBar";
 import CeoOrchestratorCard from "@/components/admin/command-center/CeoOrchestratorCard";
 import FounderAuthorityBanner from "@/components/admin/command-center/FounderAuthorityBanner";
+import ExecutionPanel from "@/components/admin/command-center/ExecutionPanel";
 
 async function fetchJson(path, router) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
@@ -243,6 +244,10 @@ export default function CommandCenterClient({ title = "Command Center" }) {
                   readiness={data.productionReadiness}
                   provider={data.provider}
                   rateLimit={data.rateLimit}
+                />
+                <ExecutionPanel
+                  execution={data.execution}
+                  schedule={data.schedule}
                 />
                 <section className="cc-card" aria-labelledby="cc-knowledge-h">
                   <h2 id="cc-knowledge-h">Knowledge / outputs</h2>
