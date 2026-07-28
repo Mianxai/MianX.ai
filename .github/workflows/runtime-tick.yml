@@ -1,0 +1,87 @@
+# Production runtime tick — GitHub Actions scheduler (sub-daily).
+#
+# Preferred automatic path when Vercel Hobby cannot host sub-daily cron.
+# Never commit secrets. Founder must configure repository secrets first:
+#   INTERNAL_RUNTIME_SECRET  (or CRON_SECRET) — Bearer token for tick auth
+#   RUNTIME_TICK_BASE_URL    — e.g. https://mian-x-ai.vercel.app
+#
+# After the first successful run, set on the Vercel deployment:
+#   RUNTIME_SCHEDULER_PLATFORM=github_actions
+#   RUNTIME_SCHEDULER_ACTIVE=1
+# Do NOT set ACTIVE until a tick has been verified.
+
+name: Runtime tick
+
+on:
+  schedule:
+    # Every 5 minutes — drains the bounded job queue safely.
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: mianx-runtime-tick-production
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    name: POST /api/internal/runtime/tick
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Invoke bounded runtime tick
+        env:
+          RUNTIME_TICK_BASE_URL: ${{ secrets.RUNTIME_TICK_BASE_URL }}
+          INTERNAL_RUNTIME_SECRET: ${{ secrets.INTERNAL_RUNTIME_SECRET }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          BASE="${RUNTIME_TICK_BASE_URL:-}"
+          if [ -z "${BASE}" ]; then
+            echo "RUNTIME_TICK_BASE_URL secret is not configured." >&2
+            exit 1
+          fi
+          TOKEN="${INTERNAL_RUNTIME_SECRET:-}"
+          if [ -z "${TOKEN}" ]; then
+            TOKEN="${CRON_SECRET:-}"
+          fi
+          if [ -z "${TOKEN}" ]; then
+            echo "INTERNAL_RUNTIME_SECRET or CRON_SECRET must be set in GitHub secrets." >&2
+            exit 1
+          fi
+          # Never echo the token. Request ID for audit correlation only.
+          REQ_ID="gha-$(date -u +%Y%m%dT%H%M%SZ)-$RANDOM"
+          CODE=$(curl -sS -o /tmp/mianx-tick.json -w "%{http_code}" \
+            -X POST "${BASE%/}/api/internal/runtime/tick" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -H "x-request-id: ${REQ_ID}" \
+            --max-time 90 \
+            -d '{"max_jobs":5}')
+          echo "request_id=${REQ_ID}"
+          echo "http_status=${CODE}"
+          # Sanitize: print only ok/tick counters if JSON; never dump Authorization.
+          if command -v python3 >/dev/null 2>&1; then
+            python3 - <<'PY'
+          import json
+          try:
+            data = json.load(open("/tmp/mianx-tick.json"))
+          except Exception as e:
+            print("body_parse_error", str(e)[:120])
+            raise SystemExit(0)
+          err = data.get("error") if isinstance(data, dict) else None
+          if err:
+            print("error_code", err.get("code"))
+            print("error_message", str(err.get("message") or "")[:160])
+          tick = data.get("tick") if isinstance(data, dict) else None
+          if isinstance(tick, dict):
+            for k in ("recovered", "claimed", "succeeded", "failed", "dead_lettered", "cancelled", "duration_ms", "worker"):
+              if k in tick:
+                print(f"{k}={tick[k]}")
+          print("ok", data.get("ok"))
+          PY
+          fi
+          if [ "${CODE}" != "200" ]; then
+            echo "Tick failed with HTTP ${CODE}" >&2
+            exit 1
+          fi
