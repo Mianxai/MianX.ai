@@ -20,6 +20,17 @@ export default function CeoOrchestratorCard({ agent, brief, projectId }) {
     brief?.activeObjectives?.[0]?.workflow ||
     null;
 
+  const projectLabel = projectId
+    ? live.projectId || projectId
+    : "All projects — select a project for live scope";
+
+  const objectiveEmpty = projectId
+    ? "None active — issue an objective for this project"
+    : "None active — select a project, then open Objectives";
+  const completedEmpty = projectId
+    ? "None recorded for this project yet"
+    : "None recorded — select a project for scoped history";
+
   return (
     <section className="cc-ceo-card" aria-labelledby="cc-ceo-title">
       <div className="cc-ceo-card-top">
@@ -39,15 +50,11 @@ export default function CeoOrchestratorCard({ agent, brief, projectId }) {
       <dl className="cc-ceo-grid">
         <div>
           <dt>Selected project</dt>
-          <dd>
-            {projectId
-              ? live.projectId || projectId
-              : "All projects — select a project for live scope"}
-          </dd>
+          <dd>{projectLabel}</dd>
         </div>
         <div>
           <dt>Active objective</dt>
-          <dd>{activeTitle || "No activity yet"}</dd>
+          <dd>{activeTitle || objectiveEmpty}</dd>
         </div>
         <div>
           <dt>Delegated workstreams</dt>
@@ -65,14 +72,23 @@ export default function CeoOrchestratorCard({ agent, brief, projectId }) {
         </div>
         <div>
           <dt>Latest completed</dt>
-          <dd>{completed?.title || "No activity yet"}</dd>
+          <dd>{completed?.title || completedEmpty}</dd>
         </div>
       </dl>
       <div className="cc-link-row">
-        <Link href="/admin/objectives">Objectives</Link>
+        <Link
+          href={
+            projectId
+              ? `/admin/objectives?project_id=${encodeURIComponent(projectId)}`
+              : "/admin/objectives"
+          }
+        >
+          Objectives
+        </Link>
         <Link href="/admin/ceo-brief">CEO Brief</Link>
         <Link href="/admin/inbox">Founder Inbox</Link>
         <Link href="/admin/runtime/approvals">Approvals</Link>
+        {!projectId ? <Link href="/admin/projects">Projects</Link> : null}
       </div>
     </section>
   );

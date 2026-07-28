@@ -1,0 +1,72 @@
+{
+  "generatedAt": "2026-07-28T12:22:29.392Z",
+  "results": [
+    {
+      "route": "/admin/command-center",
+      "kind": "cold",
+      "ms": 1112,
+      "apiCalls": 0,
+      "dupes": 0
+    },
+    {
+      "route": "/admin/command-center",
+      "kind": "warm",
+      "ms": 84,
+      "apiCalls": 0,
+      "dupes": 0,
+      "counts": {}
+    },
+    {
+      "route": "/admin/departments",
+      "kind": "warm",
+      "ms": 171,
+      "apiCalls": 1,
+      "dupes": 0,
+      "counts": {
+        "http://127.0.0.1:3113/api/admin/command-center": 1
+      }
+    },
+    {
+      "route": "/admin/workflows",
+      "kind": "warm",
+      "ms": 100,
+      "apiCalls": 1,
+      "dupes": 0,
+      "counts": {
+        "http://127.0.0.1:3113/api/admin/command-center": 1
+      }
+    },
+    {
+      "route": "/admin/leads",
+      "kind": "warm",
+      "ms": 755,
+      "apiCalls": 2,
+      "dupes": 0,
+      "counts": {
+        "http://127.0.0.1:3113/api/admin/notifications": 1,
+        "http://127.0.0.1:3113/api/leads": 1
+      }
+    },
+    {
+      "route": "/admin/agents",
+      "kind": "warm",
+      "ms": 144,
+      "apiCalls": 1,
+      "dupes": 0,
+      "counts": {
+        "http://127.0.0.1:3113/api/admin/command-center": 1
+      }
+    },
+    {
+      "route": "/admin/runtime",
+      "kind": "warm",
+      "ms": 872,
+      "apiCalls": 2,
+      "dupes": 0,
+      "counts": {
+        "http://127.0.0.1:3113/api/core/health": 1,
+        "http://127.0.0.1:3113/api/core/projects": 1
+      }
+    }
+  ]
+}

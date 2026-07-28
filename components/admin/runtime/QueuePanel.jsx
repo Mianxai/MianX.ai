@@ -166,9 +166,15 @@ export default function QueuePanel({ call, projectId, health = null }) {
     return (
       <EmptyState
         title="Select a project"
-        reason="The job queue is project-scoped."
+        reason="The job queue is project-scoped. Queued jobs process on a worker tick (Run tick, npm run runtime:tick, or an external scheduler)."
+        configuration="This deployment does not claim automatic processing until a Founder configures a scheduler secret."
         nextAction="Select or create a project to inspect queued jobs."
         projectLabel="none"
+        cta={
+          <Link className="header-btn" href="/admin/projects">
+            Open projects
+          </Link>
+        }
       />
     );
   }

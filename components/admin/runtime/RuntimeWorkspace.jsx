@@ -558,9 +558,21 @@ function AgentsPanel({ call, projectId }) {
         {instances.length === 0 ? (
           <EmptyState
             title="No agents registered"
-            reason="This project has no registered agent instances yet."
-            nextAction="Register an agent from the catalog (requires a selected project)."
+            reason="This project has no registered agent instances yet. The catalog above lists definitions you can register — nothing is invented as sample data."
+            configuration="Registration requires a selected project and manage_agents capability."
+            nextAction="Register an agent from the catalog, or open Settings if Supabase/runtime is unconfigured."
             projectLabel={projectId || "none"}
+            cta={
+              projectId ? (
+                <Link className="header-btn-ghost" href="/admin/settings">
+                  Settings
+                </Link>
+              ) : (
+                <Link className="header-btn" href="/admin/projects">
+                  Open projects
+                </Link>
+              )
+            }
           />
         ) : (
           <ul className="runtime-list">
@@ -660,9 +672,20 @@ function TasksPanel({ call, projectId }) {
     return (
       <EmptyState
         title="Select a project"
-        reason="Tasks are project-scoped."
-        nextAction="Select or create a project to create and enqueue tasks."
+        reason="Tasks are project-scoped work units routed to registered agents."
+        configuration="Create or select a project before creating tasks."
+        nextAction="Select or create a project, then create a task or start an Objective."
         projectLabel="none"
+        cta={
+          <>
+            <Link className="header-btn" href="/admin/projects">
+              Open projects
+            </Link>
+            <Link className="header-btn-ghost" href="/admin/objectives">
+              Objectives
+            </Link>
+          </>
+        }
       />
     );
   }
@@ -695,8 +718,13 @@ function TasksPanel({ call, projectId }) {
           title={tasks.length === 0 ? "No tasks yet" : "No matching tasks"}
           reason={
             tasks.length === 0
-              ? "Create a task below, or start work from Objectives / workflows."
+              ? "This project has no tasks yet. Create one below, or start work from Objectives / workflows — the list is not seeded with samples."
               : `No tasks with status “${statusFilter}”.`
+          }
+          configuration={
+            tasks.length === 0
+              ? "Enqueueing requires at least one registered agent instance."
+              : null
           }
           nextAction={
             tasks.length === 0
@@ -704,6 +732,16 @@ function TasksPanel({ call, projectId }) {
               : "Clear or change the status filter."
           }
           projectLabel={projectId}
+          cta={
+            tasks.length === 0 ? (
+              <Link
+                className="header-btn-ghost"
+                href={`/admin/objectives?project_id=${encodeURIComponent(projectId)}`}
+              >
+                Objectives
+              </Link>
+            ) : null
+          }
         />
       ) : (
         <ul className="runtime-list">
@@ -935,9 +973,14 @@ function RunsPanel({ call, projectId }) {
     return (
       <EmptyState
         title="Select a project"
-        reason="Runs are project-scoped."
+        reason="Runs are project-scoped records of completed (or failed) agent executions."
         nextAction="Select a project to inspect agent run history."
         projectLabel="none"
+        cta={
+          <Link className="header-btn" href="/admin/projects">
+            Open projects
+          </Link>
+        }
       />
     );
   }
@@ -1038,9 +1081,14 @@ function ApprovalsPanel({ call, projectId }) {
     return (
       <EmptyState
         title="Select a project"
-        reason="Approvals are project-scoped."
+        reason="Approvals are project-scoped Founder decisions for protected actions."
         nextAction="Select a project to review pending protected-action requests."
         projectLabel="none"
+        cta={
+          <Link className="header-btn" href="/admin/projects">
+            Open projects
+          </Link>
+        }
       />
     );
   }
@@ -1140,9 +1188,14 @@ function AuditPanel({ call, projectId }) {
     return (
       <EmptyState
         title="Select a project"
-        reason="Audit entries are project-scoped."
+        reason="Audit entries are project-scoped records of runtime actions."
         nextAction="Select a project to inspect the audit log."
         projectLabel="none"
+        cta={
+          <Link className="header-btn" href="/admin/projects">
+            Open projects
+          </Link>
+        }
       />
     );
   }
@@ -1154,8 +1207,18 @@ function AuditPanel({ call, projectId }) {
     return (
       <EmptyState
         title="No audit entries yet"
-        reason="Audit rows appear as runtime actions are recorded for this project."
+        reason="No audit rows for this project yet — the log is empty, not filled with sample events."
+        configuration="Entries appear as runtime actions (tasks, jobs, approvals) are recorded."
+        nextAction="Start an objective or enqueue a task, then reopen Audit after activity."
         projectLabel={projectId}
+        cta={
+          <Link
+            className="header-btn-ghost"
+            href={`/admin/objectives?project_id=${encodeURIComponent(projectId)}`}
+          >
+            Objectives
+          </Link>
+        }
       />
     );
   }

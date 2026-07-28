@@ -23,7 +23,6 @@ export const ADMIN_NAV_GROUPS = [
       { href: "/admin/ceo-brief", label: "CEO Brief", match: "prefix", icon: "brief" },
       { href: "/admin/objectives", label: "Objectives", match: "prefix", icon: "objectives" },
       { href: "/admin/company-builder", label: "Company Builder", match: "prefix", icon: "workflows" },
-      { href: "/admin/execution", label: "Execution", match: "prefix", icon: "runtime" },
       {
         href: "/admin/inbox",
         label: "Founder Inbox",
@@ -31,7 +30,6 @@ export const ADMIN_NAV_GROUPS = [
         icon: "inbox",
         badgeKey: "inboxCount",
       },
-      { href: "/admin", label: "Overview", match: "exact", icon: "overview" },
     ],
   },
   {
@@ -120,12 +118,17 @@ export function isNavItemCurrent(pathname, item) {
   if (item.href === "/admin/runtime/approvals") {
     return (
       pathname === "/admin/runtime/approvals" ||
-      pathname.startsWith("/admin/runtime/approvals/")
+      pathname.startsWith("/admin/runtime/approvals/") ||
+      pathname === "/admin/approvals" ||
+      pathname.startsWith("/admin/approvals/")
     );
   }
   if (item.href === "/admin/runtime/audit") {
     return (
-      pathname === "/admin/runtime/audit" || pathname.startsWith("/admin/runtime/audit/")
+      pathname === "/admin/runtime/audit" ||
+      pathname.startsWith("/admin/runtime/audit/") ||
+      pathname === "/admin/audit" ||
+      pathname.startsWith("/admin/audit/")
     );
   }
   if (item.href === "/admin/leads") {

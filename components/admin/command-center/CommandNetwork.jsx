@@ -38,9 +38,9 @@ export function SpecialistAgentCard({ agent, selected, onSelect }) {
         {agent.live?.currentWorkflow ? (
           <span> · {agent.live.currentWorkflow}</span>
         ) : agent.live?.projectId ? (
-          <span> · project scoped</span>
+          <span> · project scoped · idle</span>
         ) : (
-          <span> · No activity yet</span>
+          <span> · Idle — no live workflow</span>
         )}
       </span>
     </button>
@@ -165,8 +165,8 @@ export default function CommandNetwork({
         ) : (
           <li className="cc-muted" style={{ textAlign: "center", marginTop: "0.75rem", listStyle: "none" }}>
             {department && department !== "all"
-              ? "No specialist agents in this department."
-              : "No activity yet — select a department to explore the catalog."}
+              ? `No specialist agents registered for “${department}”. Choose All departments or another department in the rail — capacity slots are not inventing live agents here.`
+              : "Company view shows CEO + C-suite first. Select a department in the rail to explore specialists in the executable catalog (not fake sample agents)."}
           </li>
         )}
       </ul>
