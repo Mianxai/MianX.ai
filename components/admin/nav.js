@@ -38,6 +38,12 @@ export const ADMIN_NAV = [
     icon: "objectives",
   },
   {
+    href: "/admin/company-builder",
+    label: "Company Builder",
+    match: "prefix",
+    icon: "workflows",
+  },
+  {
     href: "/admin/inbox",
     label: "Founder Inbox",
     match: "prefix",
