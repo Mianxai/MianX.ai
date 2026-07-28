@@ -1,4 +1,7 @@
-import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import WorkflowsClient from "@/components/admin/workflows/WorkflowsClient";
+import DelayedLoader from "@/components/shared/DelayedLoader";
+import MianxLoader from "@/components/shared/MianxLoader";
 
 export const dynamic = "force-dynamic";
 
@@ -7,10 +10,16 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function WorkflowsPage({ searchParams }) {
-  const sp = await searchParams;
-  const q = new URLSearchParams();
-  if (sp?.project_id) q.set("project_id", sp.project_id);
-  const qs = q.toString();
-  redirect(qs ? `/admin/command-center?${qs}` : "/admin/command-center");
+export default function WorkflowsPage() {
+  return (
+    <Suspense
+      fallback={
+        <DelayedLoader delayMs={150}>
+          <MianxLoader variant="section" label="Loading workflows…" />
+        </DelayedLoader>
+      }
+    >
+      <WorkflowsClient />
+    </Suspense>
+  );
 }

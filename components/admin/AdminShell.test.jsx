@@ -11,6 +11,7 @@ let pathname = "/admin";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, refresh, replace: vi.fn() }),
   usePathname: () => pathname,
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/lib/supabase", () => ({
@@ -40,7 +41,7 @@ describe("AdminShell", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders primary nav links including nested runtime routes", () => {
+  it("renders grouped primary nav without duplicate Agents/Approvals under Runtime", () => {
     render(
       <AdminShell title="Overview">
         <p>body</p>
@@ -48,9 +49,9 @@ describe("AdminShell", () => {
     );
 
     expect(screen.getByRole("link", { name: /Overview/i })).toHaveAttribute("href", "/admin");
-    expect(screen.getByRole("link", { name: /Lead Pipeline/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /^Leads$/i })).toHaveAttribute(
       "href",
-      "/admin/lead-pipeline"
+      "/admin/leads"
     );
     expect(screen.getByRole("link", { name: /^Projects$/i })).toHaveAttribute(
       "href",
@@ -72,11 +73,11 @@ describe("AdminShell", () => {
       "href",
       "/admin/inbox"
     );
-    const agentLinks = screen.getAllByRole("link", { name: /^Agents$/i });
-    expect(agentLinks.some((a) => a.getAttribute("href") === "/admin/agents")).toBe(true);
-    expect(agentLinks.some((a) => a.getAttribute("href") === "/admin/runtime/agents")).toBe(
-      true
+    expect(screen.getByRole("link", { name: /^Agents$/i })).toHaveAttribute(
+      "href",
+      "/admin/agents"
     );
+    expect(screen.queryByRole("link", { name: /^Instances$/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /^Runtime$/i })).toHaveAttribute(
       "href",
       "/admin/runtime"
@@ -90,11 +91,11 @@ describe("AdminShell", () => {
       "/admin/runtime/runs"
     );
     const approvals = screen.getAllByRole("link", { name: /^Approvals$/i });
-    expect(approvals.some((a) => a.getAttribute("href") === "/admin/runtime/approvals")).toBe(
-      true
-    );
+    expect(approvals).toHaveLength(1);
+    expect(approvals[0]).toHaveAttribute("href", "/admin/runtime/approvals");
     const audits = screen.getAllByRole("link", { name: /^Audit$/i });
-    expect(audits.some((a) => a.getAttribute("href") === "/admin/runtime/audit")).toBe(true);
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toHaveAttribute("href", "/admin/runtime/audit");
     expect(screen.getByRole("link", { name: /Analytics/i })).toHaveAttribute(
       "href",
       "/admin/analytics"
@@ -142,7 +143,7 @@ describe("AdminShell", () => {
     expect(aside.className).not.toContain("open");
   });
 
-  it("shows a newCount badge on Lead Pipeline when provided", () => {
+  it("shows a newCount badge on Leads when provided", () => {
     render(
       <AdminShell title="Overview" newCount={3}>
         <p>body</p>

@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
+import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 async function fetchJson(path, router, opts) {
   const res = await fetch(path, {
@@ -13,7 +15,7 @@ async function fetchJson(path, router, opts) {
     ...opts,
   });
   if (res.status === 401) {
-    router?.push("/admin/login");
+    router?.push(currentAdminLoginHref("/admin/inbox"));
     return { ok: false, data: null };
   }
   let data = null;
@@ -148,7 +150,17 @@ export default function InboxClient() {
               {data.attentionCount} requiring attention
             </p>
             {data.items.length === 0 ? (
-              <p className="cc-muted">No attention items right now.</p>
+              <EmptyState
+                title="Inbox clear"
+                reason="No approvals, pause controls, or dead-letter items need attention."
+                nextAction="New items appear when protected actions or execution controls need Founder input."
+                projectLabel={projectId || "All projects"}
+                cta={
+                  <Link className="header-btn-ghost" href="/admin/runtime/approvals">
+                    Runtime approvals
+                  </Link>
+                }
+              />
             ) : (
               <ul className="inbox-list">
                 {data.items.map((item) => (

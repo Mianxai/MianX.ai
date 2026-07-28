@@ -1,4 +1,7 @@
-import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import DepartmentsClient from "@/components/admin/departments/DepartmentsClient";
+import DelayedLoader from "@/components/shared/DelayedLoader";
+import MianxLoader from "@/components/shared/MianxLoader";
 
 export const dynamic = "force-dynamic";
 
@@ -7,11 +10,16 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function DepartmentsPage({ searchParams }) {
-  const sp = await searchParams;
-  const q = new URLSearchParams();
-  if (sp?.project_id) q.set("project_id", sp.project_id);
-  if (sp?.department) q.set("department", sp.department);
-  const qs = q.toString();
-  redirect(qs ? `/admin/command-center?${qs}` : "/admin/command-center");
+export default function DepartmentsPage() {
+  return (
+    <Suspense
+      fallback={
+        <DelayedLoader delayMs={150}>
+          <MianxLoader variant="section" label="Loading departments…" />
+        </DelayedLoader>
+      }
+    >
+      <DepartmentsClient />
+    </Suspense>
+  );
 }

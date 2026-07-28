@@ -5,10 +5,12 @@ import userEvent from "@testing-library/user-event";
 
 const push = vi.fn();
 const refresh = vi.fn();
+let searchParams = new URLSearchParams();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, refresh, replace: vi.fn() }),
   usePathname: () => "/admin/login",
+  useSearchParams: () => searchParams,
 }));
 
 const signInWithPassword = vi.fn();
@@ -31,6 +33,7 @@ describe("Admin login page", () => {
     signInWithPassword.mockReset();
     signOut.mockClear();
     configured = true;
+    searchParams = new URLSearchParams();
     document.cookie = "sb-access-token=; path=/; max-age=0";
   });
   afterEach(() => {
@@ -196,6 +199,24 @@ describe("Admin login page", () => {
     await user.click(screen.getByTestId("login-submit"));
     // push happens as soon as auth resolves — no fake-timer advancement needed.
     await waitFor(() => expect(push).toHaveBeenCalledWith("/admin"));
+  });
+
+  it("preserves returnTo after successful login", async () => {
+    const user = userEvent.setup();
+    searchParams = new URLSearchParams("returnTo=%2Fadmin%2Fdepartments");
+    signInWithPassword.mockResolvedValue({
+      data: { session: { access_token: "tkn-rt", expires_in: 3600 } },
+      error: null,
+    });
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ ok: true }),
+    }));
+    render(<AdminLoginPage />);
+    await user.type(screen.getByLabelText(/email address/i), "admin@mianx.ai");
+    await user.type(screen.getByLabelText(/^password$/i), "pw");
+    await user.click(screen.getByTestId("login-submit"));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/departments"));
   });
 
   it("disables sign-in and warns when Supabase is not configured", () => {

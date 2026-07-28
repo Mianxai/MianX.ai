@@ -11,6 +11,7 @@ const routerStub = { push, refresh, replace: vi.fn() };
 vi.mock("next/navigation", () => ({
   useRouter: () => routerStub,
   usePathname: () => "/admin",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/lib/supabase", () => ({
@@ -71,7 +72,9 @@ describe("Admin Overview page", () => {
     global.fetch.mockResolvedValueOnce({ status: 401, ok: false, json: async () => ({}) });
     render(<AdminOverviewPage />);
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/admin/login"));
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith("/admin/login?returnTo=%2Fadmin")
+    );
   });
 
   it("renders truthful overview cards from the API (no fake metrics)", async () => {

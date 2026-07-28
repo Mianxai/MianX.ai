@@ -6,6 +6,7 @@ import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 async function fetchJson(path, router, opts) {
   const res = await fetch(path, {
@@ -13,7 +14,7 @@ async function fetchJson(path, router, opts) {
     ...opts,
   });
   if (res.status === 401) {
-    router?.push("/admin/login");
+    router?.push(currentAdminLoginHref("/admin/execution"));
     return { ok: false, data: null };
   }
   const data = await res.json().catch(() => null);

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import MianxLoader from "@/components/shared/MianxLoader";
 import DelayedLoader from "@/components/shared/DelayedLoader";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 function toEntries(dist) {
   if (!dist || typeof dist !== "object") return [];
@@ -69,7 +70,7 @@ export default function AnalyticsPage() {
     try {
       const res = await fetch("/api/admin/analytics");
       if (res.status === 401) {
-        router.push("/admin/login");
+        router.push(currentAdminLoginHref("/admin/analytics"));
         return;
       }
       if (res.status === 503) {

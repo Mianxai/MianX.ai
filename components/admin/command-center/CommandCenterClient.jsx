@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
-import CommandNetwork from "@/components/admin/command-center/CommandNetwork";
 import AgentDetailDrawer from "@/components/admin/command-center/AgentDetailDrawer";
 import OverviewMetrics from "@/components/admin/command-center/OverviewMetrics";
 import DepartmentRail from "@/components/admin/command-center/DepartmentRail";
@@ -18,11 +18,28 @@ import OpsStatusBar from "@/components/admin/command-center/OpsStatusBar";
 import CeoOrchestratorCard from "@/components/admin/command-center/CeoOrchestratorCard";
 import FounderAuthorityBanner from "@/components/admin/command-center/FounderAuthorityBanner";
 import ExecutionPanel from "@/components/admin/command-center/ExecutionPanel";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
-async function fetchJson(path, router) {
+const CommandNetwork = dynamic(
+  () => import("@/components/admin/command-center/CommandNetwork"),
+  {
+    ssr: false,
+    loading: () => (
+      <DelayedLoader
+        active
+        delay={0}
+        variant="section"
+        label="Loading agent network…"
+        region={false}
+      />
+    ),
+  }
+);
+
+async function fetchJson(path, router, loginFallback) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
   if (res.status === 401) {
-    router?.push("/admin/login");
+    router?.push(currentAdminLoginHref(loginFallback));
     return { ok: false, status: 401, data: null };
   }
   let data = null;
@@ -40,12 +57,15 @@ export default function CommandCenterClient({ title = "Command Center" }) {
   const projectId = searchParams?.get("project_id") || "";
   const department = searchParams?.get("department") || "all";
   const agentSlug = searchParams?.get("agent") || "";
+  const agentsPage = title === "Agents";
+  const loginFallback = agentsPage ? "/admin/agents" : "/admin/command-center";
 
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [viewMode, setViewMode] = useState("network");
+  // Agents page: list/department summary first; network graph is opt-in (lazy).
+  const [viewMode, setViewMode] = useState(agentsPage ? "list" : "network");
 
   const query = useMemo(() => {
     const q = new URLSearchParams();
@@ -61,7 +81,7 @@ export default function CommandCenterClient({ title = "Command Center" }) {
       else setLoading(true);
       setError("");
       const path = `/api/admin/command-center${query ? `?${query}` : ""}`;
-      const res = await fetchJson(path, router);
+      const res = await fetchJson(path, router, loginFallback);
       if (!soft) setLoading(false);
       setRefreshing(false);
       if (!res.ok) {
@@ -73,7 +93,7 @@ export default function CommandCenterClient({ title = "Command Center" }) {
       }
       setData(res.data);
     },
-    [query, router]
+    [query, router, loginFallback]
   );
 
   useEffect(() => {
@@ -99,6 +119,22 @@ export default function CommandCenterClient({ title = "Command Center" }) {
     () => (data?.agents || []).find((a) => a.slug === "executive-ceo") || null,
     [data]
   );
+
+  const agents = useMemo(() => data?.agents || [], [data?.agents]);
+
+  const visibleAgents = useMemo(() => {
+    if (!department || department === "all") return agents;
+    return agents.filter(
+      (a) =>
+        a.department === department ||
+        a.departmentSlug === department ||
+        a.workforceSlug?.startsWith?.(`${department}.`)
+    );
+  }, [agents, department]);
+
+  const catalogCount = data?.agentInventory?.catalogCount;
+  const executableCount =
+    data?.hierarchy?.executableCount ?? data?.agentInventory?.executable;
 
   const actions = (
     <div className="cc-header-actions">
@@ -173,7 +209,7 @@ export default function CommandCenterClient({ title = "Command Center" }) {
             <div className="cc-layout">
               <DepartmentRail
                 departments={data.departments}
-                agents={data.agents}
+                agents={agents}
                 active={department}
                 selectedSlug={agentSlug}
                 onSelectDepartment={(slug) =>
@@ -187,24 +223,30 @@ export default function CommandCenterClient({ title = "Command Center" }) {
                   <div className="cc-view-toggle" role="group" aria-label="View mode">
                     <button
                       type="button"
+                      className={viewMode === "list" ? "active" : ""}
+                      onClick={() => setViewMode("list")}
+                    >
+                      {agentsPage ? "Summary" : "List"}
+                    </button>
+                    <button
+                      type="button"
                       className={viewMode === "network" ? "active" : ""}
                       onClick={() => setViewMode("network")}
                     >
                       Network
                     </button>
-                    <button
-                      type="button"
-                      className={viewMode === "list" ? "active" : ""}
-                      onClick={() => setViewMode("list")}
-                    >
-                      List
-                    </button>
                   </div>
                   <p className="cc-muted">
-                    {data.hierarchy.executableCount} executable agents
+                    {executableCount != null
+                      ? `${executableCount} executable`
+                      : "Executable count unavailable"}
+                    {catalogCount != null ? ` · ${catalogCount} catalog` : ""}
                     {projectId
                       ? " · project scoped"
                       : " · catalog (select a project for live work)"}
+                    {department !== "all"
+                      ? ` · showing ${visibleAgents.length} in department`
+                      : ""}
                   </p>
                 </div>
 
@@ -212,14 +254,14 @@ export default function CommandCenterClient({ title = "Command Center" }) {
                   {viewMode === "network" ? (
                     <CommandNetwork
                       hierarchy={data.hierarchy}
-                      agents={data.agents}
+                      agents={visibleAgents}
                       department={department}
                       selectedSlug={agentSlug}
                       onSelect={(slug) => replaceParams({ agent: slug })}
                     />
                   ) : (
                     <AgentListFallback
-                      agents={data.agents}
+                      agents={visibleAgents}
                       selectedSlug={agentSlug}
                       onSelect={(slug) => replaceParams({ agent: slug })}
                     />
@@ -228,7 +270,7 @@ export default function CommandCenterClient({ title = "Command Center" }) {
 
                 <div className="cc-network-mobile">
                   <AgentListFallback
-                    agents={data.agents}
+                    agents={visibleAgents}
                     selectedSlug={agentSlug}
                     onSelect={(slug) => replaceParams({ agent: slug })}
                   />

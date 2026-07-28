@@ -1,6 +1,7 @@
 "use client";
 
 import StatusChip from "./StatusChip";
+import EmptyState from "@/components/admin/EmptyState";
 
 export default function AgentListFallback({ agents, selectedSlug, onSelect }) {
   return (
@@ -10,6 +11,13 @@ export default function AgentListFallback({ agents, selectedSlug, onSelect }) {
         Semantic list equivalent of the network view (required for accessibility and
         mobile).
       </p>
+      {!agents?.length ? (
+        <EmptyState
+          title="No agents in view"
+          reason="No executable agents match the current department filter."
+          nextAction="Select All departments or another department in the rail."
+        />
+      ) : (
       <ul className="cc-agent-list">
         {agents.map((a) => (
           <li key={a.slug}>
@@ -42,6 +50,7 @@ export default function AgentListFallback({ agents, selectedSlug, onSelect }) {
           </li>
         ))}
       </ul>
+      )}
     </section>
   );
 }

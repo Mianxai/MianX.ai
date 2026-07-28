@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
+import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
 import StatusChip from "@/components/admin/command-center/StatusChip";
+import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 async function api(path, options, router) {
   const res = await fetch(path, {
@@ -14,7 +16,7 @@ async function api(path, options, router) {
     ...options,
   });
   if (res.status === 401) {
-    router?.push("/admin/login");
+    router?.push(currentAdminLoginHref("/admin/objectives"));
     return { ok: false, status: 401, data: null };
   }
   let data = null;
@@ -188,10 +190,12 @@ export default function ObjectivesClient() {
     <AdminShell title="Objectives" actions={actions}>
       <div className="obj-page">
         {!projectId ? (
-          <p className="cc-muted">
-            Select a project to issue a Founder objective. Server enforces project
-            scope and role capabilities.
-          </p>
+          <EmptyState
+            title="Select a project"
+            reason="Objectives are project-scoped. The server enforces scope and role capabilities."
+            nextAction="Choose a project above to issue or review Founder objectives."
+            projectLabel="none"
+          />
         ) : null}
 
         {error ? (
@@ -294,9 +298,18 @@ export default function ObjectivesClient() {
                 <MianxLoader variant="inline" label="Loading…" />
               </DelayedLoader>
             ) : !projectId ? (
-              <p className="cc-unavailable">Select a project</p>
+              <EmptyState
+                title="No project selected"
+                reason="Project objectives appear after you select a project."
+                projectLabel="none"
+              />
             ) : objectives.length === 0 ? (
-              <p className="cc-muted">No activity yet</p>
+              <EmptyState
+                title="No objectives yet"
+                reason="This project has no Founder objectives recorded."
+                nextAction="Use the form to start an objective (analysis-only by default)."
+                projectLabel={projectId}
+              />
             ) : (
               <ul className="obj-list">
                 {objectives.map((o) => (
