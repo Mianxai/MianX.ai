@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/runtime/tick",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}
