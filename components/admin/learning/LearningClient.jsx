@@ -24,28 +24,45 @@ export default function LearningClient() {
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
   const [data, setData] = useState(null);
+  const [projects, setProjects] = useState([]);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     const q = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
-    const res = await fetchJson(`/api/admin/learning${q}`, router);
+    const [learnRes, ccRes] = await Promise.all([
+      fetchJson(`/api/admin/learning${q}`, router),
+      fetchJson("/api/admin/command-center", router),
+    ]);
     setLoading(false);
-    if (!res.ok) {
-      setError(res.data?.error?.message || "Failed to load learning");
+    if (!learnRes.ok) {
+      setError(learnRes.data?.error?.message || "Failed to load learning");
       return;
     }
-    setData(res.data);
+    setData(learnRes.data);
+    if (ccRes.ok && Array.isArray(ccRes.data?.projects)) {
+      setProjects(ccRes.data.projects);
+    }
   }, [projectId, router]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  function onProject(id) {
+    const next = new URLSearchParams();
+    if (id) next.set("project_id", id);
+    const qs = next.toString();
+    router.replace(qs ? `/admin/learning?${qs}` : "/admin/learning");
+  }
+
   async function decide(id, decision) {
     setBusy(id + decision);
+    setSuccess("");
+    setError("");
     const res = await fetchJson("/api/admin/learning", router, {
       method: "POST",
       body: JSON.stringify({ id, decision }),
@@ -55,11 +72,31 @@ export default function LearningClient() {
       setError(res.data?.error?.message || "Decision failed");
       return;
     }
+    setSuccess(`Learning ${decision}`);
     await load();
   }
 
   return (
-    <AdminShell title="Learning">
+    <AdminShell
+      title="Learning"
+      actions={
+        <label className="cc-project-select">
+          <span className="sr-only">Project filter</span>
+          <select
+            value={projectId}
+            onChange={(e) => onProject(e.target.value)}
+            aria-label="Filter by project"
+          >
+            <option value="">All projects</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      }
+    >
       <div className="cc-page">
         <p className="cc-muted">
           Verified learning candidates. Unsafe capability or prompt self-modification
@@ -73,6 +110,11 @@ export default function LearningClient() {
         {error ? (
           <div className="cc-banner cc-banner-error" role="alert">
             {error}
+          </div>
+        ) : null}
+        {success ? (
+          <div className="cc-banner" role="status">
+            {success}
           </div>
         ) : null}
         {data?.items?.length ? (

@@ -7,8 +7,11 @@ import AdminShell from "@/components/admin/AdminShell";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
 
-async function fetchJson(path, router) {
-  const res = await fetch(path, { headers: { Accept: "application/json" } });
+async function fetchJson(path, router, opts) {
+  const res = await fetch(path, {
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    ...opts,
+  });
   if (res.status === 401) {
     router?.push("/admin/login");
     return { ok: false, data: null };
@@ -28,8 +31,10 @@ export default function InboxClient() {
   const projectId = searchParams?.get("project_id") || "";
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
+  const [busy, setBusy] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,6 +67,40 @@ export default function InboxClient() {
     router.replace(qs ? `/admin/inbox?${qs}` : "/admin/inbox");
   };
 
+  async function decideApproval(approvalId, decision) {
+    setBusy(`${approvalId}:${decision}`);
+    setSuccess("");
+    setError("");
+    const res = await fetchJson(`/api/core/approvals/${approvalId}/decision`, router, {
+      method: "POST",
+      body: JSON.stringify({ decision }),
+    });
+    setBusy("");
+    if (!res.ok) {
+      setError(res.data?.error?.message || "Decision failed");
+      return;
+    }
+    setSuccess(`Approval ${decision}`);
+    await load();
+  }
+
+  async function executionAction(programId, action) {
+    setBusy(`${programId}:${action}`);
+    setSuccess("");
+    setError("");
+    const res = await fetchJson("/api/admin/execution", router, {
+      method: "POST",
+      body: JSON.stringify({ action, program_id: programId }),
+    });
+    setBusy("");
+    if (!res.ok) {
+      setError(res.data?.error?.message || `${action} failed`);
+      return;
+    }
+    setSuccess(`Program ${action}`);
+    await load();
+  }
+
   return (
     <AdminShell
       title="Founder Inbox"
@@ -85,7 +124,8 @@ export default function InboxClient() {
     >
       <div className="cc-page">
         <p className="cc-muted">
-          Operational attention queue — not email. Items link to source state.
+          Operational attention queue — not email. Approve, reject, pause, resume,
+          and cancel from here when the item supports it.
         </p>
         {loading && !data ? (
           <DelayedLoader delayMs={200}>
@@ -95,6 +135,11 @@ export default function InboxClient() {
         {error ? (
           <div className="cc-banner cc-banner-error" role="alert">
             {error}
+          </div>
+        ) : null}
+        {success ? (
+          <div className="cc-banner" role="status">
+            {success}
           </div>
         ) : null}
         {data ? (
@@ -115,10 +160,68 @@ export default function InboxClient() {
                       {item.riskLabel ? (
                         <p className="inbox-risk">{item.riskLabel}</p>
                       ) : null}
+                      {item.originatingTask ? (
+                        <p className="cc-muted">Task: {item.originatingTask}</p>
+                      ) : null}
                     </div>
-                    <Link href={item.href} className="header-btn">
-                      Open
-                    </Link>
+                    <div style={{ display: "grid", gap: "0.35rem" }}>
+                      {item.kind === "approval" && item.resourceId ? (
+                        <>
+                          <button
+                            type="button"
+                            className="header-btn-ghost"
+                            disabled={Boolean(busy)}
+                            onClick={() => decideApproval(item.resourceId, "approved")}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            className="header-btn-ghost"
+                            disabled={Boolean(busy)}
+                            onClick={() => decideApproval(item.resourceId, "rejected")}
+                          >
+                            Reject
+                          </button>
+                        </>
+                      ) : null}
+                      {item.kind === "pause_control" && item.resourceId ? (
+                        <>
+                          <button
+                            type="button"
+                            className="header-btn-ghost"
+                            disabled={Boolean(busy)}
+                            onClick={() => executionAction(item.resourceId, "resume")}
+                          >
+                            Resume
+                          </button>
+                          <button
+                            type="button"
+                            className="header-btn-ghost"
+                            disabled={Boolean(busy)}
+                            onClick={() => executionAction(item.resourceId, "cancel")}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : null}
+                      {item.kind === "dead_letter" || item.kind === "protected_action" ? (
+                        <Link
+                          href={
+                            item.projectId
+                              ? `/admin/execution?project_id=${encodeURIComponent(item.projectId)}`
+                              : "/admin/execution"
+                          }
+                          className="header-btn"
+                        >
+                          Open execution
+                        </Link>
+                      ) : (
+                        <Link href={item.href} className="header-btn">
+                          Open
+                        </Link>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>

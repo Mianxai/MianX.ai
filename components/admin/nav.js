@@ -44,6 +44,12 @@ export const ADMIN_NAV = [
     icon: "workflows",
   },
   {
+    href: "/admin/execution",
+    label: "Execution",
+    match: "prefix",
+    icon: "runtime",
+  },
+  {
     href: "/admin/inbox",
     label: "Founder Inbox",
     match: "prefix",

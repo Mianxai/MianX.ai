@@ -10,8 +10,8 @@ import { parseJsonBody, assertUuid } from "@/lib/core/validate";
 import { rateLimit } from "@/lib/core/ratelimit";
 import {
   runCompanyBuilder,
-  listBlueprints,
-  getBlueprint,
+  listBlueprintsAsync,
+  getBlueprintAsync,
   decideCompanyBlueprint,
 } from "@/lib/core/company-builder";
 
@@ -37,7 +37,7 @@ export const GET = withErrorHandling(async (req) => {
   }
 
   if (id) {
-    const blueprint = getBlueprint(id);
+    const blueprint = await getBlueprintAsync(id);
     if (!blueprint) {
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "Blueprint not found." } },
@@ -53,12 +53,12 @@ export const GET = withErrorHandling(async (req) => {
     return NextResponse.json({ generatedAt: new Date().toISOString(), blueprint });
   }
 
-  const blueprints = listBlueprints({ projectId });
+  const blueprints = await listBlueprintsAsync({ projectId });
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
     projectId,
     blueprints,
-    note: "Company Builder is a planning engine. It does not build RestaurantOS or other industry products.",
+    note: "Company Builder is a planning engine. It does not build RestaurantOS or other industry products. Blueprints hydrate from durable task snapshots.",
   });
 });
 

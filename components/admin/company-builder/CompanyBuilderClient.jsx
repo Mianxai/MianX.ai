@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
@@ -23,37 +24,55 @@ export default function CompanyBuilderClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
-  const [objective, setObjective] = useState("Build RestaurantOS");
+  const [objective, setObjective] = useState(
+    "Plan a MianX Core capability programme for Founder review"
+  );
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [projects, setProjects] = useState([]);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     const q = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
-    const res = await fetchJson(`/api/admin/company-builder${q}`, router);
+    const [cbRes, ccRes] = await Promise.all([
+      fetchJson(`/api/admin/company-builder${q}`, router),
+      fetchJson("/api/admin/command-center", router),
+    ]);
     setLoading(false);
-    if (!res.ok) {
-      setError(res.data?.error?.message || "Failed to load Company Builder");
+    if (!cbRes.ok) {
+      setError(cbRes.data?.error?.message || "Failed to load Company Builder");
       return;
     }
     setError("");
-    setData(res.data);
+    setData(cbRes.data);
+    if (ccRes.ok && Array.isArray(ccRes.data?.projects)) {
+      setProjects(ccRes.data.projects);
+    }
   }, [projectId, router]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  function onProject(id) {
+    const next = new URLSearchParams();
+    if (id) next.set("project_id", id);
+    const qs = next.toString();
+    router.replace(qs ? `/admin/company-builder?${qs}` : "/admin/company-builder");
+  }
+
   async function submitPlan(e) {
     e.preventDefault();
     if (!projectId) {
-      setError("Select a project via ?project_id= to create a blueprint.");
+      setError("Select a project to create a blueprint.");
       return;
     }
     setBusy(true);
+    setSuccess("");
     const res = await fetchJson("/api/admin/company-builder", router, {
       method: "POST",
       body: JSON.stringify({ objective, project_id: projectId }),
@@ -64,11 +83,13 @@ export default function CompanyBuilderClient() {
       return;
     }
     setSelected(res.data.blueprint);
+    setSuccess("Blueprint created — awaiting Founder approval");
     await load();
   }
 
   async function decide(id, decision) {
     setBusy(true);
+    setSuccess("");
     const res = await fetchJson("/api/admin/company-builder", router, {
       method: "POST",
       body: JSON.stringify({ id, decision }),
@@ -79,19 +100,42 @@ export default function CompanyBuilderClient() {
       return;
     }
     setSelected(res.data.blueprint);
+    setSuccess(
+      decision === "approved"
+        ? "Approved — execution program materialised (see Execution)"
+        : "Blueprint rejected"
+    );
     await load();
   }
 
   const bp = selected;
 
   return (
-    <AdminShell title="Company Builder">
+    <AdminShell
+      title="Company Builder"
+      actions={
+        <label className="cc-project-select">
+          <span className="sr-only">Project</span>
+          <select
+            value={projectId}
+            onChange={(e) => onProject(e.target.value)}
+            aria-label="Select project"
+          >
+            <option value="">Select project…</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      }
+    >
       <div className="cc-page">
         <p className="cc-muted">
           Self-building company engine: plan Company → Product → Program → Epic →
           Feature → Story → Task → Agent Run. Planning only — does not build
-          RestaurantOS, PoultryOS, or any industry product. Nothing executes before
-          Founder approval.
+          industry products. Nothing executes before Founder approval.
         </p>
 
         <form className="cc-card" onSubmit={submitPlan} style={{ marginBottom: "1rem" }}>
@@ -103,12 +147,13 @@ export default function CompanyBuilderClient() {
               onChange={(ev) => setObjective(ev.target.value)}
               rows={3}
               style={{ width: "100%", marginTop: "0.35rem" }}
+              required
             />
           </label>
           <p className="cc-muted">
-            Project: {projectId || "none — append ?project_id=&lt;uuid&gt;"}
+            Project: {projectId || "none selected"}
           </p>
-          <button type="submit" className="header-btn-ghost" disabled={busy}>
+          <button type="submit" className="header-btn-ghost" disabled={busy || !projectId}>
             Generate blueprint
           </button>
         </form>
@@ -121,6 +166,11 @@ export default function CompanyBuilderClient() {
         {error ? (
           <div className="cc-banner cc-banner-error" role="alert">
             {error}
+          </div>
+        ) : null}
+        {success ? (
+          <div className="cc-banner" role="status">
+            {success}
           </div>
         ) : null}
         {data?.note ? <p className="cc-muted">{data.note}</p> : null}
@@ -169,7 +219,7 @@ export default function CompanyBuilderClient() {
               {String(bp.roadmap?.execution_frozen)}
             </p>
             <p className="cc-muted">
-              Execution: runs started {bp.execution?.agent_runs_started ?? 0} ·
+              Execution: program {bp.execution?.program_id || bp.execution_program_id || "—"} ·
               industry OS built {String(Boolean(bp.execution?.industry_os_built))}
             </p>
             {bp.status === "awaiting_founder_approval" ? (
@@ -191,6 +241,20 @@ export default function CompanyBuilderClient() {
                   Reject
                 </button>
               </div>
+            ) : null}
+            {bp.execution?.program_id || bp.execution_program_id ? (
+              <p style={{ marginTop: "0.75rem" }}>
+                <Link
+                  className="header-btn"
+                  href={
+                    bp.project_id
+                      ? `/admin/execution?project_id=${encodeURIComponent(bp.project_id)}&program_id=${encodeURIComponent(bp.execution?.program_id || bp.execution_program_id)}`
+                      : "/admin/execution"
+                  }
+                >
+                  Open execution program
+                </Link>
+              </p>
             ) : null}
             <details style={{ marginTop: "0.75rem" }}>
               <summary>Department plans</summary>

@@ -249,6 +249,9 @@ export default function CommandCenterClient({ title = "Command Center" }) {
                   execution={data.execution}
                   schedule={data.schedule}
                 />
+                <p className="cc-muted" style={{ marginTop: "0.5rem" }}>
+                  <Link href="/admin/execution">Open Execution controls →</Link>
+                </p>
                 <section className="cc-card" aria-labelledby="cc-knowledge-h">
                   <h2 id="cc-knowledge-h">Knowledge / outputs</h2>
                   <p className="cc-muted">{data.knowledge?.note}</p>
