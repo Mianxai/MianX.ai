@@ -56,11 +56,13 @@ describe("admin navigation uniqueness", () => {
     const control = ADMIN_NAV_GROUPS.find((g) => g.id === "control");
     expect(control.items.map((i) => i.label)).toEqual([
       "Command Center",
+      "E2E Integration",
       "CEO Brief",
       "Objectives",
       "Company Builder",
       "Founder Inbox",
     ]);
+    expect(primaryNavHrefs().filter((h) => h === "/admin/integration")).toHaveLength(1);
     expect(ADMIN_NAV.some((i) => i.href === "/admin")).toBe(false);
     expect(ADMIN_NAV.some((i) => i.href === "/admin/execution")).toBe(false);
   });

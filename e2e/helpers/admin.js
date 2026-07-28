@@ -39,6 +39,7 @@ export const CANONICAL_ADMIN_ROUTES = [
   "/admin/templates",
   "/admin/planning",
   "/admin/workforce",
+  "/admin/integration",
   "/admin/runtime",
   "/admin/runtime/agents",
   "/admin/runtime/tasks",
@@ -262,6 +263,71 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
         analytics: { task_count: 0, success_pct: 0 },
         health: { healthy: true, executable_count: 36, dead_agents: [], blocked_agents: [] },
         control: { paused: false, recent: [] },
+      });
+    }
+    if (path.startsWith("/api/admin/integration")) {
+      if (method === "POST") {
+        return json(route, 200, {
+          ok: true,
+          run: {
+            id: "irun-e2e-1",
+            current_stage: "founder_approval_required",
+            status: "awaiting_approval",
+            execution_mode: "deterministic_simulation",
+            project_id: projectId,
+            objective: { title: "E2E integration objective" },
+            correlation_id: "corr-e2e",
+            trace_id: "trace-e2e",
+            fabricated_execution: false,
+            provider_called: false,
+          },
+        });
+      }
+      const action = url.searchParams.get("action") || "dashboard";
+      if (action === "run") {
+        return json(route, 200, {
+          ok: true,
+          run: {
+            id: "irun-e2e-1",
+            current_stage: "founder_final_review",
+            status: "awaiting_final_review",
+            execution_mode: "deterministic_simulation",
+            project_id: projectId,
+            objective: { title: "E2E integration objective" },
+            correlation_id: "corr-e2e",
+            trace_id: "trace-e2e",
+            allocation: { count: 5, activated_all_36: false },
+            evidence: { count: 4 },
+            memory: { count: 3 },
+            learning: { count: 8, auto_applied: false },
+            proof_pack: { secrets_included: false },
+          },
+        });
+      }
+      return json(route, 200, {
+        ok: true,
+        engine_version: "phase-h-test",
+        proof_level: "LEVEL_1_DETERMINISTIC_SIMULATION",
+        live_execution_ready: false,
+        routable_agent_audit: {
+          expected: 36,
+          actual_executable: 36,
+          actual_routable: 36,
+          matches_expected: true,
+        },
+        runs: [
+          {
+            id: "irun-e2e-1",
+            project_id: projectId,
+            stage: "founder_final_review",
+            status: "awaiting_final_review",
+            mode: "deterministic_simulation",
+            objective_title: "E2E integration objective",
+            evidence_count: 4,
+            memory_count: 3,
+            learning_count: 8,
+          },
+        ],
       });
     }
     if (path.startsWith("/api/admin/")) {
