@@ -37,6 +37,7 @@ export const ADMIN_NAV_GROUPS = [
     label: "Workforce",
     items: [
       { href: "/admin/agents", label: "Agents", match: "prefix", icon: "network" },
+      { href: "/admin/workforce", label: "Live Workforce", match: "prefix", icon: "runtime" },
       { href: "/admin/departments", label: "Departments", match: "prefix", icon: "departments" },
       { href: "/admin/workflows", label: "Workflows", match: "prefix", icon: "workflows" },
       { href: "/admin/schedule", label: "Schedule", match: "prefix", icon: "schedule" },

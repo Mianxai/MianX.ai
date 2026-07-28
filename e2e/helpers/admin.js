@@ -38,6 +38,7 @@ export const CANONICAL_ADMIN_ROUTES = [
   "/admin/analytics",
   "/admin/templates",
   "/admin/planning",
+  "/admin/workforce",
   "/admin/runtime",
   "/admin/runtime/agents",
   "/admin/runtime/tasks",
@@ -233,6 +234,35 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
         return json(route, 200, { ok: true, audit: [], memory: [], learning: [] });
       }
       return json(route, 200, { ok: true, plans: [], projects: PROJECTS });
+    }
+    if (path.startsWith("/api/admin/workforce")) {
+      return json(route, 200, {
+        ok: true,
+        engine_version: "phase-g-test",
+        executable_agents: 36,
+        paused: false,
+        counts: {
+          idle: 36,
+          busy: 0,
+          waiting: 0,
+          blocked: 0,
+          executing: 0,
+          review: 0,
+          failed: 0,
+          completed: 0,
+        },
+        busy_agents: [],
+        idle_agents: ["executive-ceo"],
+        waiting_agents: [],
+        blocked_agents: [],
+        running_tasks: 0,
+        memory_writes: 0,
+        learning_proposals: 0,
+        note: "Live dashboard over real executable catalog (36). Simulation safe. No fabricated agents.",
+        analytics: { task_count: 0, success_pct: 0 },
+        health: { healthy: true, executable_count: 36, dead_agents: [], blocked_agents: [] },
+        control: { paused: false, recent: [] },
+      });
     }
     if (path.startsWith("/api/admin/")) {
       return json(route, 200, {

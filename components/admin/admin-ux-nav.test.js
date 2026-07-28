@@ -44,6 +44,14 @@ describe("admin navigation uniqueness", () => {
     expect(primaryNavHrefs().filter((h) => h === "/admin/planning")).toHaveLength(1);
   });
 
+  it("includes Live Workforce under Workforce without duplicates", () => {
+    const wf = ADMIN_NAV_GROUPS.find((g) => g.id === "workforce");
+    const labels = wf.items.map((i) => i.label);
+    expect(labels).toContain("Live Workforce");
+    expect(labels.filter((l) => l === "Live Workforce")).toHaveLength(1);
+    expect(primaryNavHrefs().filter((h) => h === "/admin/workforce")).toHaveLength(1);
+  });
+
   it("uses Control IA without Overview or Execution in the primary sidebar", () => {
     const control = ADMIN_NAV_GROUPS.find((g) => g.id === "control");
     expect(control.items.map((i) => i.label)).toEqual([

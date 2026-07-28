@@ -58,8 +58,9 @@ describe("migration contract (static, not applied)", () => {
       "20260728150000_phase_d_execution_engine.sql",
       "20260728180000_phase_e_template_intelligence.sql",
       "20260728190000_phase_f_planning_intelligence.sql",
+      "20260728200000_phase_g_workforce_runtime.sql",
     ];
-    expect(files.slice(-5)).toEqual(expectedTail);
+    expect(files.slice(-6)).toEqual(expectedTail);
   });
 
   it("phase_b memory/learning migration is additive with RLS", () => {
@@ -123,6 +124,29 @@ describe("migration contract (static, not applied)", () => {
     expect(sql).toMatch(/create table if not exists planning_audit_events/i);
     expect(sql).toMatch(/enable row level security/i);
     expect(sql).toMatch(/grant all on table planning_plans to service_role/i);
+    expect(sql).toMatch(/DO NOT apply without Founder approval/i);
+    expect(sql).not.toMatch(/^\s*drop table(?! if exists)/im);
+    expect(sql).not.toMatch(/truncate /i);
+    expect(sql).not.toMatch(/delete from /i);
+  });
+
+  it("phase_g workforce runtime migration is additive with RLS", () => {
+    const sql = readMigration("20260728200000_phase_g_workforce_runtime.sql");
+    expect(sql).toMatch(/create table if not exists workforce_agent_states/i);
+    expect(sql).toMatch(/create table if not exists workforce_execution_contexts/i);
+    expect(sql).toMatch(/create table if not exists workforce_messages/i);
+    expect(sql).toMatch(/create table if not exists workforce_delegations/i);
+    expect(sql).toMatch(/create table if not exists workforce_collaborations/i);
+    expect(sql).toMatch(/create table if not exists workforce_pipeline_events/i);
+    expect(sql).toMatch(/create table if not exists workforce_memory_writes/i);
+    expect(sql).toMatch(/create table if not exists workforce_learning_proposals/i);
+    expect(sql).toMatch(/create table if not exists workforce_checkpoints/i);
+    expect(sql).toMatch(/create table if not exists workforce_control_events/i);
+    expect(sql).toMatch(/create table if not exists workforce_health_events/i);
+    expect(sql).toMatch(/create table if not exists workforce_simulations/i);
+    expect(sql).toMatch(/create table if not exists workforce_audit_events/i);
+    expect(sql).toMatch(/enable row level security/i);
+    expect(sql).toMatch(/grant all on table workforce_agent_states to service_role/i);
     expect(sql).toMatch(/DO NOT apply without Founder approval/i);
     expect(sql).not.toMatch(/^\s*drop table(?! if exists)/im);
     expect(sql).not.toMatch(/truncate /i);

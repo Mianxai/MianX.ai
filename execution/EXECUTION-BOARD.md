@@ -1067,3 +1067,30 @@ no industry product builds, no fabricated execution, no secret exposure.
 4. Merge / promote only with explicit Founder approval
 
 ---
+
+## 16. Phase G — Real Autonomous Workforce Activation (draft PR)
+
+Branch: `cursor/phase-g-real-autonomous-workforce`  
+Base: `origin/main` after PR #45 (Planning Intelligence) merge.
+
+### Delivered (code)
+
+- Lifecycle, context, delegation, collaboration, pipeline for the **36** executable agents
+- Memory/learning writes (never auto-approve); recovery; Founder pause/resume/stop/retry/reassign
+- Simulation mode (no provider, no production mutation, no auto Founder approval)
+- Live dashboard `/admin/workforce` + analytics/health
+- Additive migration `20260728200000_phase_g_workforce_runtime.sql` (**not applied**)
+
+### Explicit non-goals (confirmed)
+
+No merge, no deploy, no migration apply, no provider secrets, no fabricated agents,
+no fabricated live AI completion, no auto Founder approval.
+
+### Founder actions remaining
+
+1. Review draft PR
+2. Approve Phase G migration dry-run / apply when ready
+3. Configure AI provider only when spend is authorised
+4. Merge / promote only with explicit Founder approval
+
+---
