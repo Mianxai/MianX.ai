@@ -157,6 +157,9 @@ export default function CommandCenterClient({ title = "Command Center" }) {
               readiness={data.productionReadiness}
               overview={data.overview}
               refreshing={refreshing}
+              provider={data.provider}
+              rateLimit={data.rateLimit}
+              agentInventory={data.agentInventory}
             />
             <FounderAuthorityBanner />
             <OverviewMetrics metrics={data.overview} />
@@ -238,6 +241,8 @@ export default function CommandCenterClient({ title = "Command Center" }) {
                 <SchedulePanel
                   schedule={data.schedule}
                   readiness={data.productionReadiness}
+                  provider={data.provider}
+                  rateLimit={data.rateLimit}
                 />
                 <section className="cc-card" aria-labelledby="cc-knowledge-h">
                   <h2 id="cc-knowledge-h">Knowledge / outputs</h2>

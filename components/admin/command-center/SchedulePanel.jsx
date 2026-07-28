@@ -1,6 +1,6 @@
 "use client";
 
-export default function SchedulePanel({ schedule, readiness }) {
+export default function SchedulePanel({ schedule, readiness, provider, rateLimit }) {
   if (!schedule) return null;
   const tick = schedule.recentWorkerProcessing;
   const lastTickLabel = schedule.lastTick
@@ -14,6 +14,12 @@ export default function SchedulePanel({ schedule, readiness }) {
           <dt>Mode</dt>
           <dd>
             <code>{schedule.mode}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Platform</dt>
+          <dd>
+            <code>{schedule.platform || "undeclared"}</code>
           </dd>
         </div>
         <div>
@@ -51,9 +57,27 @@ export default function SchedulePanel({ schedule, readiness }) {
           </div>
         ) : null}
         <div>
+          <dt>Provider</dt>
+          <dd>
+            <code>{provider?.status || readiness?.provider || "unconfigured"}</code>
+            {" · circuit "}
+            <code>{provider?.circuit || readiness?.provider_circuit || "closed"}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Rate limit</dt>
+          <dd>
+            backend {rateLimit?.backend || "in-memory"} · durable{" "}
+            {rateLimit?.durable ? "yes" : "no"} · active{" "}
+            {rateLimit?.active || rateLimit?.adapterActive ? "yes" : "no"}
+          </dd>
+        </div>
+        <div>
           <dt>Schema readiness</dt>
           <dd>
-            jobs: {readiness?.runtime_jobs_schema || "unknown"} · membership:{" "}
+            jobs: {readiness?.runtime_jobs_schema || "unknown"} · mem:{" "}
+            {readiness?.memory_entries_schema || "unknown"} · learn:{" "}
+            {readiness?.learning_candidates_schema || "unknown"} · membership:{" "}
             {readiness?.admin_membership_schema || "unknown"}
           </dd>
         </div>
