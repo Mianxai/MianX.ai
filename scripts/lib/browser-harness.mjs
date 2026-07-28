@@ -560,52 +560,78 @@ export class Harness {
   /**
    * Launches Chrome headless with `--remote-debugging-port=0` into a fresh
    * profile, then reads the real port + browser WS path from DevToolsActivePort.
+   * Retries on transient launch failures (common under parallel Vitest load).
    */
-  async launchChrome({ timeoutMs = 30000, extraArgs = [] } = {}) {
+  async launchChrome({ timeoutMs = 45000, extraArgs = [], attempts = 3 } = {}) {
     const chromePath = resolveChromePath();
-    const profileDir = await this.makeTempDir("chrome-");
-    const record = this.spawnOwned(
-      chromePath,
-      [
-        "--remote-debugging-port=0",
-        `--user-data-dir=${profileDir}`,
-        "--headless=new",
-        "--disable-gpu",
-        "--disable-background-networking",
-        "--disable-renderer-backgrounding",
-        "--no-first-run",
-        "--no-default-browser-check",
-        "--no-sandbox",
-        ...extraArgs,
-        "about:blank",
-      ],
-      { cwd: process.cwd() }
-    );
-    this.onCleanup(() => this.terminateOwned(record));
+    let lastError = null;
 
-    const portFile = resolve(profileDir, "DevToolsActivePort");
-    const { port, wsPath } = await waitFor(
-      async () => {
-        const contents = await readFile(portFile, "utf8");
-        if (!contents.includes("\n")) return null;
-        return parseDevToolsActivePort(contents);
-      },
-      {
-        timeoutMs,
-        intervalMs: 50,
-        label: "Chrome DevToolsActivePort",
-        isAlive: () => this.isAlive(record),
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      const profileDir = await this.makeTempDir("chrome-");
+      const record = this.spawnOwned(
+        chromePath,
+        [
+          "--remote-debugging-port=0",
+          `--user-data-dir=${profileDir}`,
+          "--headless=new",
+          "--disable-gpu",
+          "--disable-dev-shm-usage",
+          "--disable-background-networking",
+          "--disable-renderer-backgrounding",
+          "--no-first-run",
+          "--no-default-browser-check",
+          "--no-sandbox",
+          ...extraArgs,
+          "about:blank",
+        ],
+        { cwd: process.cwd() }
+      );
+      this.onCleanup(() => this.terminateOwned(record));
+
+      const portFile = resolve(profileDir, "DevToolsActivePort");
+      try {
+        const { port, wsPath } = await waitFor(
+          async () => {
+            try {
+              const contents = await readFile(portFile, "utf8");
+              if (!contents.includes("\n")) return null;
+              return parseDevToolsActivePort(contents);
+            } catch (err) {
+              if (err && err.code === "ENOENT") return null;
+              throw err;
+            }
+          },
+          {
+            timeoutMs: Math.max(8000, Math.floor(timeoutMs / attempts)),
+            intervalMs: 75,
+            label: "Chrome DevToolsActivePort",
+            isAlive: () => this.isAlive(record),
+          }
+        );
+        if (this.appPort != null && this.appPort === port) {
+          throw new Error(`CDP port ${port} collided with application port ${this.appPort}`);
+        }
+
+        const client = new CdpClient(`ws://127.0.0.1:${port}${wsPath}`);
+        this.onCleanup(() => client.close());
+        await client.connect({ timeoutMs: Math.min(timeoutMs, 15000) });
+        this.cdpPort = port;
+        return { client, port, wsPath, profileDir, record, chromePath, attempt };
+      } catch (err) {
+        lastError = err;
+        try {
+          await this.terminateOwned(record, { graceMs: 1000 });
+        } catch {
+          /* best-effort */
+        }
+        if (attempt < attempts) {
+          await new Promise((r) => setTimeout(r, 250 * attempt));
+          continue;
+        }
       }
-    );
-    this.cdpPort = port;
-    if (this.appPort != null && this.appPort === port) {
-      throw new Error(`CDP port ${port} collided with application port ${this.appPort}`);
     }
 
-    const client = new CdpClient(`ws://127.0.0.1:${port}${wsPath}`);
-    this.onCleanup(() => client.close());
-    await client.connect({ timeoutMs: Math.min(timeoutMs, 15000) });
-    return { client, port, wsPath, profileDir, record, chromePath };
+    throw lastError || new Error("Chrome launch failed");
   }
 
   /* -------------------- diagnostics + cleanup -------------------- */

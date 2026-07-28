@@ -61,12 +61,21 @@ export default function IntegrationClient() {
   const [memory, setMemory] = useState(null);
   const [learning, setLearning] = useState(null);
   const [proof, setProof] = useState(null);
-  const [title, setTitle] = useState("Prove MianX end-to-end autonomous integration");
+  const [title, setTitle] = useState("Secure internal employee onboarding workflow");
   const [purpose, setPurpose] = useState(
-    "Exercise template, planning, execution, and workforce engines as one operating system for MianX Core platform proof."
+    "Design a secure internal employee onboarding workflow for a generic digital company, covering identity, access provisioning, and Founder-visible evidence."
   );
-  const [deliverables, setDeliverables] = useState("evidence manifest, founder proof pack");
-  const [criteria, setCriteria] = useState("final founder review reached, lineage intact");
+  const [deliverables, setDeliverables] = useState(
+    "onboarding workflow blueprint, access provisioning checklist, evidence pack"
+  );
+  const [criteria, setCriteria] = useState(
+    "clarification answered before planning, simulation reaches founder final review"
+  );
+  const [questions, setQuestions] = useState(
+    "Which identity provider pattern should the onboarding workflow assume?"
+  );
+  const [executionMode, setExecutionMode] = useState("deterministic_simulation");
+  const [providerGate, setProviderGate] = useState(null);
 
   const setTab = useCallback(
     (next, extra = {}) => {
@@ -129,11 +138,16 @@ export default function IntegrationClient() {
         );
         setProof(pr.data?.proof_pack || null);
       }
+      const gate = await getJson(
+        `/api/admin/integration?action=provider&mode=${encodeURIComponent(executionMode)}`,
+        router
+      );
+      if (gate.ok) setProviderGate(gate.data?.gate || null);
     } else {
       setRun(null);
     }
     setLoading(false);
-  }, [projectId, router, runIdParam, tab]);
+  }, [projectId, router, runIdParam, tab, executionMode]);
 
   useEffect(() => {
     load();
@@ -221,22 +235,65 @@ export default function IntegrationClient() {
       {!loading && tab === "objective" ? (
         <section className="admin-panel" data-testid="integration-objective">
           <h2>Founder Objective Intake</h2>
+          <p>
+            <a href="/admin/company-builder">Company Builder</a> can attach an integration
+            pipeline after blueprint approval. Simulation does not equal a completed real
+            company.
+          </p>
           <label>
             Title
-            <input value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Objective title" />
           </label>
           <label>
             Business purpose
-            <textarea value={purpose} onChange={(e) => setPurpose(e.target.value)} rows={4} />
+            <textarea
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value)}
+              rows={4}
+              aria-label="Business purpose"
+            />
           </label>
           <label>
             Deliverables
-            <input value={deliverables} onChange={(e) => setDeliverables(e.target.value)} />
+            <input
+              value={deliverables}
+              onChange={(e) => setDeliverables(e.target.value)}
+              aria-label="Deliverables"
+            />
           </label>
           <label>
             Success criteria
-            <input value={criteria} onChange={(e) => setCriteria(e.target.value)} />
+            <input
+              value={criteria}
+              onChange={(e) => setCriteria(e.target.value)}
+              aria-label="Success criteria"
+            />
           </label>
+          <label>
+            Unresolved clarification
+            <input
+              value={questions}
+              onChange={(e) => setQuestions(e.target.value)}
+              aria-label="Unresolved clarification"
+            />
+          </label>
+          <label>
+            Execution mode
+            <select
+              value={executionMode}
+              onChange={(e) => setExecutionMode(e.target.value)}
+              aria-label="Execution mode"
+            >
+              <option value="deterministic_simulation">Deterministic simulation</option>
+              <option value="live_provider">Live provider (gated)</option>
+            </select>
+          </label>
+          {providerGate ? (
+            <p data-testid="provider-gate" role="status">
+              Live ready: {String(providerGate.live_execution_ready)} —{" "}
+              {providerGate.block_reason || "simulation available"}
+            </p>
+          ) : null}
           <button
             type="button"
             disabled={busy || !projectId}
@@ -248,10 +305,15 @@ export default function IntegrationClient() {
                   business_purpose: purpose,
                   expected_deliverables: deliverables,
                   success_criteria: criteria,
+                  unresolved_questions: questions ? [questions] : [],
+                  protected_actions: ["production_deployment"],
                   project_id: projectId,
                   industry: "technology",
                   business_model: "subscription",
-                  execution_mode: "deterministic_simulation",
+                  priority: "P1",
+                  risk_tolerance: "moderate",
+                  execution_mode: executionMode,
+                  required_approvals: ["founder_simulation", "founder_final_review"],
                 },
               })
             }
@@ -278,6 +340,12 @@ export default function IntegrationClient() {
             >
               Submit clarification
             </button>
+          ) : null}
+          {run ? (
+            <p>
+              Run <code>{run.id}</code> · Objective <code>{run.objective?.id}</code> · Stage{" "}
+              <StatusBadge status={run.current_stage} />
+            </p>
           ) : null}
         </section>
       ) : null}
@@ -329,8 +397,57 @@ export default function IntegrationClient() {
                   </button>
                 </div>
               ) : null}
+              {["objective_validated", "clarification_required", "founder_approval_required"].includes(
+                run.current_stage
+              ) ? (
+                <p role="status" data-testid="sim-blocked-banner">
+                  Simulation is blocked until Founder explicitly approves. Tasks cannot be claimed
+                  yet.
+                </p>
+              ) : null}
+              <h3>Inspect</h3>
+              <details open>
+                <summary>Templates</summary>
+                <pre className="admin-pre">
+                  {JSON.stringify(
+                    {
+                      selected:
+                        run.template_plan?.match?.selected_templates ||
+                        run.template_plan?.selected_templates,
+                      rejected:
+                        run.template_plan?.match?.rejected_templates ||
+                        run.template_plan?.rejected_templates,
+                      confidence: run.template_plan?.match?.confidence,
+                      assumptions: run.objective?.known_assumptions,
+                    },
+                    null,
+                    2
+                  )}
+                </pre>
+              </details>
+              <details>
+                <summary>Plan / WBS / capabilities</summary>
+                <pre className="admin-pre">
+                  {JSON.stringify(
+                    {
+                      plan_id: run.planning_plan?.id,
+                      departments:
+                        run.planning_plan?.capability_plan?.department_ownership ||
+                        run.planning_plan?.departments,
+                      risks: run.planning_plan?.risks,
+                      preview: run.execution_preview || run.planning_plan?.execution_preview,
+                      validation: run.validation,
+                    },
+                    null,
+                    2
+                  )}
+                </pre>
+              </details>
               {run.approval_package ? (
-                <pre className="admin-pre">{JSON.stringify(run.approval_package, null, 2)}</pre>
+                <details>
+                  <summary>Founder approval package</summary>
+                  <pre className="admin-pre">{JSON.stringify(run.approval_package, null, 2)}</pre>
+                </details>
               ) : null}
             </>
           )}

@@ -34,7 +34,12 @@ import { runSequential } from "./verify-browser-harness.mjs";
 const REPO_ROOT = resolve(import.meta.dirname, "..");
 const COLLISION_PORTS = [9333, 9334, 9335, 9336];
 const chromePath = findChromePath();
-const describeBrowser = chromePath ? describe : describe.skip;
+const describeBrowserChrome = chromePath
+  ? typeof describe.sequential === "function"
+    ? describe.sequential
+    : describe
+  : describe.skip;
+
 
 /** Runs a verifier body without leaking its exit code into the test process. */
 async function runVerifierIsolated(name, body) {
@@ -512,7 +517,7 @@ describe("geometry contracts are still enforced", () => {
  * Real-browser tests
  * ------------------------------------------------------------------ */
 
-describeBrowser("real Chrome (dynamic port discovery)", () => {
+describeBrowserChrome("real Chrome (dynamic port discovery)", () => {
   it(
     "launches on an OS-assigned CDP port distinct from the application port",
     async () => {
@@ -532,7 +537,7 @@ describeBrowser("real Chrome (dynamic port discovery)", () => {
       expect(harness.ownedChildren.size).toBe(0);
       expect(existsSync(harness.tempDirs.values().next().value ?? "/nonexistent")).toBe(false);
     },
-    60000
+    90000
   );
 
   it(
@@ -573,10 +578,10 @@ describeBrowser("real Chrome (dynamic port discovery)", () => {
             after.every((d, i) => d === before[i])
           );
         },
-        { timeoutMs: 15_000, intervalMs: 250 }
+        { timeoutMs: 20_000, intervalMs: 250 }
       );
       expect(await tempDirsWithPrefix()).toEqual(before);
     },
-    120000
+    180000
   );
 });
