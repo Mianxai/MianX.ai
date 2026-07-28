@@ -1,29 +1,55 @@
 import { NextResponse } from "next/server";
-import { runtimeConfigStatus } from "@/lib/core/config";
+import { runtimeConfigStatus, providerOperationalStatus } from "@/lib/core/config";
 import {
   listAgentDefinitions,
   listActiveAgentDefinitions,
+  isAgentExecutable,
 } from "@/lib/core/agents";
 import { productionReadinessStatusAsync } from "@/lib/core/production-readiness";
+import * as repo from "@/lib/core/repo";
 
 // Reads env at request time only.
 export const dynamic = "force-dynamic";
 
 // PUBLIC health probe. Exposes only non-secret booleans and agent definition
 // counts — never keys, URLs or credentials.
-//
-// `agents` is the operational count: active, executable definitions only.
-// `agentsCatalogTotal` also counts draft definitions, which are catalog-visible
-// contracts that the runtime refuses to register.
 export async function GET() {
-  const productionReadiness = await productionReadinessStatusAsync();
+  let lastTick = null;
+  try {
+    lastTick = await repo.getLastRuntimeTick();
+  } catch {
+    lastTick = null;
+  }
+
+  const productionReadiness = await productionReadinessStatusAsync({
+    lastTickAt: lastTick?.at || null,
+  });
+  const config = runtimeConfigStatus({ lastTickAt: lastTick?.at || null });
+  const active = listActiveAgentDefinitions();
+  const executable = active.filter(isAgentExecutable);
+
   return NextResponse.json({
     ok: true,
     service: "mianx-core",
     time: new Date().toISOString(),
-    config: runtimeConfigStatus(),
+    config: {
+      ...config,
+      providerStatus: providerOperationalStatus("anthropic"),
+    },
     productionReadiness,
-    agents: listActiveAgentDefinitions().length,
+    lastTick: lastTick
+      ? {
+          at: lastTick.at || null,
+          claimed: lastTick.claimed ?? null,
+          succeeded: lastTick.succeeded ?? null,
+          failed: lastTick.failed ?? null,
+          dead_lettered: lastTick.dead_lettered ?? null,
+          duration_ms: lastTick.duration_ms ?? null,
+        }
+      : null,
+    agents: executable.length,
+    agentsExecutable: executable.length,
     agentsCatalogTotal: listAgentDefinitions().length,
+    agentsRoutable: executable.length,
   });
 }
