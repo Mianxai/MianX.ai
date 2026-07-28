@@ -19,6 +19,7 @@ import CeoOrchestratorCard from "@/components/admin/command-center/CeoOrchestrat
 import FounderAuthorityBanner from "@/components/admin/command-center/FounderAuthorityBanner";
 import ExecutionPanel from "@/components/admin/command-center/ExecutionPanel";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
+import { adminFetch } from "@/lib/admin-fetch";
 
 const CommandNetwork = dynamic(
   () => import("@/components/admin/command-center/CommandNetwork"),
@@ -37,7 +38,7 @@ const CommandNetwork = dynamic(
 );
 
 async function fetchJson(path, router, loginFallback) {
-  const res = await fetch(path, { headers: { Accept: "application/json" } });
+  const res = await adminFetch(path, { headers: { Accept: "application/json" } });
   if (res.status === 401) {
     router?.push(currentAdminLoginHref(loginFallback));
     return { ok: false, status: 401, data: null };
@@ -115,12 +116,15 @@ export default function CommandCenterClient({ title = "Command Center" }) {
     [router, searchParams, title]
   );
 
-  const ceoAgent = useMemo(
-    () => (data?.agents || []).find((a) => a.slug === "executive-ceo") || null,
-    [data]
-  );
+  const ceoAgent = useMemo(() => {
+    const list = Array.isArray(data?.agents) ? data.agents : [];
+    return list.find((a) => a.slug === "executive-ceo") || null;
+  }, [data]);
 
-  const agents = useMemo(() => data?.agents || [], [data?.agents]);
+  const agents = useMemo(
+    () => (Array.isArray(data?.agents) ? data.agents : []),
+    [data?.agents]
+  );
 
   const visibleAgents = useMemo(() => {
     if (!department || department === "all") return agents;
@@ -148,7 +152,7 @@ export default function CommandCenterClient({ title = "Command Center" }) {
           aria-label="Filter by project"
         >
           <option value="">All projects</option>
-          {(data?.projects || []).map((p) => (
+          {(Array.isArray(data?.projects) ? data.projects : []).map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
             </option>

@@ -17,6 +17,7 @@ import {
   newSubmissionsAriaLabel,
   setCachedNewSubmissions,
 } from "@/lib/admin-notifications";
+import { adminFetch } from "@/lib/admin-fetch";
 
 const POLL_MS = 60_000;
 const INVALIDATION_DEBOUNCE_MS = 250;
@@ -70,7 +71,7 @@ export function AdminNotificationProvider({ children }) {
     abortRef.current = ac;
 
     try {
-      const res = await fetch("/api/admin/notifications", {
+      const res = await adminFetch("/api/admin/notifications", {
         signal: ac.signal,
         headers: { Accept: "application/json" },
       });

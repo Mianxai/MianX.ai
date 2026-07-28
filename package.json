@@ -11,6 +11,10 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:routes": "playwright test e2e/admin-routes.spec.js",
+    "test:e2e:perf": "playwright test e2e/admin-perf.spec.js",
+    "test:e2e:responsive": "playwright test e2e/admin-responsive.spec.js",
     "typecheck": "tsc -p jsconfig.json --noEmit",
     "verify:navbar": "node scripts/verify-navbar-geometry.mjs",
     "verify:browser": "node scripts/verify-browser-harness.mjs",
@@ -27,6 +31,7 @@
     "three": "^0.185.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

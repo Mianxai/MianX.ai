@@ -118,9 +118,15 @@ export default function WorkflowsClient() {
           {!projectId ? (
             <EmptyState
               title="Select a project"
-              reason="Workflow instances are project-scoped."
-              nextAction="Choose a project to see live workflow progress."
+              reason="Workflow instances are project-scoped tasks with workflow metadata — not a separate sample store."
+              configuration="Definitions above are catalog-only until a project has live instances."
+              nextAction="Choose a project to see live workflow progress, or open Objectives to start work."
               projectLabel="none"
+              cta={
+                <Link className="header-btn" href="/admin/projects">
+                  Open projects
+                </Link>
+              }
             />
           ) : !instances.length ? (
             <EmptyState

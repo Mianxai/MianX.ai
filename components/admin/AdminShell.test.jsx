@@ -43,12 +43,13 @@ describe("AdminShell", () => {
 
   it("renders grouped primary nav without duplicate Agents/Approvals under Runtime", () => {
     render(
-      <AdminShell title="Overview">
+      <AdminShell title="Command Center">
         <p>body</p>
       </AdminShell>
     );
 
-    expect(screen.getByRole("link", { name: /Overview/i })).toHaveAttribute("href", "/admin");
+    expect(screen.queryByRole("link", { name: /^Overview$/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Execution$/i })).toBeNull();
     expect(screen.getByRole("link", { name: /^Leads$/i })).toHaveAttribute(
       "href",
       "/admin/leads"
@@ -68,6 +69,10 @@ describe("AdminShell", () => {
     expect(screen.getByRole("link", { name: /CEO Brief/i })).toHaveAttribute(
       "href",
       "/admin/ceo-brief"
+    );
+    expect(screen.getByRole("link", { name: /Company Builder/i })).toHaveAttribute(
+      "href",
+      "/admin/company-builder"
     );
     expect(screen.getByRole("link", { name: /Founder Inbox/i })).toHaveAttribute(
       "href",
@@ -121,7 +126,7 @@ describe("AdminShell", () => {
       "aria-current",
       "page"
     );
-    expect(screen.getByRole("link", { name: /Overview/i })).not.toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Command Center/i })).not.toHaveAttribute(
       "aria-current"
     );
   });
@@ -129,7 +134,7 @@ describe("AdminShell", () => {
   it("closes the mobile drawer on Escape", async () => {
     mockMobile(true);
     render(
-      <AdminShell title="Overview">
+      <AdminShell title="Command Center">
         <p>body</p>
       </AdminShell>
     );
@@ -145,7 +150,7 @@ describe("AdminShell", () => {
 
   it("shows a newCount badge on Leads when provided", () => {
     render(
-      <AdminShell title="Overview" newCount={3}>
+      <AdminShell title="Command Center" newCount={3}>
         <p>body</p>
       </AdminShell>
     );
@@ -156,7 +161,7 @@ describe("AdminShell", () => {
 
   it("hides the badge when newCount is 0", () => {
     render(
-      <AdminShell title="Overview" newCount={0}>
+      <AdminShell title="Command Center" newCount={0}>
         <p>body</p>
       </AdminShell>
     );
@@ -165,7 +170,7 @@ describe("AdminShell", () => {
 
   it("displays 99+ for counts above 99", () => {
     render(
-      <AdminShell title="Overview" newCount={150}>
+      <AdminShell title="Command Center" newCount={150}>
         <p>body</p>
       </AdminShell>
     );

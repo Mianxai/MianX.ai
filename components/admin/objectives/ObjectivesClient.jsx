@@ -192,9 +192,15 @@ export default function ObjectivesClient() {
         {!projectId ? (
           <EmptyState
             title="Select a project"
-            reason="Objectives are project-scoped. The server enforces scope and role capabilities."
-            nextAction="Choose a project above to issue or review Founder objectives."
+            reason="This page lists Founder objectives and their orchestration trail. Objectives are project-scoped; the server enforces scope and role capabilities."
+            configuration="Create or pick a project before issuing work."
+            nextAction="Choose a project above, or open Projects to create one."
             projectLabel="none"
+            cta={
+              <Link className="header-btn" href="/admin/projects">
+                Open projects
+              </Link>
+            }
           />
         ) : null}
 
@@ -301,13 +307,20 @@ export default function ObjectivesClient() {
               <EmptyState
                 title="No project selected"
                 reason="Project objectives appear after you select a project."
+                nextAction="Use the project picker above or open Projects."
                 projectLabel="none"
+                cta={
+                  <Link className="header-btn-ghost" href="/admin/projects">
+                    Open projects
+                  </Link>
+                }
               />
             ) : objectives.length === 0 ? (
               <EmptyState
                 title="No objectives yet"
-                reason="This project has no Founder objectives recorded."
-                nextAction="Use the form to start an objective (analysis-only by default)."
+                reason="This project has no Founder objectives recorded — the list is empty, not seeded with sample rows."
+                configuration="Analysis-only by default; protected actions stay Founder-gated."
+                nextAction="Use the form to start an objective for this project."
                 projectLabel={projectId}
               />
             ) : (
@@ -392,7 +405,7 @@ function ObjectiveDetailView({ objective, explanations }) {
           <dd>
             {(objective.jobs || []).length
               ? objective.jobs.map((j) => `${j.agentSlug}:${j.status}`).join(", ")
-              : "No activity yet"}
+              : "No jobs linked yet — enqueue from Runtime Tasks or Queue"}
           </dd>
         </div>
         <div>

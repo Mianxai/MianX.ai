@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import StatusChip from "./StatusChip";
 import EmptyState from "@/components/admin/EmptyState";
 
@@ -14,8 +15,14 @@ export default function AgentListFallback({ agents, selectedSlug, onSelect }) {
       {!agents?.length ? (
         <EmptyState
           title="No agents in view"
-          reason="No executable agents match the current department filter."
+          reason="No executable agents match the current department filter. Capacity-planning slots are not shown as live agents."
           nextAction="Select All departments or another department in the rail."
+          configuration="Open Agents or Departments for the full catalog."
+          cta={
+            <Link className="header-btn-ghost" href="/admin/agents">
+              Open Agents
+            </Link>
+          }
         />
       ) : (
       <ul className="cc-agent-list">

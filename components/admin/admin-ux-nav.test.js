@@ -38,11 +38,36 @@ describe("admin navigation uniqueness", () => {
     ]);
   });
 
+  it("uses Control IA without Overview or Execution in the primary sidebar", () => {
+    const control = ADMIN_NAV_GROUPS.find((g) => g.id === "control");
+    expect(control.items.map((i) => i.label)).toEqual([
+      "Command Center",
+      "CEO Brief",
+      "Objectives",
+      "Company Builder",
+      "Founder Inbox",
+    ]);
+    expect(ADMIN_NAV.some((i) => i.href === "/admin")).toBe(false);
+    expect(ADMIN_NAV.some((i) => i.href === "/admin/execution")).toBe(false);
+  });
+
   it("marks Leads active for legacy submissions/lead-pipeline paths", () => {
     const leads = ADMIN_NAV.find((i) => i.href === "/admin/leads");
     expect(isNavItemCurrent("/admin/leads", leads)).toBe(true);
     expect(isNavItemCurrent("/admin/submissions", leads)).toBe(true);
     expect(isNavItemCurrent("/admin/lead-pipeline", leads)).toBe(true);
+  });
+
+  it("marks Approvals/Audit active for short-path aliases", () => {
+    const approvals = ADMIN_NAV.find((i) => i.href === "/admin/runtime/approvals");
+    const audit = ADMIN_NAV.find((i) => i.href === "/admin/runtime/audit");
+    expect(isNavItemCurrent("/admin/runtime/approvals", approvals)).toBe(true);
+    expect(isNavItemCurrent("/admin/approvals", approvals)).toBe(true);
+    expect(isNavItemCurrent("/admin/runtime/audit", audit)).toBe(true);
+    expect(isNavItemCurrent("/admin/audit", audit)).toBe(true);
+    const runtime = ADMIN_NAV.find((i) => i.href === "/admin/runtime");
+    expect(isNavItemCurrent("/admin/approvals", runtime)).toBe(false);
+    expect(isNavItemCurrent("/admin/audit", runtime)).toBe(false);
   });
 
   it("preserves project_id on navigation helpers", () => {
