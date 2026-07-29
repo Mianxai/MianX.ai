@@ -24,6 +24,19 @@ async function fetchJson(path, router, opts) {
   return { ok: res.ok, data };
 }
 
+function bannerHasReviewPlan(opsSummary) {
+  const next = opsSummary?.next_founder_action;
+  return (
+    next?.severity === "action_required" &&
+    /review\s+plan/i.test(String(next?.label || ""))
+  );
+}
+
+function projectDisplayName(projects, projectId) {
+  if (!projectId) return null;
+  return projects.find((p) => p.id === projectId)?.name || null;
+}
+
 export default function MemoryClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -85,6 +98,13 @@ export default function MemoryClient() {
     await load();
   }
 
+  const skipDuplicateReviewPlan = bannerHasReviewPlan(opsSummary);
+  const projectLabel = projectDisplayName(projects, projectId);
+  const storageUnavailable =
+    data?.empty_state === "storage_unconfigured" ||
+    data?.empty_state === "schema_unavailable";
+  const awaitingVerification = data?.empty_state === "awaiting_verification";
+
   return (
     <AdminShell
       title="Memory"
@@ -127,8 +147,12 @@ export default function MemoryClient() {
             {success}
           </div>
         ) : null}
-        {data?.note ? <p className="cc-muted" data-testid="memory-note">{data.note}</p> : null}
-        {data?.persistence ? (
+        {data?.note && storageUnavailable ? (
+          <p className="cc-muted" data-testid="memory-note">
+            {data.note}
+          </p>
+        ) : null}
+        {data?.persistence && storageUnavailable ? (
           <p className="cc-muted" data-testid="memory-persistence">
             Persistence:{" "}
             {data.persistence.durable
@@ -171,32 +195,34 @@ export default function MemoryClient() {
         ) : data ? (
           <EmptyState
             title={
-              data.empty_state === "storage_unconfigured" ||
-              data.empty_state === "schema_unavailable"
+              storageUnavailable
                 ? "Memory storage unavailable"
-                : data.empty_state === "awaiting_verification"
+                : awaitingVerification
                   ? "Candidates awaiting verification"
-                  : "No memory entries"
+                  : "No verified memory yet"
             }
             reason={
-              data.note ||
-              "Scoped enterprise memory is empty for this filter. Candidates are not trusted until validated."
+              storageUnavailable
+                ? data.note ||
+                  "Scoped enterprise memory storage is not available for this filter."
+                : awaitingVerification
+                  ? "Candidates are not trusted until validated."
+                  : "Memory is created after deterministic simulation and Founder review."
             }
             configuration={
-              data.persistence?.durable
-                ? "Durable persistence is configured — empty means no verified entries yet, not a missing migration."
-                : data.persistence?.reason
+              storageUnavailable
+                ? data.persistence?.reason
                   ? `Persistence reason: ${data.persistence.reason}`
                   : null
+                : null
             }
-            nextAction={
-              opsSummary?.next_founder_action?.reason ||
-              "Complete simulation and review on the Production Proof so verified memory can appear."
-            }
-            projectLabel={projectId || "All projects"}
+            projectLabel={projectLabel}
             cta={
-              opsSummary?.next_founder_action?.href &&
-              opsSummary.next_founder_action.severity === "action_required" ? (
+              skipDuplicateReviewPlan ? null : opsSummary?.next_founder_action?.href &&
+                opsSummary.next_founder_action.severity === "action_required" &&
+                !/review\s+plan/i.test(
+                  String(opsSummary.next_founder_action.label || "")
+                ) ? (
                 <Link
                   className="header-btn"
                   href={

@@ -75,6 +75,13 @@ function AdminShellInner({
   }, []);
 
   useEffect(() => {
+    const opsGroup = ADMIN_NAV_GROUPS.find((g) => g.collapsedByDefault);
+    if (!opsGroup) return;
+    const childActive = opsGroup.items.some((item) => isNavItemCurrent(pathname, item));
+    if (childActive) setAdvancedOpsOpen(true);
+  }, [pathname]);
+
+  useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return undefined;
     const mq = window.matchMedia(MOBILE_MQ);
     const sync = () => setIsMobile(mq.matches);
@@ -312,6 +319,7 @@ function AdminShellInner({
                     type="button"
                     className="sidebar-nav-group-label sidebar-nav-group-toggle"
                     aria-expanded={advancedOpsOpen}
+                    aria-controls="advanced-ops-nav"
                     data-testid="advanced-ops-toggle"
                     onClick={() => {
                       setAdvancedOpsOpen((v) => {
@@ -328,7 +336,7 @@ function AdminShellInner({
                       });
                     }}
                   >
-                    {group.label}
+                    <span>{group.label}</span>
                     <span className="sidebar-nav-chevron" aria-hidden="true">
                       {advancedOpsOpen ? "▾" : "▸"}
                     </span>
@@ -337,7 +345,12 @@ function AdminShellInner({
                   <p className="sidebar-nav-group-label">{group.label}</p>
                 )}
                 {showItems ? (
-                  <ul className="sidebar-nav">{group.items.map(renderNavItem)}</ul>
+                  <ul
+                    id={isAdvanced ? "advanced-ops-nav" : undefined}
+                    className="sidebar-nav"
+                  >
+                    {group.items.map(renderNavItem)}
+                  </ul>
                 ) : null}
               </div>
             );

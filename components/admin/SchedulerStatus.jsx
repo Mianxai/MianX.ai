@@ -62,7 +62,12 @@ export default function SchedulerStatus({
         </div>
         <div>
           <dt>Expected interval</dt>
-          <dd>~{mapped.expectedIntervalSec}s</dd>
+          <dd data-testid="scheduler-expected-interval">
+            {mapped.expectedCadenceLabel ||
+              (mapped.expectedIntervalSec >= 60
+                ? `Every ${Math.round(mapped.expectedIntervalSec / 60)} minutes`
+                : `~${mapped.expectedIntervalSec}s`)}
+          </dd>
         </div>
         <div>
           <dt>Last claimed / succeeded / failed</dt>

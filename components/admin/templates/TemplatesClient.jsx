@@ -13,10 +13,32 @@ import { useAdminProject } from "@/lib/admin-project";
 import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
 import FounderActionBanner from "@/components/admin/FounderActionBanner";
 
+const KIND_LABELS = Object.freeze({
+  overview: "Overview",
+  industry: "Industries",
+  industries: "Industries",
+  business_model: "Business Models",
+  business_models: "Business Models",
+  capability: "Capabilities",
+  capabilities: "Capabilities",
+  module: "Modules",
+  modules: "Modules",
+  workflow: "Workflows",
+  workflows: "Workflows",
+  compliance: "Compliance",
+  architecture: "Architecture",
+  risk: "Risks",
+  risks: "Risks",
+  kpi: "KPIs",
+  kpis: "KPIs",
+  department: "Departments",
+  departments: "Departments",
+});
+
 const KINDS = [
   { id: "overview", label: "Overview" },
   { id: "industry", label: "Industries" },
-  { id: "business_model", label: "Business models" },
+  { id: "business_model", label: "Business Models" },
   { id: "capability", label: "Capabilities" },
   { id: "module", label: "Modules" },
   { id: "workflow", label: "Workflows" },
@@ -26,6 +48,17 @@ const KINDS = [
   { id: "kpi", label: "KPIs" },
   { id: "department", label: "Departments" },
 ];
+
+function humanKindLabel(key) {
+  if (!key) return "—";
+  if (KIND_LABELS[key]) return KIND_LABELS[key];
+  return String(key)
+    .split("_")
+    .map((w) => (w.toLowerCase() === "kpi" || w.toLowerCase() === "kpis"
+      ? w.toUpperCase()
+      : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(" ");
+}
 
 async function getJson(path, router) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
@@ -138,64 +171,63 @@ export default function TemplatesClient() {
         { label: "Templates" },
       ]}
       actions={
-        <div className="cc-header-actions" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.35rem" }}>
-          <p className="cc-muted" style={{ margin: 0 }} data-testid="templates-catalogue-label">
-            Global Template Catalogue
-          </p>
-          {projectId ? (
-            <p className="cc-muted" style={{ margin: 0 }} data-testid="templates-applied-project">
-              Applied project context: <code>{projectId}</code>
-            </p>
-          ) : (
-            <p className="cc-muted" style={{ margin: 0 }}>
-              No applied project context (catalog remains global)
-            </p>
-          )}
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            <Link
-              className="header-btn-ghost"
-              href={
-                projectId
-                  ? `/admin/planning?project_id=${encodeURIComponent(projectId)}`
-                  : "/admin/planning"
-              }
-            >
-              Open Planning
-            </Link>
-            <Link
-              className="header-btn-ghost"
-              href={
-                projectId
-                  ? `/admin/company-builder?project_id=${encodeURIComponent(projectId)}`
-                  : "/admin/company-builder"
-              }
-            >
-              Company Builder
-            </Link>
-            <label className="cc-project-select">
-              <span className="sr-only">Applied project context</span>
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                aria-label="Applied project context (does not filter global catalogue)"
-                data-testid="templates-project-context"
-              >
-                <option value="">No project context</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name || p.id}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+        <div className="cc-header-actions" style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <Link
+            className="header-btn-ghost"
+            href={
+              projectId
+                ? `/admin/planning?project_id=${encodeURIComponent(projectId)}`
+                : "/admin/planning"
+            }
+          >
+            Open Planning
+          </Link>
+          <Link
+            className="header-btn-ghost"
+            href={
+              projectId
+                ? `/admin/company-builder?project_id=${encodeURIComponent(projectId)}`
+                : "/admin/company-builder"
+            }
+          >
+            Open Company Builder
+          </Link>
         </div>
       }
     >
       <PageHeader
-        title="Template Intelligence"
-        description="Global reusable industry, capability, module, and risk templates. Catalogue is organisation/platform-scoped — not filtered by project. Applied project context is preserved for Planning and Company Builder links only."
+        title="Templates"
+        description="Global Template Catalogue — reusable industry, capability, module, and risk definitions. Organisation/platform-scoped; not filtered by project."
       />
+      <p className="cc-muted" data-testid="templates-catalogue-label" style={{ marginTop: "-0.35rem" }}>
+        Global Template Catalogue
+      </p>
+
+      <div
+        className="cc-card"
+        style={{ margin: "0.75rem 0", padding: "0.75rem 1rem" }}
+        data-testid="templates-project-context-card"
+      >
+        <label className="cc-project-select" style={{ display: "block" }}>
+          <span style={{ display: "block", marginBottom: "0.35rem", fontSize: "0.8rem" }}>
+            Applied project context (links only — does not filter catalogue)
+          </span>
+          <select
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+            aria-label="Applied project context (does not filter global catalogue)"
+            data-testid="templates-project-context"
+          >
+            <option value="">No project context</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name || p.id}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       <FounderActionBanner summary={opsSummary} projectId={projectId} />
 
       <div className="admin-tabs" role="tablist" aria-label="Template kinds">
@@ -245,13 +277,6 @@ export default function TemplatesClient() {
         <div className="admin-table-wrap">
           <p className="cc-muted">{overview?.note}</p>
           <p className="cc-muted">Engine: {overview?.engine_version}</p>
-          {projectId ? (
-            <p className="cc-muted" data-testid="templates-applied-context-body">
-              Applied project context (links only): <code>{projectId}</code>
-            </p>
-          ) : (
-            <p className="cc-muted">No applied project context — catalogue remains global</p>
-          )}
           <table className="admin-data-table">
             <thead>
               <tr>
@@ -262,12 +287,23 @@ export default function TemplatesClient() {
             <tbody>
               {Object.entries(overview?.counts || {}).map(([k, v]) => (
                 <tr key={k}>
-                  <td>{k}</td>
+                  <td>{humanKindLabel(k)}</td>
                   <td>{v}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <details className="cc-card" style={{ marginTop: "1rem" }} data-testid="templates-technical-details">
+            <summary>Technical Details</summary>
+            <p className="cc-muted">Machine keys for catalogue kinds (snake_case).</p>
+            <ul>
+              {Object.entries(overview?.counts || {}).map(([k, v]) => (
+                <li key={k}>
+                  <code>{k}</code>: {v}
+                </li>
+              ))}
+            </ul>
+          </details>
           <div className="admin-empty-cta" style={{ marginTop: "1rem" }}>
             <Link className="header-btn" href="/admin/company-builder">
               Open Company Builder
@@ -353,13 +389,32 @@ export default function TemplatesClient() {
                   <ul>
                     {related.map((r) => (
                       <li key={r.id}>
-                        {r.from_type}:{r.from_id} —{r.relation_type}→ {r.to_type}:{r.to_id}
+                        {humanKindLabel(r.from_type)} → {humanKindLabel(r.to_type)} (
+                        {r.relation_type})
                       </li>
                     ))}
                   </ul>
                 ) : (
                   <p className="cc-muted">No relations for this template.</p>
                 )}
+                <details data-testid="template-detail-technical">
+                  <summary>Technical Details</summary>
+                  <ul>
+                    <li>
+                      kind: <code>{selected.kind || kind}</code>
+                    </li>
+                    <li>
+                      slug: <code>{selected.slug}</code>
+                    </li>
+                    {(related || []).map((r) => (
+                      <li key={`tech-${r.id}`}>
+                        <code>
+                          {r.from_type}:{r.from_id} —{r.relation_type}→ {r.to_type}:{r.to_id}
+                        </code>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
                 <h3>Evidence</h3>
                 <ul>
                   {(selected.evidence_refs || []).map((e, i) => (

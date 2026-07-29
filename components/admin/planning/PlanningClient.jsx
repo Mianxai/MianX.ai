@@ -355,25 +355,99 @@ export default function PlanningClient() {
           </button>
         </div>
       ) : tab === "overview" ? (
-        <div className="admin-table-wrap">
+        <div className="admin-table-wrap" data-testid="planning-overview">
           <p className="cc-muted">{overview?.note}</p>
           <p className="cc-muted">Engine: {overview?.engine_version}</p>
-          <table className="admin-data-table">
-            <thead>
-              <tr>
-                <th>Metric</th>
-                <th>Count</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(overview?.counts || {}).map(([k, v]) => (
-                <tr key={k}>
-                  <td>{k}</td>
-                  <td>{v}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+          {(() => {
+            const proofAwaiting =
+              (overview?.founder_proof_plans?.awaiting_approval || 0) > 0 ||
+              overview?.founder_proof_plans?.has_awaiting_plan ||
+              opsSummary?.canonical_integration_run?.proof_status ===
+                "awaiting_plan_approval" ||
+              opsSummary?.canonical_integration_run?.stage ===
+                "founder_approval_required";
+            const proofApproved =
+              overview?.founder_proof_plans?.approved ||
+              (opsSummary?.canonical_integration_run?.planning_plan ||
+              [
+                "awaiting_simulation_approval",
+                "simulation_approved",
+                "simulation_running",
+                "awaiting_final_review",
+                "completed",
+              ].includes(opsSummary?.canonical_integration_run?.proof_status)
+                ? 1
+                : 0);
+            const advanced = overview?.advanced_separate_packages || {
+              draft: 0,
+              awaiting_approval: overview?.counts?.pending_approval || 0,
+              approved: overview?.counts?.approved || 0,
+            };
+
+            return (
+              <>
+                <section
+                  className="cc-card"
+                  style={{ margin: "0.75rem 0" }}
+                  data-testid="planning-founder-proof-metrics"
+                >
+                  <h3>Founder Proof Plans</h3>
+                  {proofAwaiting ? (
+                    <p role="status">
+                      Awaiting approval:{" "}
+                      <strong>
+                        {Math.max(
+                          overview?.founder_proof_plans?.awaiting_approval || 0,
+                          1
+                        )}
+                      </strong>
+                      {" · "}
+                      Approved: <strong>{proofApproved || 0}</strong>
+                    </p>
+                  ) : (
+                    <p>
+                      Awaiting approval:{" "}
+                      <strong>
+                        {overview?.founder_proof_plans?.awaiting_approval || 0}
+                      </strong>
+                      {" · "}
+                      Approved:{" "}
+                      <strong>
+                        {overview?.founder_proof_plans?.approved || proofApproved || 0}
+                      </strong>
+                    </p>
+                  )}
+                  {proofAwaiting ? (
+                    <p className="cc-muted">
+                      A Founder Proof plan is waiting for approval — this is not an empty
+                      planning state.
+                    </p>
+                  ) : null}
+                </section>
+
+                <section
+                  className="cc-card"
+                  style={{ margin: "0.75rem 0" }}
+                  data-testid="planning-advanced-package-metrics"
+                >
+                  <h3>Advanced Separate Planning Packages</h3>
+                  <p>
+                    Draft: <strong>{advanced.draft || 0}</strong>
+                    {" · "}
+                    Awaiting: <strong>{advanced.awaiting_approval || 0}</strong>
+                    {" · "}
+                    Approved: <strong>{advanced.approved || 0}</strong>
+                  </p>
+                  <p className="cc-muted">
+                    These packages are independent of the Founder Proof plan and never
+                    advance proof stage automatically.
+                  </p>
+                </section>
+              </>
+            );
+          })()}
+
           <p style={{ marginTop: "1rem" }}>
             <Link className="header-btn" href="/admin/company-builder">
               Open Company Builder
@@ -420,10 +494,26 @@ export default function PlanningClient() {
         )
       ) : plans.length === 0 && !plan ? (
         <EmptyState
-          title="No plans yet"
-          reason="No planning packages in memory for this context."
+          title={
+            activeProof ||
+            opsSummary?.canonical_integration_run?.proof_status ===
+              "awaiting_plan_approval"
+              ? "No advanced separate packages yet"
+              : "No plans yet"
+          }
+          reason={
+            activeProof ||
+            opsSummary?.canonical_integration_run?.proof_status ===
+              "awaiting_plan_approval"
+              ? "The Founder Proof plan lives in Founder Proof — not in this advanced package list."
+              : "No planning packages in memory for this context."
+          }
           configuration="Planning is in-process until the Phase F migration is Founder-applied."
-          nextAction="Create a planning package above."
+          nextAction={
+            activeProof
+              ? "Continue the canonical proof plan, or create an advanced separate package."
+              : "Create a planning package above."
+          }
           projectLabel={projectId || "all projects"}
         />
       ) : (

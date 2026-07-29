@@ -5,6 +5,9 @@ import { assertUuid } from "@/lib/core/validate";
 import { isSupabaseConfigured, getSupabaseAdmin } from "@/lib/supabase";
 import * as repo from "@/lib/core/repo";
 import { buildProjectOperationalSummary } from "@/lib/core/founder-operations";
+import { listPersistedIntegrationRuns } from "@/lib/core/integration/persist";
+import { listRuns as listIntegrationRunsInMemory } from "@/lib/core/integration/store";
+import { deriveFounderProofAnalytics } from "@/lib/admin-analytics-proof";
 import {
   ANALYTICS_SCOPE_LEGEND,
   analyticsMetricOk as ok,
@@ -25,6 +28,28 @@ async function leadsByStatus(admin) {
     out[s] = (out[s] || 0) + 1;
   }
   return out;
+}
+
+function mergeIntegrationRuns(projectId, persisted = []) {
+  const memory = listIntegrationRunsInMemory(
+    projectId ? { project_id: projectId } : {}
+  );
+  const byId = new Map();
+  for (const r of persisted) {
+    if (r?.id) byId.set(r.id, r);
+  }
+  for (const r of memory) {
+    if (r?.id) byId.set(r.id, r);
+  }
+  return [...byId.values()];
+}
+
+function sumStatusMap(map) {
+  if (!map || typeof map !== "object") return 0;
+  return Object.values(map).reduce(
+    (acc, v) => acc + (typeof v === "number" && Number.isFinite(v) ? v : 0),
+    0
+  );
 }
 
 export const GET = withErrorHandling(async (req) => {
@@ -55,11 +80,16 @@ export const GET = withErrorHandling(async (req) => {
     sources.leadsByStatus = fail("LEADS_UNAVAILABLE", "organisation");
   }
 
+  let orgTasksByStatus = null;
+  let orgRunsByStatus = null;
+
   try {
     const tasksByStatus = await repo.countByStatus("tasks");
     const runsByStatus = await repo.countByStatus("agent_runs");
     const projectsByStatus = await repo.countByStatus("projects");
     const approvals = await repo.countByStatus("approval_requests");
+    orgTasksByStatus = tasksByStatus;
+    orgRunsByStatus = runsByStatus;
     sources.tasksByStatus = ok(tasksByStatus, "organisation");
     sources.runsByStatus = ok(runsByStatus, "organisation");
     sources.projectsByStatus = ok(projectsByStatus, "organisation");
@@ -107,16 +137,54 @@ export const GET = withErrorHandling(async (req) => {
 
   let projectMetrics = null;
   let projectTasksByStatus = null;
+  let founderProofMetrics = null;
+  let runtimeTasksTotal = null;
+  let runtimeAgentRunsTotal = null;
+
+  // Founder Proof / Historical Runs — org-wide or project-scoped from real runs.
+  try {
+    const persisted = await listPersistedIntegrationRuns({
+      project_id: projectId,
+      limit: projectId ? 100 : 200,
+    });
+    const merged = mergeIntegrationRuns(projectId, persisted);
+    const derived = deriveFounderProofAnalytics(merged);
+    const scope = projectId ? "selected_project" : "organisation";
+    founderProofMetrics = {
+      scope,
+      available: true,
+      ...derived,
+      labels: {
+        historical_integration_runs: "Founder Proof / Historical Runs",
+      },
+    };
+    sources.founderProofMetrics = ok(founderProofMetrics, scope);
+  } catch {
+    partial = true;
+    founderProofMetrics = {
+      scope: projectId ? "selected_project" : "organisation",
+      available: false,
+    };
+    sources.founderProofMetrics = fail(
+      "INTEGRATION_UNAVAILABLE",
+      projectId ? "selected_project" : "organisation"
+    );
+  }
+
   if (projectId) {
     try {
       const summary = await buildProjectOperationalSummary({ projectId });
       const tasks = await repo.listTasks({ projectId });
+      const agentRuns = await repo.listRuns({ projectId });
       const byStatus = {};
       for (const t of tasks || []) {
         const s = t.status || "unknown";
         byStatus[s] = (byStatus[s] || 0) + 1;
       }
       projectTasksByStatus = byStatus;
+      runtimeTasksTotal = (tasks || []).length;
+      runtimeAgentRunsTotal = (agentRuns || []).length;
+
       projectMetrics = {
         scope: "selected_project",
         project_id: projectId,
@@ -127,17 +195,29 @@ export const GET = withErrorHandling(async (req) => {
         pending_founder_actions:
           summary.next_founder_action?.severity === "action_required" ? 1 : 0,
         next_founder_action: summary.next_founder_action || null,
-        runtime_tasks: (tasks || []).length,
+        runtime_tasks: runtimeTasksTotal,
+        runtime_agent_runs: runtimeAgentRunsTotal,
         runtime_tasks_by_status: byStatus,
         runtime_jobs_failed: summary.runtime?.jobs_failed || 0,
         approvals_pending: summary.approvals_pending || 0,
         evidence_hint: summary.integration?.runs?.length || 0,
         memory_note: summary.integration_readiness?.integrationProofStatus || null,
+        active_founder_proofs:
+          summary.integration?.active_founder_proof_run_count ??
+          founderProofMetrics?.active_founder_proofs ??
+          null,
+        waiting_for_founder_action:
+          founderProofMetrics?.waiting_for_founder_action ?? null,
+        completed_proofs: founderProofMetrics?.completed_proofs ?? null,
+        cancelled_proofs: founderProofMetrics?.cancelled_proofs ?? null,
       };
     } catch {
       partial = true;
       projectMetrics = { scope: "selected_project", available: false };
     }
+  } else {
+    runtimeTasksTotal = sumStatusMap(orgTasksByStatus);
+    runtimeAgentRunsTotal = sumStatusMap(orgRunsByStatus);
   }
 
   return NextResponse.json({
@@ -174,8 +254,19 @@ export const GET = withErrorHandling(async (req) => {
       ? sources.averageRunDuration.value
       : null,
     projectMetrics,
+    founderProofMetrics,
+    runtimeTasks: {
+      scope: projectId ? "selected_project" : "organisation",
+      value: runtimeTasksTotal,
+      available: runtimeTasksTotal != null,
+    },
+    runtimeAgentRuns: {
+      scope: projectId ? "selected_project" : "organisation",
+      value: runtimeAgentRunsTotal,
+      available: runtimeAgentRunsTotal != null,
+    },
     reconciliation_note: projectId
-      ? "Organisation task counts include all projects. Selected-project Runtime Tasks may be zero while organisation completed tasks are non-zero."
-      : "Select a project to see selected-project metrics.",
+      ? "Organisation task counts include all projects. Selected-project Runtime Tasks may be zero while organisation completed tasks are non-zero. Cancelled Founder Proofs are historical and are not counted as active."
+      : "Select a project to see selected-project metrics. Founder Proof metrics below are organisation-wide unless a project is selected.",
   });
 });

@@ -13,9 +13,64 @@ function errorMessage(data, fallback) {
   return data?.error?.message || data?.error || fallback;
 }
 
+function formatActivity(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleString();
+  } catch {
+    return "—";
+  }
+}
+
+function dash(v) {
+  if (v === null || v === undefined || v === "") return "—";
+  return v;
+}
+
+/**
+ * Enrich projects with operational summaries (bounded concurrency).
+ * Missing/failed summaries stay null — never invent activity.
+ */
+async function loadOpsMap(projectIds, { concurrency = 4 } = {}) {
+  const map = {};
+  let i = 0;
+  async function worker() {
+    while (i < projectIds.length) {
+      const idx = i;
+      i += 1;
+      const id = projectIds[idx];
+      try {
+        const res = await fetch(
+          `/api/admin/operations/summary?project_id=${encodeURIComponent(id)}`,
+          { headers: { Accept: "application/json" } }
+        );
+        if (!res.ok) {
+          map[id] = null;
+          continue;
+        }
+        const data = await res.json().catch(() => null);
+        map[id] = data?.ok ? data : null;
+      } catch {
+        map[id] = null;
+      }
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, projectIds.length) }, () =>
+      worker()
+    )
+  );
+  return map;
+}
+
 export default function ProjectsPage() {
   const router = useRouter();
   const [projects, setProjects] = useState([]);
+  const [opsById, setOpsById] = useState({});
+  const [opsLoading, setOpsLoading] = useState(false);
+  const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notConfigured, setNotConfigured] = useState(false);
@@ -35,14 +90,27 @@ export default function ProjectsPage() {
       if (res.status === 503) {
         setNotConfigured(true);
         setProjects([]);
+        setOpsById({});
         return;
       }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(errorMessage(data, "Failed to load projects"));
-      setProjects(Array.isArray(data.projects) ? data.projects : []);
+      const list = Array.isArray(data.projects) ? data.projects : [];
+      setProjects(list);
+      setOpsLoading(true);
+      const ids = list.map((p) => p.id).filter(Boolean);
+      if (ids.length) {
+        const map = await loadOpsMap(ids);
+        setOpsById(map);
+      } else {
+        setOpsById({});
+      }
+      setOpsLoading(false);
     } catch (err) {
       setError(err.message);
       setProjects([]);
+      setOpsById({});
+      setOpsLoading(false);
     } finally {
       setLoading(false);
     }
@@ -70,6 +138,12 @@ export default function ProjectsPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(errorMessage(data, "Could not archive project"));
       setProjects((prev) => prev.filter((p) => p.id !== id));
+      setOpsById((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      if (selectedId === id) setSelectedId("");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -119,42 +193,117 @@ export default function ProjectsPage() {
       )}
 
       {projects.length > 0 && (
-        <ul className="projects-list">
-          {projects.map((p) => (
-            <li key={p.id} className="projects-item">
-              <div>
-                <Link href={`/admin/projects/${p.id}`} className="projects-item-title">
-                  {p.name}
-                </Link>
-                <p className="runtime-muted">
-                  <span className={`status-pill status-${p.status || "active"}`}>
-                    {p.status || "active"}
-                  </span>
-                  {p.slug ? ` · ${p.slug}` : ""}
-                </p>
-                {p.description && <p className="projects-desc">{p.description}</p>}
-              </div>
-              <div className="projects-item-actions">
-                <Link
-                  className="header-btn"
-                  href={`/admin/command-center?project_id=${encodeURIComponent(p.id)}`}
-                >
-                  Open Command Center
-                </Link>
-                <Link className="header-btn-ghost" href={`/admin/projects/${p.id}`}>
-                  Details
-                </Link>
-                <button
-                  type="button"
-                  className="header-btn-ghost"
-                  disabled={archivingId === p.id}
-                  onClick={() => archiveProject(p.id)}
-                >
-                  {archivingId === p.id ? "Archiving…" : "Archive"}
-                </button>
-              </div>
-            </li>
-          ))}
+        <ul className="projects-list projects-list--dense">
+          {projects.map((p) => {
+            const ops = opsById[p.id];
+            const proof = ops?.canonical_integration_run || null;
+            const proofLabel = proof
+              ? proof.stage_label || proof.proof_status || proof.stage || "Active"
+              : "No active Founder Proof";
+            const health = ops?.runtime_health;
+            const healthLabel = health
+              ? [
+                  health.provider || null,
+                  health.jobs_failed ? `${health.jobs_failed} failed jobs` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "—"
+              : opsLoading
+                ? "…"
+                : "—";
+            const expanded = selectedId === p.id;
+
+            return (
+              <li key={p.id} className="projects-item projects-item--rich">
+                <div className="projects-item-main">
+                  <div className="projects-item-title-row">
+                    <Link href={`/admin/projects/${p.id}`} className="projects-item-title">
+                      {p.name}
+                    </Link>
+                    <span className={`status-pill status-${p.status || "active"}`}>
+                      {p.status || "active"}
+                    </span>
+                  </div>
+                  <dl className="projects-ops-grid">
+                    <div>
+                      <dt>Founder Proof</dt>
+                      <dd className={!proof ? "cc-muted" : undefined}>{proofLabel}</dd>
+                    </div>
+                    <div>
+                      <dt>Active objectives</dt>
+                      <dd>
+                        {ops ? dash(ops.active_objective_count) : opsLoading ? "…" : "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Assigned agents</dt>
+                      <dd>
+                        {ops
+                          ? dash(ops.assigned_agents_count)
+                          : opsLoading
+                            ? "…"
+                            : "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Open Founder actions</dt>
+                      <dd>
+                        {ops
+                          ? dash(ops.open_founder_actions)
+                          : opsLoading
+                            ? "…"
+                            : "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Last activity</dt>
+                      <dd>
+                        {ops
+                          ? formatActivity(ops.last_activity_at || p.updated_at)
+                          : formatActivity(p.updated_at)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Runtime health</dt>
+                      <dd>{healthLabel}</dd>
+                    </div>
+                  </dl>
+                  {expanded && ops?.next_founder_action?.label ? (
+                    <p className="projects-ops-note cc-muted">
+                      Next: {ops.next_founder_action.reason || ops.next_founder_action.label}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="projects-item-actions">
+                  <Link
+                    className="header-btn"
+                    href={`/admin/command-center?project_id=${encodeURIComponent(p.id)}`}
+                  >
+                    Open workspace
+                  </Link>
+                  <Link className="header-btn-ghost" href={`/admin/projects/${p.id}`}>
+                    Details
+                  </Link>
+                  <button
+                    type="button"
+                    className="header-btn-ghost"
+                    onClick={() => setSelectedId(expanded ? "" : p.id)}
+                    aria-expanded={expanded}
+                  >
+                    {expanded ? "Hide" : "Context"}
+                  </button>
+                  <button
+                    type="button"
+                    className="header-btn-ghost"
+                    disabled={archivingId === p.id}
+                    onClick={() => archiveProject(p.id)}
+                  >
+                    {archivingId === p.id ? "Archiving…" : "Archive"}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -193,7 +342,6 @@ function NewProjectModal({ onClose, onCreated, router }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Auto-suggest slug from the name until the user manually edits the slug.
   const suggestedSlug = slugEdited ? slug : slugFromName(name);
 
   function onSlugChange(value) {
@@ -229,7 +377,7 @@ function NewProjectModal({ onClose, onCreated, router }) {
 
   async function submit(e) {
     e.preventDefault();
-    if (submittingRef.current) return; // hard guard against double submit
+    if (submittingRef.current) return;
     setErr("");
     setSlugError("");
 
@@ -238,7 +386,6 @@ function NewProjectModal({ onClose, onCreated, router }) {
       return;
     }
 
-    // Resolve the final slug: explicit user slug (validated) or name-derived.
     let finalSlug = "";
     if (slugEdited && slug.trim()) {
       const evaluated = evaluateSlugInput(slug);
@@ -280,7 +427,6 @@ function NewProjectModal({ onClose, onCreated, router }) {
       }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        // Preserve all entered values so the Founder can correct and retry.
         throw new Error(errorMessage(data, "Could not create project"));
       }
       onCreated?.(data.project);
