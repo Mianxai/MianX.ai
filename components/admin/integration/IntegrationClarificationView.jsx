@@ -3,6 +3,7 @@
 /**
  * Stage-aware clarification view for an existing canonical Founder Proof run.
  * Does not render objective-creation controls.
+ * Hard-gates Submit while duplicate active Founder proof runs exist.
  */
 export default function IntegrationClarificationView({
   run,
@@ -13,6 +14,8 @@ export default function IntegrationClarificationView({
   submitting,
   error,
   onSubmit,
+  duplicateActive = false,
+  duplicateCount = 0,
 }) {
   const objective = run?.objective || {};
   const questions = Array.isArray(objective.unresolved_questions)
@@ -22,8 +25,15 @@ export default function IntegrationClarificationView({
     questions[0] ||
     "Please confirm success criteria and whether deterministic simulation-only is acceptable for this proof.";
 
+  const duplicateBlockReason =
+    "Duplicate active Founder proof runs exist — resolve duplicates before clarification.";
+
   const canSubmit =
-    Boolean(answer?.trim()) && !busy && !submitting && run?.id;
+    Boolean(answer?.trim()) &&
+    !busy &&
+    !submitting &&
+    Boolean(run?.id) &&
+    !duplicateActive;
 
   return (
     <div
@@ -36,6 +46,17 @@ export default function IntegrationClarificationView({
         An objective and canonical proof run already exist. Answer the question below to continue —
         do not create a new objective.
       </p>
+
+      {duplicateActive ? (
+        <p
+          className="admin-warning"
+          role="status"
+          data-testid="clarification-duplicate-block"
+        >
+          {duplicateBlockReason}
+          {duplicateCount > 0 ? ` (${duplicateCount} duplicate)` : ""}
+        </p>
+      ) : null}
 
       <section
         className="cc-card"
@@ -123,7 +144,7 @@ export default function IntegrationClarificationView({
           onChange={(e) => setAnswer(e.target.value)}
           required
           aria-required="true"
-          aria-describedby="clarification-submit-warn clarification-error"
+          aria-describedby="clarification-submit-warn clarification-error clarification-dup-reason"
           disabled={busy || submitting}
           style={{ width: "100%", display: "block", marginTop: "0.35rem" }}
         />
@@ -143,25 +164,44 @@ export default function IntegrationClarificationView({
         ) : (
           <p id="clarification-error" className="sr-only" aria-live="polite" />
         )}
-        <button
-          type="submit"
-          className="header-btn"
-          data-testid="submit-clarification"
-          disabled={!canSubmit}
-          aria-disabled={!canSubmit}
-          title={
-            !answer?.trim()
-              ? "Enter a clarification answer first"
-              : "Submit clarification"
-          }
-        >
-          {submitting ? "Submitting…" : "Submit clarification"}
-        </button>
-        {!answer?.trim() ? (
-          <p className="integration-disabled-reason" role="status">
-            Enter a clarification answer to enable Submit.
-          </p>
-        ) : null}
+        <div className="admin-actions" style={{ alignItems: "center", gap: "0.75rem" }}>
+          <button
+            type="submit"
+            className="header-btn"
+            data-testid="submit-clarification"
+            disabled={!canSubmit}
+            aria-disabled={!canSubmit}
+            title={
+              duplicateActive
+                ? duplicateBlockReason
+                : !answer?.trim()
+                  ? "Enter a clarification answer first"
+                  : "Submit clarification"
+            }
+          >
+            {submitting ? "Submitting…" : "Submit clarification"}
+          </button>
+          {duplicateActive ? (
+            <p
+              id="clarification-dup-reason"
+              className="integration-disabled-reason"
+              role="status"
+              data-testid="clarification-submit-disabled-reason"
+            >
+              {duplicateBlockReason}
+            </p>
+          ) : !answer?.trim() ? (
+            <p
+              id="clarification-dup-reason"
+              className="integration-disabled-reason"
+              role="status"
+            >
+              Enter a clarification answer to enable Submit.
+            </p>
+          ) : (
+            <p id="clarification-dup-reason" className="sr-only" />
+          )}
+        </div>
       </form>
 
       <details className="cc-card" data-testid="clarification-technical-details">
