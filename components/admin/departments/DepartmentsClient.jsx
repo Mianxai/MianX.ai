@@ -245,6 +245,18 @@ export default function DepartmentsClient() {
     });
   }, [rows, search, statusFilter]);
 
+  const summaryMetrics = useMemo(() => {
+    const executable = rows.reduce((n, d) => n + (d.executableCount || 0), 0);
+    const active = rows.reduce((n, d) => n + (d.working || 0), 0);
+    const idle = rows.reduce((n, d) => n + (d.idle || 0), 0);
+    return {
+      departments: rows.length,
+      executable,
+      active,
+      idle,
+    };
+  }, [rows]);
+
   const detail = selected
     ? rows.find((r) => r.slug === selected) || null
     : null;
@@ -291,7 +303,30 @@ export default function DepartmentsClient() {
           />
         ) : (
           <>
-            <div className="admin-toolbar" role="search">
+            <div
+              className="admin-summary-metrics"
+              data-testid="departments-summary-metrics"
+              aria-label="Department summary"
+            >
+              <div className="admin-summary-metric">
+                <span className="admin-summary-metric-label">Departments</span>
+                <strong>{summaryMetrics.departments}</strong>
+              </div>
+              <div className="admin-summary-metric">
+                <span className="admin-summary-metric-label">Executable</span>
+                <strong>{summaryMetrics.executable}</strong>
+              </div>
+              <div className="admin-summary-metric">
+                <span className="admin-summary-metric-label">Active</span>
+                <strong>{summaryMetrics.active}</strong>
+              </div>
+              <div className="admin-summary-metric">
+                <span className="admin-summary-metric-label">Idle</span>
+                <strong>{summaryMetrics.idle}</strong>
+              </div>
+            </div>
+
+            <div className="admin-toolbar admin-toolbar--wrap" role="search">
               <label className="admin-toolbar-field">
                 <span className="sr-only">Search departments</span>
                 <input
@@ -315,15 +350,33 @@ export default function DepartmentsClient() {
                 </select>
               </label>
             </div>
-            <div className="admin-table-wrap admin-table-wrap--sticky">
+
+            <p className="admin-legend cc-muted" data-testid="departments-legend">
+              <strong>Active</strong> = agents currently working ·{" "}
+              <strong>Idle</strong> = assigned but not working ·{" "}
+              <strong>Capacity Inventory</strong> = planned role slots (not created agents) ·{" "}
+              <strong>Blocked</strong> = blocked, waiting, or failed
+            </p>
+
+            <div className="admin-table-wrap admin-table-wrap--sticky admin-table-desktop">
               <table className="admin-data-table admin-data-table--dense">
                 <thead>
                   <tr>
                     <th scope="col">Department</th>
                     <th scope="col">Lead</th>
                     <th scope="col">Executable Agents</th>
-                    <th scope="col">Active</th>
-                    <th scope="col">Idle</th>
+                    <th
+                      scope="col"
+                      title="Agents currently working on tasks"
+                    >
+                      Active
+                    </th>
+                    <th
+                      scope="col"
+                      title="Assigned agents that are not currently working"
+                    >
+                      Idle
+                    </th>
                     <th
                       scope="col"
                       title="Planning capacity only — these are not created or running agents."
@@ -337,7 +390,12 @@ export default function DepartmentsClient() {
                         ⓘ
                       </span>
                     </th>
-                    <th scope="col">Blocked</th>
+                    <th
+                      scope="col"
+                      title="Agents in blocked, waiting, or failed status"
+                    >
+                      Blocked
+                    </th>
                     <th scope="col">Action</th>
                   </tr>
                 </thead>
@@ -390,6 +448,59 @@ export default function DepartmentsClient() {
                 </tbody>
               </table>
             </div>
+
+            <ul
+              className="admin-mobile-cards"
+              aria-label="Departments"
+              data-testid="departments-mobile-cards"
+            >
+              {filtered.map((d) => (
+                <li
+                  key={d.slug}
+                  className={`admin-mobile-card${d.proposedForProof ? " admin-row--proposed" : ""}`}
+                >
+                  <div className="admin-mobile-card-head">
+                    <strong>{d.name}</strong>
+                    {d.proposedForProof ? (
+                      <span className="admin-inline-chip">Proof</span>
+                    ) : null}
+                  </div>
+                  <p className="cc-muted">{d.directorTitle || d.executiveAgentSlug || "—"}</p>
+                  <dl className="admin-mobile-card-metrics">
+                    <div>
+                      <dt>Executable</dt>
+                      <dd>{d.executableCount}</dd>
+                    </div>
+                    <div>
+                      <dt>Active</dt>
+                      <dd>{d.working}</dd>
+                    </div>
+                    <div>
+                      <dt>Idle</dt>
+                      <dd>{d.idle}</dd>
+                    </div>
+                    <div>
+                      <dt>Capacity</dt>
+                      <dd>{d.capacity}</dd>
+                    </div>
+                    <div>
+                      <dt>Blocked</dt>
+                      <dd>{d.blocked}</dd>
+                    </div>
+                  </dl>
+                  <button
+                    type="button"
+                    className="header-btn-ghost"
+                    onClick={() => setSelected(d.slug)}
+                  >
+                    Open
+                  </button>
+                </li>
+              ))}
+              {!filtered.length ? (
+                <li className="cc-muted">No departments match the current search or filter.</li>
+              ) : null}
+            </ul>
           </>
         )}
 

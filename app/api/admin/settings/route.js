@@ -40,9 +40,9 @@ export const GET = withErrorHandling(async (req) => {
   }
   if (!runtime.providers.anthropic) {
     founderActions.push({
-      label: "Configure Anthropic (optional)",
+      label: "Configure Anthropic (optional for live AI)",
       description:
-        "Set ANTHROPIC_API_KEY to enable agent execution. Without it, runs return a controlled 503 and task state is preserved.",
+        "Not configured — not required for deterministic Founder Proof. Required later for explicitly enabled live AI execution. Never paste the key into the admin UI.",
     });
   }
   if (access.membershipTable === false) {

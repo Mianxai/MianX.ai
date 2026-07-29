@@ -11,6 +11,7 @@ export default function SchedulerStatus({
   compact = false,
   onRefresh = null,
   className = "",
+  showRecommendation = true,
 }) {
   const mapped = mapSchedulerStatus({
     scheduler: scheduler || {},
@@ -43,38 +44,50 @@ export default function SchedulerStatus({
         <span className={`status-pill is-${mapped.health}`}>{mapped.label}</span>
       </div>
       <p className="cc-muted">{mapped.detail}</p>
+      {showRecommendation && mapped.recommendation ? (
+        <p className="scheduler-recommendation" data-testid="scheduler-recommendation">
+          <strong>Recommendation:</strong> {mapped.recommendation}
+        </p>
+      ) : null}
       <dl className="cc-detail-dl founder-plan-grid">
         <div>
-          <dt>Mode</dt>
-          <dd>{mapped.mode}</dd>
+          <dt>Target cadence</dt>
+          <dd data-testid="scheduler-expected-interval">
+            {mapped.expectedCadenceLabel ||
+              (mapped.expectedIntervalSec >= 60
+                ? `Every ${Math.round(mapped.expectedIntervalSec / 60)} minutes`
+                : `~${mapped.expectedIntervalSec}s`)}
+            {mapped.githubActionsApproximate ? (
+              <span className="cc-muted"> · approximate GitHub delivery</span>
+            ) : null}
+          </dd>
         </div>
         <div>
           <dt>Platform</dt>
           <dd>{mapped.platform}</dd>
         </div>
         <div>
-          <dt>Last tick</dt>
-          <dd>
+          <dt>Last successful tick</dt>
+          <dd data-testid="scheduler-last-tick">
             {mapped.lastTickAt
               ? `${mapped.lastTickAt}${mapped.ageLabel ? ` (${mapped.ageLabel} ago)` : ""}`
               : "None observed"}
           </dd>
         </div>
         <div>
-          <dt>Expected interval</dt>
-          <dd data-testid="scheduler-expected-interval">
-            {mapped.expectedCadenceLabel ||
-              (mapped.expectedIntervalSec >= 60
-                ? `Every ${Math.round(mapped.expectedIntervalSec / 60)} minutes`
-                : `~${mapped.expectedIntervalSec}s`)}
-          </dd>
+          <dt>Relative age</dt>
+          <dd>{mapped.ageLabel || "—"}</dd>
         </div>
         <div>
           <dt>Last claimed / succeeded / failed</dt>
-          <dd>
+          <dd data-testid="scheduler-counters">
             {mapped.lastClaimed ?? "—"} / {mapped.lastSucceeded ?? "—"} /{" "}
             {mapped.lastFailed ?? "—"}
           </dd>
+        </div>
+        <div>
+          <dt>Mode</dt>
+          <dd>{mapped.mode}</dd>
         </div>
       </dl>
       {onRefresh ? (
