@@ -112,6 +112,7 @@ test.describe("Phase H Founder acceptance journey", () => {
   }) => {
     await page.goto("/admin/integration");
     await page.waitForLoadState("domcontentloaded");
+    await expect(page.getByTestId("production-proof-panel")).toBeVisible();
 
     const picker = page.getByTestId("integration-project-picker").locator("select");
     await expect(picker).toBeVisible();
