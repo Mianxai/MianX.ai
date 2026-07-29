@@ -16,8 +16,87 @@ import {
   assessPlanningLearningProposal,
   APPROVAL_STATUSES,
 } from "@/lib/core/planning-intelligence";
+import { listRuns as listIntegrationRuns } from "@/lib/core/integration/store";
+import { listPersistedIntegrationRuns, mapProofStatusFromRun } from "@/lib/core/integration/persist";
+import {
+  isFounderProductionProofRun,
+  resolveCanonicalFounderProofRuns,
+} from "@/lib/core/integration/founder-proof-canonical";
 
 export const dynamic = "force-dynamic";
+
+function mergeIntegrationRuns(projectId, persisted = []) {
+  const memory = listIntegrationRuns({ project_id: projectId || null });
+  const byId = new Map();
+  for (const r of persisted) {
+    if (r?.id) byId.set(r.id, r);
+  }
+  for (const r of memory) {
+    if (r?.id) byId.set(r.id, r);
+  }
+  return [...byId.values()];
+}
+
+function founderProofPlanMetricsFromRuns(runs = []) {
+  const proofRuns = (runs || []).filter(isFounderProductionProofRun);
+  const { canonical_run } = resolveCanonicalFounderProofRuns(proofRuns);
+  let awaiting = 0;
+  let approved = 0;
+  for (const run of proofRuns) {
+    const ps = mapProofStatusFromRun(run);
+    const stage = run.current_stage;
+    if (ps === "awaiting_plan_approval" || stage === "founder_approval_required") {
+      awaiting += 1;
+    } else if (
+      run.planning_plan ||
+      [
+        "simulation_approval_required",
+        "approved_for_simulation",
+        "workforce_allocated",
+        "tasks_claimed",
+        "collaboration_running",
+        "verification_running",
+        "memory_writing",
+        "learning_proposals_created",
+        "founder_final_review",
+        "completed",
+      ].includes(stage) ||
+      [
+        "awaiting_simulation_approval",
+        "simulation_approved",
+        "simulation_running",
+        "awaiting_final_review",
+        "completed",
+      ].includes(ps)
+    ) {
+      approved += 1;
+    }
+  }
+
+  const canonicalStatus = canonical_run ? mapProofStatusFromRun(canonical_run) : null;
+  return {
+    awaiting_approval: awaiting,
+    approved,
+    has_awaiting_plan:
+      awaiting > 0 ||
+      canonicalStatus === "awaiting_plan_approval" ||
+      canonical_run?.current_stage === "founder_approval_required",
+    canonical_run_id: canonical_run?.id || null,
+    proof_status: canonicalStatus,
+  };
+}
+
+function founderProofPlanMetrics(projectId) {
+  const empty = {
+    awaiting_approval: 0,
+    approved: 0,
+    has_awaiting_plan: false,
+    canonical_run_id: null,
+    proof_status: null,
+  };
+  if (!projectId) return empty;
+  return founderProofPlanMetricsFromRuns(mergeIntegrationRuns(projectId, []));
+}
 
 /**
  * GET /api/admin/planning — read-only listing / detail / preview
@@ -31,16 +110,51 @@ export const GET = withErrorHandling(async (req) => {
 
   if (action === "overview") {
     const plans = listPlans({ project_id: projectId || null, limit: 50 });
+    let founderProof = founderProofPlanMetrics(projectId);
+    try {
+      if (projectId) {
+        const persisted = await listPersistedIntegrationRuns({
+          project_id: projectId,
+          limit: 50,
+        });
+        if (persisted?.length) {
+          founderProof = founderProofPlanMetricsFromRuns(
+            mergeIntegrationRuns(projectId, persisted)
+          );
+        }
+      }
+    } catch {
+      /* persisted optional — memory metrics remain */
+    }
+
+    const advanced = {
+      draft: plans.filter((p) => p.status === "draft").length,
+      awaiting_approval: plans.filter((p) => p.status === "pending_approval").length,
+      approved: plans.filter((p) => p.status === "approved").length,
+      total: plans.length,
+    };
+
     return NextResponse.json({
       ok: true,
       engine_version: ENGINE_VERSION,
       counts: {
         plans: plans.length,
-        pending_approval: plans.filter((p) => p.status === "pending_approval").length,
-        approved: plans.filter((p) => p.status === "approved").length,
+        pending_approval: advanced.awaiting_approval,
+        approved: advanced.approved,
       },
+      founder_proof_plans: {
+        awaiting_approval: founderProof.awaiting_approval,
+        approved: founderProof.approved,
+        has_awaiting_plan: founderProof.has_awaiting_plan,
+        canonical_run_id: founderProof.canonical_run_id,
+        proof_status: founderProof.proof_status,
+      },
+      advanced_separate_packages: advanced,
       horizons: listSupportedHorizons(),
-      note: "Planning Intelligence is read-mostly until Founder approval. Nothing executes.",
+      note:
+        founderProof.has_awaiting_plan
+          ? "A Founder Proof plan is awaiting approval. Advanced separate packages below are independent and do not replace it."
+          : "Planning Intelligence is read-mostly until Founder approval. Nothing executes.",
       approval_statuses: APPROVAL_STATUSES,
     });
   }

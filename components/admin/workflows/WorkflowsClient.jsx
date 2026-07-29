@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
@@ -14,6 +14,16 @@ import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
 import FounderActionBanner from "@/components/admin/FounderActionBanner";
 
+const WORKFLOW_CATEGORIES = {
+  "software-delivery": "Delivery",
+  "business-growth": "Growth",
+  "lead-qualification": "Growth",
+  "operations-incident": "Operations",
+  "advisory-review": "Advisory",
+  "executive-readiness": "Executive",
+  "enterprise-objective": "Enterprise",
+};
+
 async function fetchJson(path, router) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
   if (res.status === 401) {
@@ -24,9 +34,76 @@ async function fetchJson(path, router) {
   return { ok: res.ok, data };
 }
 
+function WorkflowDetailDrawer({ workflowId, instanceCount, onClose }) {
+  const titleId = useId();
+  const closeRef = useRef(null);
+  const def = workflowId ? WORKFLOW_CHAINS[workflowId] : null;
+
+  useEffect(() => {
+    if (!workflowId) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", onKey);
+    closeRef.current?.focus?.();
+    return () => window.removeEventListener("keydown", onKey);
+  }, [workflowId, onClose]);
+
+  if (!workflowId || !def) return null;
+
+  return (
+    <div className="cc-drawer-root" role="presentation">
+      <button
+        type="button"
+        className="cc-drawer-backdrop"
+        aria-label="Close workflow detail"
+        onClick={onClose}
+      />
+      <aside
+        className="cc-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <div className="cc-drawer-head">
+          <div>
+            <p className="cc-eyebrow">Workflow definition</p>
+            <h2 id={titleId}>{def.label}</h2>
+          </div>
+          <button
+            ref={closeRef}
+            type="button"
+            className="header-btn-ghost"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+        <div className="cc-drawer-body">
+          <p className="cc-muted">
+            <code>{workflowId}</code> ·{" "}
+            {WORKFLOW_CATEGORIES[workflowId] || "Catalog"} · {def.stages?.length || 0}{" "}
+            stages · {instanceCount} current instance
+            {instanceCount === 1 ? "" : "s"}
+          </p>
+          <ol className="admin-compact-list admin-compact-list--ordered">
+            {(def.stages || []).map((s) => (
+              <li key={s.key}>
+                {s.label}
+                {s.agentSlug ? ` · ${s.agentSlug}` : ""}
+                {s.optional ? " (optional)" : ""}
+              </li>
+            ))}
+          </ol>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 export default function WorkflowsClient() {
   const router = useRouter();
-  const { projectId, setProjectId, hrefWithProject } = useAdminProject();
+  const { projectId, setProjectId } = useAdminProject();
   const { summary: opsSummary } = useProjectOperationalSummary(projectId, {
     loginFallback: "/admin/workflows",
   });
@@ -35,6 +112,9 @@ export default function WorkflowsClient() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [activeOnly, setActiveOnly] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,15 +134,64 @@ export default function WorkflowsClient() {
     load();
   }, [load]);
 
-  const definitions = Object.entries(WORKFLOW_CHAINS).map(([id, def]) => ({
-    id,
-    label: def.label,
-    stages: def.stages || [],
-  }));
+  const instances = useMemo(
+    () => (data?.workflows?.available ? data.workflows.value || [] : []),
+    [data]
+  );
 
-  const instances = data?.workflows?.available
-    ? data.workflows.value || []
-    : [];
+  const definitions = useMemo(() => {
+    const counts = new Map();
+    for (const w of instances) {
+      const id = w.workflow || w.id;
+      if (!id) continue;
+      counts.set(id, (counts.get(id) || 0) + 1);
+    }
+    return Object.entries(WORKFLOW_CHAINS).map(([id, def]) => {
+      const currentInstances = counts.get(id) || 0;
+      const live = instances.filter((w) => w.workflow === id);
+      const activeLive = live.filter(
+        (w) =>
+          w.status &&
+          !["completed", "cancelled", "failed", "rejected"].includes(w.status)
+      );
+      return {
+        id,
+        label: def.label,
+        category: WORKFLOW_CATEGORIES[id] || "Catalog",
+        stages: def.stages || [],
+        stageCount: (def.stages || []).length,
+        currentInstances,
+        status:
+          activeLive.length > 0
+            ? "active"
+            : currentInstances > 0
+              ? "idle"
+              : "catalog",
+      };
+    });
+  }, [instances]);
+
+  const categories = useMemo(() => {
+    const set = new Set(definitions.map((d) => d.category));
+    return [...set].sort();
+  }, [definitions]);
+
+  const filteredDefs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return definitions.filter((d) => {
+      if (categoryFilter !== "all" && d.category !== categoryFilter) return false;
+      if (activeOnly && d.currentInstances <= 0) return false;
+      if (!q) return true;
+      return (
+        d.label.toLowerCase().includes(q) ||
+        d.id.toLowerCase().includes(q) ||
+        d.category.toLowerCase().includes(q)
+      );
+    });
+  }, [definitions, search, categoryFilter, activeOnly]);
+
+  const selectedInstanceCount =
+    definitions.find((d) => d.id === selected)?.currentInstances || 0;
 
   return (
     <AdminShell
@@ -97,30 +226,95 @@ export default function WorkflowsClient() {
           </div>
         ) : null}
 
-        <section className="cc-card">
-          <h2>Definitions</h2>
-          <ul className="inbox-list">
-            {definitions.map((d) => (
-              <li key={d.id} className="inbox-item">
-                <div>
-                  <span className="inbox-kind">{d.id}</span>
-                  <h3 className="inbox-title">{d.label}</h3>
-                  <p className="cc-muted">{d.stages.length} stages</p>
-                </div>
-                <button
-                  type="button"
-                  className="header-btn-ghost"
-                  onClick={() => setSelected(d.id)}
-                >
-                  Open
-                </button>
-              </li>
-            ))}
-          </ul>
+        <section className="cc-card admin-card-compact" aria-labelledby="wf-defs-heading">
+          <h2 id="wf-defs-heading">Definitions</h2>
+          <div className="admin-toolbar" role="search">
+            <label className="admin-toolbar-field">
+              <span className="sr-only">Search workflows</span>
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search workflows…"
+                aria-label="Search workflows"
+              />
+            </label>
+            <label className="admin-toolbar-field">
+              <span className="sr-only">Category</span>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                aria-label="Filter by category"
+              >
+                <option value="all">All categories</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="admin-toolbar-check">
+              <input
+                type="checkbox"
+                checked={activeOnly}
+                onChange={(e) => setActiveOnly(e.target.checked)}
+              />
+              Active instances only
+            </label>
+          </div>
+          <div className="admin-table-wrap admin-table-wrap--sticky">
+            <table className="admin-data-table admin-data-table--dense admin-workflow-table">
+              <thead>
+                <tr>
+                  <th scope="col">Workflow</th>
+                  <th scope="col">Category</th>
+                  <th scope="col">Stages</th>
+                  <th scope="col">Current instances</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Open</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDefs.map((d) => (
+                  <tr key={d.id} className="admin-workflow-row">
+                    <td>
+                      <strong>{d.label}</strong>
+                      <div className="cc-muted">
+                        <code>{d.id}</code>
+                      </div>
+                    </td>
+                    <td>{d.category}</td>
+                    <td>{d.stageCount}</td>
+                    <td>{d.currentInstances}</td>
+                    <td>
+                      <code>{d.status}</code>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="header-btn-ghost"
+                        onClick={() => setSelected(d.id)}
+                      >
+                        Open
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!filteredDefs.length ? (
+                  <tr>
+                    <td colSpan={6} className="cc-muted">
+                      No workflow definitions match the current filters.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
         </section>
 
-        <section className="cc-card">
-          <h2>Instances</h2>
+        <section className="cc-card admin-card-compact" aria-labelledby="wf-inst-heading">
+          <h2 id="wf-inst-heading">Instances</h2>
           {!projectId ? (
             <EmptyState
               title="Select a project"
@@ -135,45 +329,13 @@ export default function WorkflowsClient() {
               }
             />
           ) : !instances.length ? (
-            <EmptyState
-              title="No workflow instances"
-              reason="No tasks with workflow metadata in this project yet."
-              configuration={
-                opsSummary?.next_founder_action?.reason
-                  ? `Prerequisite: ${opsSummary.next_founder_action.reason}`
-                  : "Create objectives or runtime tasks that use a workflow chain."
-              }
-              nextAction={
-                opsSummary?.next_founder_action?.label
-                  ? `Next Founder action: ${opsSummary.next_founder_action.label} (e.g. Answer clarification / approve plan / approve simulation).`
-                  : "Open Objectives or Runtime Tasks to start work."
-              }
-              projectLabel={projectId}
-              cta={
-                opsSummary?.next_founder_action?.href &&
-                opsSummary.next_founder_action.severity === "action_required" ? (
-                  <Link
-                    className="header-btn"
-                    href={
-                      !String(opsSummary.next_founder_action.href).includes("project_id=")
-                        ? `${opsSummary.next_founder_action.href}${
-                            opsSummary.next_founder_action.href.includes("?") ? "&" : "?"
-                          }project_id=${encodeURIComponent(projectId)}`
-                        : opsSummary.next_founder_action.href
-                    }
-                  >
-                    {opsSummary.next_founder_action.label}
-                  </Link>
-                ) : (
-                  <Link className="header-btn" href={hrefWithProject("/admin/objectives")}>
-                    Objectives
-                  </Link>
-                )
-              }
-            />
+            <p className="cc-muted" data-testid="workflows-empty-instances">
+              No workflow instances yet. Prerequisite: Founder Plan Approval,
+              Simulation Approval and explicit Simulation Start.
+            </p>
           ) : (
             <div className="admin-table-wrap">
-              <table className="admin-data-table">
+              <table className="admin-data-table admin-data-table--dense">
                 <thead>
                   <tr>
                     <th scope="col">Title</th>
@@ -218,27 +380,11 @@ export default function WorkflowsClient() {
           )}
         </section>
 
-        {selected ? (
-          <section className="cc-card">
-            <h2>{WORKFLOW_CHAINS[selected]?.label || selected}</h2>
-            <ol>
-              {(WORKFLOW_CHAINS[selected]?.stages || []).map((s) => (
-                <li key={s.key}>
-                  {s.label}
-                  {s.agentSlug ? ` · ${s.agentSlug}` : ""}
-                  {s.optional ? " (optional)" : ""}
-                </li>
-              ))}
-            </ol>
-            <button
-              type="button"
-              className="header-btn-ghost"
-              onClick={() => setSelected(null)}
-            >
-              Close
-            </button>
-          </section>
-        ) : null}
+        <WorkflowDetailDrawer
+          workflowId={selected}
+          instanceCount={selectedInstanceCount}
+          onClose={() => setSelected(null)}
+        />
       </div>
     </AdminShell>
   );

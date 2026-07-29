@@ -1095,7 +1095,25 @@ no fabricated live AI completion, no auto Founder approval.
 
 ---
 
-## 18. Phase H.1 — Founder Control Plane UX hardening
+## 18b. Phase H.1 — Truth reconciliation closeout (Draft PR)
+
+Branch: `cursor/phase-h1-truth-reconciliation-closeout`  
+Base: `origin/main` @ `935fc28` (includes merged PR #58).
+
+### Scope
+
+Admin density + data consistency: compact secondary strips, Approvals truth,
+Knowledge/Templates catalogue alignment, Planning Founder Proof metrics,
+scheduler 5-minute GitHub Actions cadence, Departments/Workflows/Projects/
+Analytics density, terminology cleanup.
+
+### Explicit non-goals
+
+No merge, no production deploy, no production proof mutation, no Anthropic,
+no Phase I, no migration.
+
+---
+
 
 **PR #57** (`cursor/phase-h1-founder-control-plane-premium-ux`) merged to main @ `0abb8d7`.
 

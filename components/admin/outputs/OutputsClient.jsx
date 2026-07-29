@@ -34,6 +34,20 @@ function nextActionHref(next, projectId) {
   return next.href;
 }
 
+function bannerHasReviewPlan(opsSummary) {
+  const next = opsSummary?.next_founder_action;
+  return (
+    next?.severity === "action_required" &&
+    /review\s+plan/i.test(String(next?.label || ""))
+  );
+}
+
+function projectDisplayName(projects, projectId) {
+  if (!projectId) return null;
+  const match = projects.find((p) => p.id === projectId);
+  return match?.name || null;
+}
+
 export default function OutputsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -66,6 +80,12 @@ export default function OutputsClient() {
     load();
   }, [load]);
 
+  const projectLabel = projectDisplayName(projects, projectId);
+  const skipDuplicateReviewPlan = bannerHasReviewPlan(opsSummary);
+  const proofHref = projectId
+    ? `/admin/integration?project_id=${encodeURIComponent(projectId)}`
+    : "/admin/integration";
+
   return (
     <AdminShell
       title="Outputs"
@@ -97,7 +117,7 @@ export default function OutputsClient() {
       <div className="cc-page">
         <p className="cc-muted">
           Aggregated from existing agent runs — not a separate output store. Categories:
-          Integration evidence · Proof Pack · Agent Runtime · Workflow · Approved final.
+          Founder Proof evidence · Proof Pack · Agent Runtime · Workflow · Approved final.
         </p>
         <FounderActionBanner summary={opsSummary} projectId={projectId} />
         {loading && !data ? (
@@ -118,10 +138,11 @@ export default function OutputsClient() {
               opsSummary?.next_founder_action?.reason ||
               "Select a project or follow the next Founder action."
             }
-            projectLabel={projectId || "All projects"}
+            projectLabel={projectLabel}
             cta={
               <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                {opsSummary?.next_founder_action?.href &&
+                {!skipDuplicateReviewPlan &&
+                opsSummary?.next_founder_action?.href &&
                 opsSummary.next_founder_action.severity === "action_required" ? (
                   <Link
                     className="header-btn"
@@ -129,7 +150,11 @@ export default function OutputsClient() {
                   >
                     {opsSummary.next_founder_action.label}
                   </Link>
-                ) : null}
+                ) : (
+                  <Link className="header-btn" href={proofHref}>
+                    Open Founder Proof
+                  </Link>
+                )}
                 <Link className="header-btn-ghost" href="/admin/runtime/runs">
                   Runtime Runs
                 </Link>
@@ -141,16 +166,22 @@ export default function OutputsClient() {
           data.items.length === 0 ? (
             <EmptyState
               title="No outputs yet"
-              reason="Aggregated from existing agent runs — not a separate output store. Integration evidence and Proof Pack live under Founder Proof."
+              reason="Aggregated from existing agent runs — not a separate output store. Founder Proof evidence and Proof Pack live under Founder Proof."
               nextAction={
-                opsSummary?.next_founder_action?.reason ||
-                "Follow the next Founder action, or enqueue agent runs."
+                skipDuplicateReviewPlan
+                  ? null
+                  : opsSummary?.next_founder_action?.reason ||
+                    "Follow the next Founder action, or enqueue agent runs."
               }
-              projectLabel={projectId || "All projects"}
+              projectLabel={projectLabel}
               cta={
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                  {opsSummary?.next_founder_action?.href &&
-                  opsSummary.next_founder_action.severity === "action_required" ? (
+                  {skipDuplicateReviewPlan ? (
+                    <Link className="header-btn" href={proofHref}>
+                      Open Founder Proof
+                    </Link>
+                  ) : opsSummary?.next_founder_action?.href &&
+                    opsSummary.next_founder_action.severity === "action_required" ? (
                     <Link
                       className="header-btn"
                       href={nextActionHref(opsSummary.next_founder_action, projectId)}
@@ -158,8 +189,8 @@ export default function OutputsClient() {
                       {opsSummary.next_founder_action.label}
                     </Link>
                   ) : (
-                    <Link className="header-btn" href="/admin/integration">
-                      Open Integration
+                    <Link className="header-btn" href={proofHref}>
+                      Open Founder Proof
                     </Link>
                   )}
                   <Link className="header-btn-ghost" href="/admin/runtime/runs">

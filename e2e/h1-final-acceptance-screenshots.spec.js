@@ -59,7 +59,11 @@ test.describe("H.1 final acceptance Preview screenshots", () => {
     await shot(page, "08-objectives-default");
     const archivedToggle = page.getByTestId("obj-show-cancelled").first();
     if (await archivedToggle.count()) {
-      await archivedToggle.click({ force: true });
+      await archivedToggle.evaluate((el) => {
+        if (el instanceof HTMLInputElement && !el.checked) {
+          el.click();
+        }
+      });
     }
     await shot(page, "09-objectives-archived-toggle");
 

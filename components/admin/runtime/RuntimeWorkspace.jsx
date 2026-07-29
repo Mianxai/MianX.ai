@@ -586,8 +586,9 @@ function AgentsPanel({ call, projectId, opsSummary: _opsSummary }) {
             </p>
           </div>
           <div className="runtime-card runtime-card-compact">
-            <h3>Future Capacity Slots</h3>
+            <h3>Capacity Inventory</h3>
             <p className="runtime-metric">445</p>
+            <p className="runtime-muted">Planning capacity only — not running agents.</p>
           </div>
         </div>
         <ul className="runtime-list">
@@ -900,7 +901,7 @@ function TaskCreator({ call, projectId, onCreated, opsSummary }) {
       claimProbe.includes("founder production proof")
     ) {
       setErr(
-        "Manual runtime tasks cannot claim integration_proof. Use Integration for Founder Production Proof work."
+        "Manual runtime tasks cannot claim integration_proof. Use Founder Proof for Founder Production Proof work."
       );
       return;
     }
@@ -1148,21 +1149,20 @@ function RunsPanel({ call, projectId, opsSummary }) {
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
   if (items.length === 0) {
     const next = opsSummary?.next_founder_action;
-    const integrationHref = `/admin/integration?project_id=${encodeURIComponent(projectId)}`;
+    const proofHref = `/admin/integration?project_id=${encodeURIComponent(projectId)}`;
     return (
       <EmptyState
         title="No Agent Runtime Runs yet"
-        reason="This list shows Agent Runtime Runs (queued agent executions), not Integration Founder Proof Runs. Proof progress lives under Integration."
+        reason="This list shows Agent Runtime Runs (queued agent executions), not Founder Proof runs. Proof progress lives under Founder Proof."
         nextAction={
           next?.reason ||
           next?.label ||
-          "Continue the Founder Production Proof from Integration when that is the active path."
+          "Continue the Founder Production Proof when that is the active path."
         }
-        projectLabel={projectId}
         cta={
           <>
-            <Link className="header-btn" href={integrationHref}>
-              Open Integration
+            <Link className="header-btn" href={proofHref}>
+              Open Founder Proof
             </Link>
             {next?.href ? (
               <Link className="header-btn-ghost" href={next.href}>
@@ -1281,48 +1281,89 @@ function ApprovalsPanel({ call, projectId, opsSummary: opsSummaryProp }) {
   if (items.length === 0) {
     const next = opsSummary?.next_founder_action;
     const canonical = opsSummary?.canonical_integration_run;
-    const objective =
-      opsSummary?.objectives?.find(
-        (o) => o.is_canonical || o.source_type === "integration_proof"
-      ) ||
-      opsSummary?.objectives?.[0] ||
-      null;
-    const integrationHref = `/admin/integration?project_id=${encodeURIComponent(projectId)}`;
-    return (
+    const stage = canonical?.stage || canonical?.current_stage || null;
+    const proofStatus = canonical?.proof_status || canonical?.status || null;
+    const awaitingPlanApproval =
+      stage === "founder_approval_required" ||
+      proofStatus === "awaiting_plan_approval" ||
+      /review\s+plan/i.test(String(next?.label || "")) ||
+      /awaiting_plan_approval|founder_approval_required/i.test(
+        String(next?.code || next?.id || "")
+      );
+    const planHref = `/admin/integration?project_id=${encodeURIComponent(projectId)}&tab=plan${
+      canonical?.id ? `&run_id=${encodeURIComponent(canonical.id)}` : ""
+    }`;
+    const proofHref = `/admin/integration?project_id=${encodeURIComponent(projectId)}`;
+
+    const runtimeEmpty = (
       <EmptyState
-        title="No approval is currently due"
-        reason={[
-          next?.reason || next?.label || "No Founder approval is waiting in runtime for this project.",
-          objective ? `Canonical objective: ${objective.title}.` : null,
-          canonical
-            ? `Canonical run: ${canonical.id}${canonical.stage_label || canonical.stage ? ` · ${canonical.stage_label || canonical.stage}` : ""}.`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        nextAction={
-          next?.label ||
-          "Continue the Founder Production Proof from Integration when that is the active path."
+        title="No agent runtime approvals are currently due."
+        reason={
+          awaitingPlanApproval
+            ? "Protected-action runtime approvals are separate from Founder Proof plan approval."
+            : next?.reason ||
+              next?.label ||
+              "No Founder approval is waiting in runtime for this project."
         }
-        projectLabel={projectId}
+        nextAction={
+          awaitingPlanApproval
+            ? null
+            : next?.label ||
+              "Continue the Founder Production Proof when that is the active path."
+        }
         cta={
-          <>
-            <Link className="header-btn" href={integrationHref}>
-              Open Integration
-            </Link>
-            {next?.href ? (
-              <Link className="header-btn-ghost" href={next.href}>
-                {next.label || "Next Founder action"}
+          awaitingPlanApproval ? null : (
+            <>
+              <Link className="header-btn" href={proofHref}>
+                Open Founder Proof
               </Link>
-            ) : (
-              <Link className="header-btn-ghost" href="/admin/inbox">
-                Founder Inbox
-              </Link>
-            )}
-          </>
+              {next?.href ? (
+                <Link className="header-btn-ghost" href={next.href}>
+                  {next.label || "Next Founder action"}
+                </Link>
+              ) : (
+                <Link className="header-btn-ghost" href="/admin/inbox">
+                  Founder Inbox
+                </Link>
+              )}
+            </>
+          )
         }
       />
     );
+
+    if (awaitingPlanApproval) {
+      return (
+        <div className="runtime-approvals-split" data-testid="approvals-founder-proof-pending">
+          <section
+            className="runtime-item runtime-approval-card"
+            aria-labelledby="founder-proof-approval-h"
+          >
+            <h3 id="founder-proof-approval-h">Founder Proof Approval</h3>
+            <p className="runtime-muted">
+              <strong>Current action:</strong> Review and approve deterministic plan
+            </p>
+            <p className="runtime-muted">
+              <strong>Status:</strong> Waiting for Founder Plan Approval
+            </p>
+            <p className="runtime-muted" role="note">
+              Approval moves proof to Simulation Approval only; it does not start simulation.
+            </p>
+            <div className="runtime-item-actions">
+              <Link className="header-btn" href={planHref}>
+                Review Plan
+              </Link>
+            </div>
+          </section>
+          <section aria-labelledby="agent-runtime-approvals-h">
+            <h3 id="agent-runtime-approvals-h">Agent Runtime Approvals</h3>
+            {runtimeEmpty}
+          </section>
+        </div>
+      );
+    }
+
+    return runtimeEmpty;
   }
 
   return (

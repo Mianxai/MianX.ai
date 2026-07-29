@@ -102,7 +102,12 @@ describe("AdminShell", () => {
         <p>body</p>
       </AdminShell>
     );
-    await user.click(screen.getByTestId("advanced-ops-toggle"));
+    const toggle = screen.getByTestId("advanced-ops-toggle");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle.textContent).toMatch(/▸/);
+    await user.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(toggle.textContent).toMatch(/▾/);
     expect(screen.getByRole("link", { name: /Agent Instances/i })).toHaveAttribute(
       "href",
       "/admin/runtime/agents"
@@ -126,6 +131,22 @@ describe("AdminShell", () => {
     expect(screen.getByRole("link", { name: /Settings/i })).toHaveAttribute(
       "href",
       "/admin/settings"
+    );
+  });
+
+  it("auto-expands Advanced Operations when a child route is active", () => {
+    pathname = "/admin/runtime/queue";
+    render(
+      <AdminShell title="Queue">
+        <p>body</p>
+      </AdminShell>
+    );
+    expect(screen.getByTestId("advanced-ops-toggle").getAttribute("aria-expanded")).toBe(
+      "true"
+    );
+    expect(screen.getByRole("link", { name: /^Queue$/i })).toHaveAttribute(
+      "aria-current",
+      "page"
     );
   });
 

@@ -50,6 +50,7 @@ describe("FounderActionBanner", () => {
             reason: "Waiting for Founder Plan Approval",
             href: "/admin/integration?tab=plan",
             severity: "action_required",
+            id: "review_plan",
           },
           canonical_integration_run: {
             id: "run-1",
@@ -61,7 +62,18 @@ describe("FounderActionBanner", () => {
       />
     );
     expect(screen.getByTestId("founder-action-banner")).toBeTruthy();
+    expect(screen.getByTestId("founder-action-banner-badge").textContent).toMatch(
+      /FOUNDER PROOF/
+    );
+    expect(screen.getByTestId("founder-action-banner-status").textContent).toMatch(
+      /Waiting for Founder Plan Approval/i
+    );
+    expect(screen.getByTestId("founder-action-banner-explain").textContent).toMatch(
+      /Simulation will not start automatically/i
+    );
     expect(screen.getByTestId("founder-action-banner-cta").textContent).toMatch(/Review Plan/);
     expect(screen.queryByTestId("founder-quick-start")).toBeNull();
+    expect(screen.queryByText(/What will not happen/i)).toBeNull();
+    expect(screen.queryByText(/Current objective/i)).toBeNull();
   });
 });

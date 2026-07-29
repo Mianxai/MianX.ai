@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
@@ -24,6 +24,131 @@ async function fetchJson(path, router) {
   return { ok: res.ok, data };
 }
 
+function DepartmentDetailDrawer({ detail, projectId, hrefWithProject, onClose }) {
+  const titleId = useId();
+  const closeRef = useRef(null);
+
+  useEffect(() => {
+    if (!detail) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", onKey);
+    closeRef.current?.focus?.();
+    return () => window.removeEventListener("keydown", onKey);
+  }, [detail, onClose]);
+
+  if (!detail) return null;
+
+  return (
+    <div className="cc-drawer-root" role="presentation">
+      <button
+        type="button"
+        className="cc-drawer-backdrop"
+        aria-label="Close department detail"
+        onClick={onClose}
+      />
+      <aside
+        className="cc-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <div className="cc-drawer-head">
+          <div>
+            <p className="cc-eyebrow">Department</p>
+            <h2 id={titleId}>{detail.name}</h2>
+          </div>
+          <button
+            ref={closeRef}
+            type="button"
+            className="header-btn-ghost"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+        <div className="cc-drawer-body">
+          <p className="cc-muted">{detail.mission}</p>
+          {detail.proposedForProof ? (
+            <span
+              className="admin-status-badge warning"
+              title="Agents in this department are proposed for the current Founder Proof"
+            >
+              Proposed for current proof
+            </span>
+          ) : null}
+          <dl className="cc-detail-dl">
+            <div>
+              <dt>Lead</dt>
+              <dd>
+                {detail.directorTitle || "—"}
+                {detail.executiveAgentSlug
+                  ? ` · ${detail.executiveAgentSlug}`
+                  : ""}
+              </dd>
+            </div>
+            <div>
+              <dt>Executable / Active / Idle / Blocked</dt>
+              <dd>
+                {detail.executableCount} · {detail.working} · {detail.idle} ·{" "}
+                {detail.blocked}
+              </dd>
+            </div>
+            <div>
+              <dt>Capacity Inventory</dt>
+              <dd>{detail.capacity} planned slots (not created agents)</dd>
+            </div>
+            <div>
+              <dt>Live agents</dt>
+              <dd>
+                {detail.agents.length
+                  ? detail.agents
+                      .slice(0, 24)
+                      .map((a) => `${a.name || a.slug} (${a.status || "idle"})`)
+                      .join(", ")
+                  : "none in scope"}
+              </dd>
+            </div>
+          </dl>
+          {detail.agents.length ? (
+            <ul className="admin-compact-list">
+              {detail.agents.slice(0, 24).map((a) => (
+                <li key={a.slug || a.id}>
+                  <code>{a.status || "idle"}</code> {a.name || a.slug}
+                  {a.proposed_for_proof ? (
+                    <span className="cc-muted"> · proposed</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState
+              title="No live assignments"
+              reason={
+                projectId
+                  ? "No agents currently mapped to this department for the selected project."
+                  : "Select a project to see live assignments."
+              }
+              projectLabel={projectId || "All projects"}
+              cta={
+                <Link
+                  className="header-btn"
+                  href={hrefWithProject(
+                    `/admin/agents?department=${encodeURIComponent(detail.slug)}`
+                  )}
+                >
+                  Open Agents
+                </Link>
+              }
+            />
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 export default function DepartmentsClient() {
   const router = useRouter();
   const { projectId, setProjectId, hrefWithProject } = useAdminProject();
@@ -35,6 +160,8 @@ export default function DepartmentsClient() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,6 +181,20 @@ export default function DepartmentsClient() {
     load();
   }, [load]);
 
+  const proposedDeptSlugs = useMemo(() => {
+    const fromOps = opsSummary?.proposed_for_proof?.department_slugs || [];
+    return new Set(
+      (Array.isArray(fromOps) ? fromOps : []).map((s) =>
+        String(s).toLowerCase().replace(/\s+/g, "_")
+      )
+    );
+  }, [opsSummary]);
+
+  const proposedAgentSlugs = useMemo(() => {
+    const fromOps = opsSummary?.proposed_for_proof?.agent_slugs || [];
+    return new Set(Array.isArray(fromOps) ? fromOps : []);
+  }, [opsSummary]);
+
   const rows = useMemo(() => {
     const agents = cc?.agents || [];
     const byDept = new Map();
@@ -67,6 +208,13 @@ export default function DepartmentsClient() {
       const working = list.filter((a) => a.status === "working").length;
       const idle = list.filter((a) => a.status === "idle" || !a.status).length;
       const executable = list.filter((a) => a.executable !== false).length;
+      const proposedForProof =
+        proposedDeptSlugs.has(d.slug) ||
+        list.some(
+          (a) =>
+            a.proposed_for_proof === true ||
+            (a.slug && proposedAgentSlugs.has(a.slug))
+        );
       return {
         ...d,
         agents: list,
@@ -77,9 +225,25 @@ export default function DepartmentsClient() {
         blocked: list.filter((a) =>
           ["blocked", "waiting", "failed"].includes(a.status)
         ).length,
+        proposedForProof,
       };
     });
-  }, [cc]);
+  }, [cc, proposedDeptSlugs, proposedAgentSlugs]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((d) => {
+      if (statusFilter === "active" && d.working <= 0) return false;
+      if (statusFilter === "idle" && !(d.idle > 0 && d.working <= 0)) return false;
+      if (!q) return true;
+      return (
+        d.name.toLowerCase().includes(q) ||
+        d.slug.toLowerCase().includes(q) ||
+        (d.directorTitle || "").toLowerCase().includes(q) ||
+        (d.mission || "").toLowerCase().includes(q)
+      );
+    });
+  }, [rows, search, statusFilter]);
 
   const detail = selected
     ? rows.find((r) => r.slug === selected) || null
@@ -104,8 +268,8 @@ export default function DepartmentsClient() {
       <div className="cc-page admin-page-compact">
         <p className="cc-muted">
           Workforce departments from the canonical catalog, enriched with live
-          agent status when a project is selected. Capacity slots are planning
-          inventory — not created agents.
+          agent status when a project is selected. Capacity Inventory is planning
+          capacity only — not created agents.
         </p>
         <FounderActionBanner summary={opsSummary} projectId={projectId} />
         {loading && !cc ? (
@@ -126,162 +290,115 @@ export default function DepartmentsClient() {
             nextAction="Check workforce catalog configuration."
           />
         ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th scope="col">Department</th>
-                  <th scope="col">Lead</th>
-                  <th scope="col">Executable agents</th>
-                  <th scope="col">Active-idle</th>
-                  <th scope="col">Future capacity slots</th>
-                  <th scope="col">Blocked</th>
-                  <th scope="col"> </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((d) => (
-                  <tr key={d.slug}>
-                    <td>
-                      <strong>{d.name}</strong>
-                      <div className="cc-muted">{d.mission?.slice(0, 80)}</div>
-                    </td>
-                    <td>{d.directorTitle || d.executiveAgentSlug || "—"}</td>
-                    <td>{d.executableCount}</td>
-                    <td>
-                      {d.working} / {d.idle}
-                    </td>
-                    <td>{d.capacity}</td>
-                    <td>{d.blocked}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="header-btn-ghost"
-                        onClick={() => setSelected(d.slug)}
+          <>
+            <div className="admin-toolbar" role="search">
+              <label className="admin-toolbar-field">
+                <span className="sr-only">Search departments</span>
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search departments…"
+                  aria-label="Search departments"
+                />
+              </label>
+              <label className="admin-toolbar-field">
+                <span className="sr-only">Filter by activity</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  aria-label="Filter by active or idle"
+                >
+                  <option value="all">All activity</option>
+                  <option value="active">Active only</option>
+                  <option value="idle">Idle only</option>
+                </select>
+              </label>
+            </div>
+            <div className="admin-table-wrap admin-table-wrap--sticky">
+              <table className="admin-data-table admin-data-table--dense">
+                <thead>
+                  <tr>
+                    <th scope="col">Department</th>
+                    <th scope="col">Lead</th>
+                    <th scope="col">Executable Agents</th>
+                    <th scope="col">Active</th>
+                    <th scope="col">Idle</th>
+                    <th
+                      scope="col"
+                      title="Planning capacity only — these are not created or running agents."
+                    >
+                      Capacity Inventory
+                      <span
+                        className="admin-th-hint"
+                        title="Planning capacity only — these are not created or running agents."
+                        aria-label="Planning capacity only — these are not created or running agents."
                       >
-                        Open
-                      </button>
-                    </td>
+                        ⓘ
+                      </span>
+                    </th>
+                    <th scope="col">Blocked</th>
+                    <th scope="col">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filtered.map((d) => (
+                    <tr
+                      key={d.slug}
+                      className={d.proposedForProof ? "admin-row--proposed" : undefined}
+                    >
+                      <td>
+                        <strong>{d.name}</strong>
+                        {d.proposedForProof ? (
+                          <span
+                            className="admin-inline-chip"
+                            title="Proposed for current Founder Proof"
+                          >
+                            Proof
+                          </span>
+                        ) : null}
+                        <div className="cc-muted">{d.mission?.slice(0, 80)}</div>
+                      </td>
+                      <td>{d.directorTitle || d.executiveAgentSlug || "—"}</td>
+                      <td>{d.executableCount}</td>
+                      <td>{d.working}</td>
+                      <td>{d.idle}</td>
+                      <td
+                        title="Planning capacity only — these are not created or running agents."
+                      >
+                        {d.capacity}
+                      </td>
+                      <td>{d.blocked}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="header-btn-ghost"
+                          onClick={() => setSelected(d.slug)}
+                        >
+                          Open
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {!filtered.length ? (
+                    <tr>
+                      <td colSpan={8} className="cc-muted">
+                        No departments match the current search or filter.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
-        {detail ? (
-          <section className="cc-card" aria-label="Department detail">
-            <h2>{detail.name}</h2>
-            <p>{detail.mission}</p>
-            <dl className="cc-detail-dl">
-              <div>
-                <dt>Lead</dt>
-                <dd>
-                  {detail.directorTitle || "—"}
-                  {detail.executiveAgentSlug
-                    ? ` · executive ${detail.executiveAgentSlug}`
-                    : ""}
-                </dd>
-              </div>
-              <div>
-                <dt>Agents (live)</dt>
-                <dd>
-                  {detail.agents.length
-                    ? detail.agents
-                        .slice(0, 24)
-                        .map((a) => `${a.name || a.slug} (${a.status || "idle"})`)
-                        .join(", ")
-                    : "none in scope"}
-                </dd>
-              </div>
-              <div>
-                <dt>Allocation</dt>
-                <dd>
-                  Executable {detail.executableCount} · Active {detail.working} · Idle{" "}
-                  {detail.idle} · Blocked {detail.blocked}
-                </dd>
-              </div>
-              <div>
-                <dt>Capabilities</dt>
-                <dd>
-                  {(detail.teams || []).length
-                    ? `Teams: ${(detail.teams || []).join(", ")}`
-                    : null}
-                  {(detail.outputs || []).length
-                    ? `${(detail.teams || []).length ? " · " : ""}Outputs: ${(detail.outputs || []).slice(0, 6).join(", ")}`
-                    : null}
-                  {!detail.teams?.length && !detail.outputs?.length
-                    ? detail.inventoryCompleteness
-                      ? `Inventory: ${detail.inventoryCompleteness}`
-                      : "Catalogue capacity only — no live capability assignment listed"
-                    : null}
-                </dd>
-              </div>
-              <div>
-                <dt>Tasks</dt>
-                <dd>
-                  {detail.agents.filter((a) => a.currentTask || a.taskId).length ||
-                    "No live task assignments in this department scope"}
-                </dd>
-              </div>
-              <div>
-                <dt>Blockers</dt>
-                <dd>
-                  {detail.blocked
-                    ? detail.agents
-                        .filter((a) =>
-                          ["blocked", "waiting", "failed"].includes(a.status)
-                        )
-                        .map((a) => `${a.name || a.slug}: ${a.status}`)
-                        .join("; ") || `${detail.blocked} blocked`
-                    : "None"}
-                </dd>
-              </div>
-              <div>
-                <dt>Future capacity slots</dt>
-                <dd>
-                  {detail.capacity} planned slots (not created agents)
-                </dd>
-              </div>
-            </dl>
-            {detail.agents.length ? (
-              <ul>
-                {detail.agents.slice(0, 24).map((a) => (
-                  <li key={a.slug || a.id}>
-                    <code>{a.status || "idle"}</code> {a.name || a.slug}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <EmptyState
-                title="No live assignments"
-                reason={
-                  projectId
-                    ? "No agents currently mapped to this department for the selected project."
-                    : "Select a project to see live assignments."
-                }
-                projectLabel={projectId || "All projects"}
-                cta={
-                  <Link
-                    className="header-btn"
-                    href={hrefWithProject(
-                      `/admin/agents?department=${encodeURIComponent(detail.slug)}`
-                    )}
-                  >
-                    Open Agents
-                  </Link>
-                }
-              />
-            )}
-            <button
-              type="button"
-              className="header-btn-ghost"
-              onClick={() => setSelected(null)}
-            >
-              Close detail
-            </button>
-          </section>
-        ) : null}
+        <DepartmentDetailDrawer
+          detail={detail}
+          projectId={projectId}
+          hrefWithProject={hrefWithProject}
+          onClose={() => setSelected(null)}
+        />
       </div>
     </AdminShell>
   );

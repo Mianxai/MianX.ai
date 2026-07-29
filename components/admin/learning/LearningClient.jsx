@@ -24,6 +24,19 @@ async function fetchJson(path, router, opts) {
   return { ok: res.ok, data };
 }
 
+function bannerHasReviewPlan(opsSummary) {
+  const next = opsSummary?.next_founder_action;
+  return (
+    next?.severity === "action_required" &&
+    /review\s+plan/i.test(String(next?.label || ""))
+  );
+}
+
+function projectDisplayName(projects, projectId) {
+  if (!projectId) return null;
+  return projects.find((p) => p.id === projectId)?.name || null;
+}
+
 export default function LearningClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -83,6 +96,9 @@ export default function LearningClient() {
     setSuccess(`Learning ${decision}`);
     await load();
   }
+
+  const skipDuplicateReviewPlan = bannerHasReviewPlan(opsSummary);
+  const projectLabel = projectDisplayName(projects, projectId);
 
   return (
     <AdminShell
@@ -158,59 +174,44 @@ export default function LearningClient() {
           </ul>
         ) : data ? (
           <EmptyState
-            title="No learning candidates"
-            reason="No verified learning candidates for this scope. Learning never auto-applies to prompts, capabilities, or production policy."
-            configuration={[
-              (() => {
-                const objective =
-                  opsSummary?.objectives?.find(
-                    (o) => o.is_canonical || o.source_type === "integration_proof"
-                  ) || opsSummary?.objectives?.[0];
-                return objective
-                  ? `Canonical objective: ${objective.title}`
-                  : "No canonical objective in scope yet.";
-              })(),
-              opsSummary?.canonical_integration_run
-                ? `Proof stage: ${
-                    opsSummary.canonical_integration_run.stage_label ||
-                    opsSummary.canonical_integration_run.stage ||
-                    "—"
-                  }`
-                : "Proof stage: none (no active Founder Proof).",
-              opsSummary?.next_founder_action?.reason
-                ? `Prerequisite: ${opsSummary.next_founder_action.reason}`
-                : "Prerequisite: complete Founder gates before learning candidates appear.",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-            nextAction={
-              opsSummary?.next_founder_action?.label
-                ? `Next Founder action: ${opsSummary.next_founder_action.label}`
-                : "Candidates appear after reviewed runtime outcomes produce lessons."
-            }
-            projectLabel={projectId || "All projects"}
+            title="No learning candidates yet"
+            reason="Nothing auto-promotes."
+            projectLabel={projectLabel}
             cta={
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                {opsSummary?.next_founder_action?.href &&
-                opsSummary.next_founder_action.severity === "action_required" ? (
-                  <Link
-                    className="header-btn"
-                    href={
-                      projectId &&
-                      !String(opsSummary.next_founder_action.href).includes("project_id=")
-                        ? `${opsSummary.next_founder_action.href}${
-                            opsSummary.next_founder_action.href.includes("?") ? "&" : "?"
-                          }project_id=${encodeURIComponent(projectId)}`
-                        : opsSummary.next_founder_action.href
-                    }
-                  >
-                    {opsSummary.next_founder_action.label}
-                  </Link>
-                ) : null}
+              skipDuplicateReviewPlan ? (
                 <Link className="header-btn-ghost" href="/admin/memory">
                   Open Memory
                 </Link>
-              </div>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                  {opsSummary?.next_founder_action?.href &&
+                  opsSummary.next_founder_action.severity === "action_required" &&
+                  !/review\s+plan/i.test(
+                    String(opsSummary.next_founder_action.label || "")
+                  ) ? (
+                    <Link
+                      className="header-btn"
+                      href={
+                        projectId &&
+                        !String(opsSummary.next_founder_action.href).includes(
+                          "project_id="
+                        )
+                          ? `${opsSummary.next_founder_action.href}${
+                              opsSummary.next_founder_action.href.includes("?")
+                                ? "&"
+                                : "?"
+                            }project_id=${encodeURIComponent(projectId)}`
+                          : opsSummary.next_founder_action.href
+                      }
+                    >
+                      {opsSummary.next_founder_action.label}
+                    </Link>
+                  ) : null}
+                  <Link className="header-btn-ghost" href="/admin/memory">
+                    Open Memory
+                  </Link>
+                </div>
+              )
             }
           />
         ) : null}

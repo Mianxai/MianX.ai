@@ -163,7 +163,9 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
           mode: "automatic",
           automaticProcessing: true,
           platform: "github_actions",
-          lastTickAt: new Date().toISOString(),
+          lastTickAt: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+          expectedIntervalMs: 300000,
+          expectedIntervalSec: 300,
         },
         providers: { anthropic: { status: "unconfigured" } },
         agentInventory: { executable: 36, executableCount: 36, catalogCount: 43 },
@@ -302,8 +304,19 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
         return json(route, 200, {
           ok: true,
           engine_version: "phase-f-test",
-          counts: { plans: 0, pending_approval: 0, approved: 0 },
-          note: "Planning Intelligence is read-mostly until Founder approval. Nothing executes.",
+          counts: { plans: 0, pending_approval: 0, approved: 0, draft: 0 },
+          founder_proof_plans: {
+            awaiting_approval: 1,
+            approved: 0,
+            has_awaiting_plan: true,
+            canonical_status: "awaiting_plan_approval",
+          },
+          advanced_planning_packages: {
+            draft: 0,
+            awaiting_approval: 0,
+            approved: 0,
+          },
+          note: "Founder Proof plan awaits approval. Advanced Separate Planning Packages remain empty.",
         });
       }
       if (action === "list" || action === "plans") {
@@ -316,6 +329,90 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
         return json(route, 200, { ok: true, audit: [], memory: [], learning: [] });
       }
       return json(route, 200, { ok: true, plans: [], projects: PROJECTS });
+    }
+    if (path.startsWith("/api/admin/knowledge")) {
+      return json(route, 200, {
+        ok: true,
+        available: true,
+        projectId: url.searchParams.get("project_id") || projectId,
+        catalogue_counts: {
+          industries: 3,
+          business_models: 7,
+          capabilities: 12,
+          departments: 20,
+          modules: 14,
+          workflows: 3,
+          compliance: 3,
+          architecture: 9,
+          risks: 10,
+          kpis: 5,
+        },
+        sections: {
+          organization: {
+            label: "Organization operating knowledge",
+            note: "Platform catalogues.",
+            href: "/admin/templates",
+            action_label: "Open Templates catalogue",
+            items: [{ id: "org-1", action: "global_template_catalogue" }],
+          },
+          global_templates: {
+            label: "Global Template Catalogue",
+            note: "Reusable platform templates.",
+            href: "/admin/templates",
+            action_label: "Open Templates",
+            items: [{ id: "cat-industries", action: "industries", resourceType: "catalogue", resourceId: "3" }],
+          },
+          project: {
+            label: "Project knowledge",
+            note: "Project-scoped trail.",
+            href: "/admin/runtime/audit",
+            action_label: "Open Audit",
+            items: [],
+            available: true,
+          },
+          workflow_outputs: {
+            label: "Workflow outputs",
+            href: "/admin/outputs",
+            action_label: "Open Outputs",
+            items: [],
+          },
+          agent_results: {
+            label: "Agent results",
+            href: "/admin/runtime/runs",
+            action_label: "Open Agent Results",
+            items: [],
+          },
+          integration_evidence: {
+            label: "Founder Proof evidence",
+            href: "/admin/integration",
+            action_label: "Open Founder Proof Evidence",
+            items: [],
+          },
+          verified_memory: {
+            label: "Verified memory",
+            href: "/admin/memory",
+            action_label: "Open Memory",
+            items: [],
+          },
+        },
+      });
+    }
+    if (path.startsWith("/api/admin/analytics")) {
+      return json(route, 200, {
+        ok: true,
+        scope: "project",
+        projectId: url.searchParams.get("project_id") || projectId,
+        metrics: {
+          active_founder_proofs: { value: 1, available: true },
+          waiting_for_founder_action: { value: 1, available: true },
+          completed_proofs: { value: 0, available: true },
+          cancelled_proofs: { value: 1, available: true },
+          historical_integration_runs: { value: 3, available: true },
+          duplicate_active_runs: { value: 0, available: true },
+          runtime_tasks: { value: 0, available: true },
+          runtime_agent_runs: { value: 0, available: true },
+        },
+      });
     }
     if (path.startsWith("/api/admin/workforce")) {
       return json(route, 200, {

@@ -36,6 +36,24 @@ function ScopeBadge({ scope }) {
   );
 }
 
+function MetricCard({ label, value, scope, tone = "default", hint }) {
+  const display =
+    value === null || value === undefined || Number.isNaN(value) ? "—" : value;
+  return (
+    <div
+      className={`analytics-metric-card analytics-metric-card--${tone}`}
+      data-testid={`analytics-metric-${label.replace(/\s+/g, "-").toLowerCase()}`}
+    >
+      <div className="analytics-metric-card-head">
+        <span className="analytics-metric-label">{label}</span>
+        {scope ? <ScopeBadge scope={scope} /> : null}
+      </div>
+      <div className="analytics-metric-value">{display}</div>
+      {hint ? <p className="cc-muted analytics-metric-hint">{hint}</p> : null}
+    </div>
+  );
+}
+
 function DistributionList({ title, id, entries, scope }) {
   const max = useMemo(
     () => (entries.length ? Math.max(...entries.map(([, v]) => v), 1) : 1),
@@ -141,6 +159,9 @@ export default function AnalyticsPage() {
         : null)
   );
   const pm = data?.projectMetrics;
+  const fp = data?.founderProofMetrics;
+  const proofScope = fp?.scope || (projectId ? "selected_project" : "organisation");
+  const runtimeScope = projectId ? "selected_project" : "organisation";
 
   return (
     <AdminShell
@@ -190,19 +211,80 @@ export default function AnalyticsPage() {
         variant="section"
         label="Loading analytics…"
       />
+
+      {fp?.available !== false && data ? (
+        <section
+          className="analytics-metrics-section"
+          aria-labelledby="analytics-proof-metrics"
+        >
+          <div className="analytics-metrics-heading">
+            <h2 id="analytics-proof-metrics">Founder Proof metrics</h2>
+            <ScopeBadge scope={proofScope} />
+          </div>
+          <div className="analytics-metrics-grid">
+            <MetricCard
+              label="Active Founder Proofs"
+              value={fp?.active_founder_proofs}
+              scope={proofScope}
+              tone="active"
+            />
+            <MetricCard
+              label="Waiting for Founder Action"
+              value={fp?.waiting_for_founder_action}
+              scope={proofScope}
+              tone="waiting"
+            />
+            <MetricCard
+              label="Completed Proofs"
+              value={fp?.completed_proofs}
+              scope={proofScope}
+              tone="completed"
+            />
+            <MetricCard
+              label="Cancelled Proofs"
+              value={fp?.cancelled_proofs}
+              scope={proofScope}
+              tone="cancelled"
+              hint="Historical only — not active"
+            />
+            <MetricCard
+              label="Founder Proof / Historical Runs"
+              value={fp?.historical_integration_runs}
+              scope={proofScope}
+              tone="historical"
+            />
+            <MetricCard
+              label="Duplicate Active Runs"
+              value={fp?.duplicate_active_runs}
+              scope={proofScope}
+              tone="warning"
+            />
+            <MetricCard
+              label="Runtime Tasks"
+              value={data?.runtimeTasks?.value}
+              scope={data?.runtimeTasks?.scope || runtimeScope}
+              tone="runtime"
+            />
+            <MetricCard
+              label="Runtime Agent Runs"
+              value={data?.runtimeAgentRuns?.value}
+              scope={data?.runtimeAgentRuns?.scope || runtimeScope}
+              tone="runtime"
+            />
+          </div>
+        </section>
+      ) : null}
+
       {pm ? (
         <section className="cc-card" aria-labelledby="analytics-project-metrics">
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <h2 id="analytics-project-metrics">Selected project metrics</h2>
+            <h2 id="analytics-project-metrics">Selected project detail</h2>
             <ScopeBadge scope="selected_project" />
           </div>
           <ul className="cc-muted">
             <li>Canonical objectives: {pm.canonical_objectives ?? "—"}</li>
-            <li>Integration runs: {pm.integration_runs ?? "—"}</li>
             <li>Current stage: {pm.current_stage || "—"}</li>
-            <li>Duplicate run count: {pm.duplicate_run_count ?? 0}</li>
             <li>Pending Founder actions: {pm.pending_founder_actions ?? 0}</li>
-            <li>Runtime tasks (this project): {pm.runtime_tasks ?? 0}</li>
             <li>Approvals pending: {pm.approvals_pending ?? 0}</li>
           </ul>
           {pm.next_founder_action?.href ? (

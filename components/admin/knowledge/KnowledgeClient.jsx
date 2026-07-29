@@ -26,6 +26,16 @@ async function fetchJson(path, router) {
   return { ok: res.ok, data };
 }
 
+function projectDisplayName(projects, projectId) {
+  if (!projectId) return null;
+  return projects.find((p) => p.id === projectId)?.name || null;
+}
+
+function catalogueTotal(counts) {
+  if (!counts || typeof counts !== "object") return 0;
+  return Object.values(counts).reduce((sum, n) => sum + (Number(n) || 0), 0);
+}
+
 export default function KnowledgeClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -58,6 +68,10 @@ export default function KnowledgeClient() {
     load();
   }, [load]);
 
+  const projectLabel = projectDisplayName(projects, projectId);
+  const counts = data?.catalogue_counts || null;
+  const countsTotal = catalogueTotal(counts);
+
   return (
     <AdminShell
       title="Knowledge"
@@ -89,7 +103,7 @@ export default function KnowledgeClient() {
       <div className="cc-page">
         <p className="cc-muted">
           Distinguishes organisation operating knowledge, global templates, project knowledge,
-          workflow outputs, agent results, Integration evidence, and verified memory.
+          workflow outputs, agent results, Founder Proof evidence, and verified memory.
         </p>
         <FounderActionBanner summary={opsSummary} projectId={projectId} />
         {data?.canonical_objective ? (
@@ -111,42 +125,89 @@ export default function KnowledgeClient() {
         {data ? (
           <>
             <p className="cc-muted">{data.isolationNote}</p>
-            {Object.entries(data.sections || {}).map(([key, section]) => (
-              <section key={key} className="cc-card" aria-labelledby={`kn-${key}`}>
-                <div className="cc-card-head">
-                  <h2 id={`kn-${key}`}>{section.label}</h2>
-                  <Link href={section.href} className="header-btn-ghost">
-                    {section.action_label || "Open"}
-                  </Link>
-                </div>
-                <p className="cc-muted">{section.note}</p>
-                {section.available === false ? (
-                  <p className="cc-unavailable">Data unavailable</p>
-                ) : null}
-                {Array.isArray(section.items) && section.items.length > 0 ? (
-                  <ul className="cc-link-row" style={{ flexDirection: "column", alignItems: "flex-start" }}>
-                    {section.items.slice(0, 8).map((item) => (
-                      <li key={item.id} className="cc-muted">
-                        {item.action || item.agentSlug || item.id}
-                        {item.createdAt ? ` · ${item.createdAt}` : ""}
-                      </li>
-                    ))}
-                  </ul>
-                ) : section.available !== false ? (
-                  <EmptyState
-                    title={`No ${section.label || key} yet`}
-                    reason="No audit or run results in this section for the current scope."
-                    nextAction="Run project work, then reopen Knowledge to inspect stored results."
-                    projectLabel={projectId || "All projects"}
-                    cta={
-                      <Link className="header-btn-ghost" href={section.href}>
-                        Open
+            {Object.entries(data.sections || {}).map(([key, section]) => {
+              const isGlobalTemplates = key === "global_templates";
+              const hasCatalogue =
+                isGlobalTemplates &&
+                (countsTotal > 0 ||
+                  (Array.isArray(section.items) && section.items.length > 0));
+              const items = Array.isArray(section.items) ? section.items : [];
+              const showEmpty =
+                section.available !== false && !hasCatalogue && items.length === 0;
+
+              return (
+                <section key={key} className="cc-card" aria-labelledby={`kn-${key}`}>
+                  <div className="cc-card-head">
+                    <h2 id={`kn-${key}`}>{section.label}</h2>
+                    {section.href ? (
+                      <Link href={section.href} className="header-btn-ghost">
+                        {section.action_label || "Open"}
                       </Link>
-                    }
-                  />
-                ) : null}
-              </section>
-            ))}
+                    ) : null}
+                  </div>
+                  <p className="cc-muted">{section.note}</p>
+                  {section.available === false ? (
+                    <p className="cc-unavailable">Data unavailable</p>
+                  ) : null}
+                  {isGlobalTemplates && hasCatalogue ? (
+                    <div data-testid="knowledge-catalogue-counts">
+                      {counts ? (
+                        <ul
+                          className="cc-link-row"
+                          style={{ flexDirection: "column", alignItems: "flex-start" }}
+                        >
+                          {Object.entries(counts).map(([k, n]) => (
+                            <li key={k} className="cc-muted">
+                              {String(k).replace(/_/g, " ")}: {n}
+                            </li>
+                          ))}
+                          <li className="cc-muted">
+                            <strong>Total:</strong> {countsTotal}
+                          </li>
+                        </ul>
+                      ) : (
+                        <ul
+                          className="cc-link-row"
+                          style={{ flexDirection: "column", alignItems: "flex-start" }}
+                        >
+                          {items.slice(0, 12).map((item) => (
+                            <li key={item.id} className="cc-muted">
+                              {item.action || item.id}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ) : items.length > 0 ? (
+                    <ul
+                      className="cc-link-row"
+                      style={{ flexDirection: "column", alignItems: "flex-start" }}
+                    >
+                      {items.slice(0, 8).map((item) => (
+                        <li key={item.id} className="cc-muted">
+                          {item.action || item.agentSlug || item.id}
+                          {item.createdAt ? ` · ${item.createdAt}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : showEmpty ? (
+                    <EmptyState
+                      title={`No ${section.label || key} yet`}
+                      reason="No audit or run results in this section for the current scope."
+                      nextAction="Run project work, then reopen Knowledge to inspect stored results."
+                      projectLabel={projectLabel}
+                      cta={
+                        section.href ? (
+                          <Link className="header-btn-ghost" href={section.href}>
+                            Open
+                          </Link>
+                        ) : null
+                      }
+                    />
+                  ) : null}
+                </section>
+              );
+            })}
           </>
         ) : null}
       </div>
