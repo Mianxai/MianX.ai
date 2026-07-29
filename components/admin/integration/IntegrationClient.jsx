@@ -108,6 +108,7 @@ export default function IntegrationClient() {
   const [executionMode, setExecutionMode] = useState("deterministic_simulation");
   const [providerGate, setProviderGate] = useState(null);
   const [proofConfirmOpen, setProofConfirmOpen] = useState(false);
+  const [proofStartInFlight, setProofStartInFlight] = useState(false);
   const [proofStatus, setProofStatus] = useState("not_started");
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
@@ -127,6 +128,8 @@ export default function IntegrationClient() {
   const simulationReady = Boolean(
     dash?.readiness?.simulationReady ?? dash?.simulation_ready
   );
+  const activeFounderProofRunCount = dash?.activeFounderProofRunCount || 0;
+  const hasActiveFounderProofRun = activeFounderProofRunCount > 0;
   const canStartProof = Boolean(
     !busy &&
       !loading &&
@@ -134,6 +137,7 @@ export default function IntegrationClient() {
       projectsLoaded &&
       !projectsError &&
       isActiveProofProject(selectedProject) &&
+      !hasActiveFounderProofRun &&
       persistenceReady &&
       simulationReady
   );
@@ -152,9 +156,11 @@ export default function IntegrationClient() {
             ? "Selected project must be active (not archived or paused)."
             : !persistenceReady
               ? "Durable integration persistence is not ready."
-              : !simulationReady
-                ? "Simulation readiness is false."
-                : null;
+              : hasActiveFounderProofRun
+                ? "A production Founder proof is already in progress. Continue from the current stage."
+                : !simulationReady
+                  ? "Simulation readiness is false."
+                  : null;
 
   const setTab = useCallback(
     (next, extra = {}) => {
@@ -622,20 +628,45 @@ export default function IntegrationClient() {
             </details>
 
             <div className="admin-actions">
-              <button
-                type="button"
-                data-testid="start-founder-proof"
-                disabled={!canStartProof}
-                aria-haspopup="dialog"
-                aria-disabled={!canStartProof}
-                title={proofDisabledReason || "Start Founder Proof"}
-                onClick={() => {
-                  if (!canStartProof) return;
-                  setProofConfirmOpen(true);
-                }}
-              >
-                Start Founder Proof
-              </button>
+              {hasActiveFounderProofRun ? (
+                <button
+                  type="button"
+                  data-testid="continue-founder-proof"
+                  onClick={() => {
+                    if (!run?.id) return;
+                    if (run.current_stage === "clarification_required") {
+                      setTab("objective", { run_id: run.id });
+                      return;
+                    }
+                    if (run.current_stage === "founder_approval_required") {
+                      setTab("plan", { run_id: run.id });
+                      return;
+                    }
+                    setTab("simulation", { run_id: run.id });
+                  }}
+                  aria-disabled={!run?.id}
+                  title="Continue from the current production proof stage"
+                >
+                  {run?.current_stage === "clarification_required"
+                    ? "Answer Clarification"
+                    : "Continue Founder Proof"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  data-testid="start-founder-proof"
+                  disabled={!canStartProof}
+                  aria-haspopup="dialog"
+                  aria-disabled={!canStartProof}
+                  title={proofDisabledReason || "Start Founder Proof"}
+                  onClick={() => {
+                    if (!canStartProof) return;
+                    setProofConfirmOpen(true);
+                  }}
+                >
+                  Start Founder Proof
+                </button>
+              )}
             </div>
             {proofDisabledReason ? (
               <p role="status" data-testid="proof-disabled-reason">
@@ -666,24 +697,33 @@ export default function IntegrationClient() {
                     type="button"
                     data-testid="proof-confirm-yes"
                     autoFocus
-                    disabled={busy}
+                    disabled={busy || proofStartInFlight}
                     onClick={async () => {
-                      setProofConfirmOpen(false);
-                      await act({
-                        action: "start_founder_proof",
-                        project_id: projectId,
-                        confirmation: true,
-                        actor: "founder",
-                      });
+                      if (proofStartInFlight) return;
+                      setProofStartInFlight(true);
+                      try {
+                        await act({
+                          action: "start_founder_proof",
+                          project_id: projectId,
+                          confirmation: true,
+                          actor: "founder",
+                        });
+                      } finally {
+                        setProofConfirmOpen(false);
+                        setProofStartInFlight(false);
+                      }
                     }}
                   >
-                    Confirm — start proof
+                    {proofStartInFlight ? "Creating Founder Proof…" : "Confirm — start proof"}
                   </button>
                   <button
                     type="button"
                     data-testid="proof-confirm-no"
-                    disabled={busy}
-                    onClick={() => setProofConfirmOpen(false)}
+                    disabled={busy || proofStartInFlight}
+                    onClick={() => {
+                      if (proofStartInFlight) return;
+                      setProofConfirmOpen(false);
+                    }}
                   >
                     Cancel
                   </button>

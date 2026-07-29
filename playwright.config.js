@@ -23,7 +23,9 @@ export default defineConfig({
   webServer: process.env.MIANX_E2E_BASE_URL
     ? undefined
     : {
-        command: `npx next start -p ${PORT}`,
+        // Avoid Next.js network interface discovery failures in sandboxed
+        // environments by binding explicitly to loopback.
+        command: `npx next start -H 127.0.0.1 -p ${PORT}`,
         url: BASE_URL,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,

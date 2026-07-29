@@ -29,6 +29,7 @@ import {
   assertExplicitFounderConfirmation,
   integrationPersistenceStatus,
   persistIntegrationRun,
+  persistIntegrationRunInsertOnly,
   loadIntegrationRun,
   listPersistedIntegrationRuns,
   mapProofStatusFromRun,
@@ -36,6 +37,12 @@ import {
   FOUNDER_PRODUCTION_PROOF_OBJECTIVE,
   requireActiveProjectForProof,
 } from "@/lib/core/integration";
+
+import {
+  expectedFounderProofIdempotencyBase,
+  deterministicFounderProofCorrelationTrace,
+  deterministicFounderProofEngineRunId,
+} from "@/lib/core/integration/founder-proof-idempotency.js";
 
 export const dynamic = "force-dynamic";
 
@@ -247,14 +254,100 @@ export const POST = withErrorHandling(async (req) => {
   if (action === "start_founder_proof") {
     assertExplicitFounderConfirmation(body.confirmation);
     const project = await requireActiveProjectForProof(body.project_id);
+
+    const idempotencyBase = expectedFounderProofIdempotencyBase({
+      organizationId: project.organization_id,
+      projectId: project.id,
+    });
+    if (body.idempotency_key && body.idempotency_key !== idempotencyBase) {
+      throw badRequest("Invalid idempotency_key for this project and proof template.");
+    }
+
+    // Fetch existing durable runs for project, then canonicalize an active proof run.
+    // This also prevents the "duplicate Active run" production defect.
+    const persisted = await listPersistedIntegrationRuns({
+      project_id: project.id,
+      limit: 50,
+    });
+
+    const isFounderProductionProof = (run) =>
+      Boolean(
+        run?.proof?.is_production_proof ||
+          run?.payload?.is_production_proof ||
+          run?.proof?.is_production_proof === true
+      ) && (run?.objective?.title || run?.objective_title || "") ===
+        FOUNDER_PRODUCTION_PROOF_OBJECTIVE.title;
+
+    const isTerminalProof = (run) => {
+      const ps = mapProofStatusFromRun(run);
+      return ["completed", "rejected", "failed"].includes(ps);
+    };
+
+    const proofScore = (run) =>
+      (run?.evidence?.count || 0) + (run?.memory?.count || 0) + (run?.learning?.count || 0);
+
+    const selectCanonicalActive = (runs) => {
+      const active = runs.filter((r) => !isTerminalProof(r));
+      if (!active.length) return null;
+      // Prefer earliest started run; tie-break by "completeness" score.
+      active.sort((a, b) => {
+        const at = String(a.started_at || a.updated_at || "");
+        const bt = String(b.started_at || b.updated_at || "");
+        const t = at.localeCompare(bt);
+        if (t !== 0) return t;
+        return proofScore(b) - proofScore(a);
+      });
+      return active[0] || null;
+    };
+
+    const proofCandidates = (persisted || []).filter(isFounderProductionProof);
+    const canonicalActive = selectCanonicalActive(proofCandidates);
+    if (canonicalActive) {
+      canonicalActive.proof_status = mapProofStatusFromRun(canonicalActive);
+      saveRun(canonicalActive);
+      return NextResponse.json({
+        ok: true,
+        run: canonicalActive,
+        proof_status: canonicalActive.proof_status,
+        resumed_existing_run: true,
+        canonical_founder_proof_run_id: canonicalActive.id,
+        idempotency_base: idempotencyBase,
+        note: "Returning existing active production Founder proof run (idempotent resume).",
+      });
+    }
+
+    const terminalRuns = proofCandidates.filter((r) => isTerminalProof(r));
+    terminalRuns.sort((a, b) => {
+      const aa = String(a.updated_at || a.started_at || "");
+      const bb = String(b.updated_at || b.started_at || "");
+      // Newest first
+      return bb.localeCompare(aa);
+    });
+    const latestTerminalRunId = terminalRuns[0]?.id || "none";
+
+    const engineRunId = deterministicFounderProofEngineRunId({
+      idempotencyBase,
+      latestTerminalRunId,
+    });
+    const { correlation_id, trace_id } = deterministicFounderProofCorrelationTrace({
+      idempotencyBase,
+    });
+
     const objective = buildProductionProofObjective({
       project_id: project.id,
       organization_id: body.organization_id || project.organization_id || null,
     });
+
     const result = createIntegrationRun(objective, {
       actor,
-      idempotency_key: body.idempotency_key || `prod-proof:${project.id}`,
+      // In-memory idempotency should be keyed by the deterministic engine run id,
+      // not by the base proof idempotency (which must allow future proofs after terminal).
+      idempotency_key: engineRunId,
+      integration_run_id: engineRunId,
+      correlation_id,
+      trace_id,
     });
+
     result.run.proof = {
       is_production_proof: true,
       started_by: actor,
@@ -264,12 +357,35 @@ export const POST = withErrorHandling(async (req) => {
       ...(result.run.payload || {}),
       is_production_proof: true,
     };
-    await finish(result.run);
+
+    // Insert-only to prevent overwriting timestamps on concurrency conflicts.
+    const insertResult = await persistIntegrationRunInsertOnly(result.run);
+    if (insertResult?.failClosed && !insertResult.ok) {
+      const err = new Error(
+        insertResult.message || "Failed to persist production Founder proof run."
+      );
+      err.status = 503;
+      err.code = "INTEGRATION_PERSIST_FAILED";
+      throw err;
+    }
+
+    const finalRun = insertResult?.inserted === false && insertResult.run
+      ? insertResult.run
+      : result.run;
+    if (finalRun?.id) {
+      finalRun.proof_status = mapProofStatusFromRun(finalRun);
+      saveRun(finalRun);
+    }
+
     return NextResponse.json({
       ok: true,
-      ...result,
-      proof_status: mapProofStatusFromRun(result.run),
-      note: "Production proof objective created. Clarification / plan / simulation still require Founder actions.",
+      run: finalRun,
+      idempotent_hit: Boolean(result.idempotent_hit),
+      resumed_existing_run: insertResult?.inserted === false,
+      proof_status: finalRun ? mapProofStatusFromRun(finalRun) : "not_started",
+      canonical_founder_proof_run_id: finalRun?.id || null,
+      idempotency_base: idempotencyBase,
+      note: "Production Founder proof start is idempotent and concurrency-safe.",
     });
   }
 
