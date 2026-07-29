@@ -8,9 +8,11 @@ import EmptyState from "@/components/admin/EmptyState";
 import MianxLoader from "@/components/shared/MianxLoader";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import QueuePanel from "@/components/admin/runtime/QueuePanel";
+import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 import { afterNextPaint } from "@/lib/after-paint";
 import { explainApproval } from "@/lib/core/approvals/explain";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
+import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
 
 const TABS = [
   ["overview", "Overview"],
@@ -158,6 +160,9 @@ export default function RuntimeWorkspace({
   }, [onRefreshReady, loadProjects]);
 
   const pending = bootstrapping || refreshing;
+  const { summary: opsSummary } = useProjectOperationalSummary(projectId, {
+    loginFallback: "/admin/runtime",
+  });
 
   function onTabKeyDown(e) {
     const idx = TABS.findIndex(([id]) => id === activeTab);
@@ -229,11 +234,13 @@ export default function RuntimeWorkspace({
             </option>
           ))}
         </select>
-        <ProjectCreator
-          disabled={notConfigured || bootstrapping}
-          call={call}
-          onCreated={() => void loadProjects({ background: true })}
-        />
+        {activeTab !== "approvals" && (
+          <ProjectCreator
+            disabled={notConfigured || bootstrapping}
+            call={call}
+            onCreated={() => void loadProjects({ background: true })}
+          />
+        )}
         {!showChrome && (
           <button
             type="button"
@@ -276,6 +283,8 @@ export default function RuntimeWorkspace({
         ))}
       </div>
 
+      <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+
       <div
         role="tabpanel"
         id={`runtime-panel-${activeTab}`}
@@ -294,20 +303,47 @@ export default function RuntimeWorkspace({
               <OverviewPanel health={health} projects={projects} />
             )}
             {activeTab === "agents" && (
-              <AgentsPanel call={call} projectId={projectId} />
+              <AgentsPanel
+                call={call}
+                projectId={projectId}
+                opsSummary={opsSummary}
+              />
             )}
             {activeTab === "tasks" && (
-              <TasksPanel call={call} projectId={projectId} />
+              <TasksPanel
+                call={call}
+                projectId={projectId}
+                opsSummary={opsSummary}
+              />
             )}
             {activeTab === "queue" && (
-              <QueuePanel call={call} projectId={projectId} health={health} />
+              <QueuePanel
+                call={call}
+                projectId={projectId}
+                health={health}
+                opsSummary={opsSummary}
+              />
             )}
-            {activeTab === "runs" && <RunsPanel call={call} projectId={projectId} />}
+            {activeTab === "runs" && (
+              <RunsPanel
+                call={call}
+                projectId={projectId}
+                opsSummary={opsSummary}
+              />
+            )}
             {activeTab === "approvals" && (
-              <ApprovalsPanel call={call} projectId={projectId} />
+              <ApprovalsPanel
+                call={call}
+                projectId={projectId}
+                opsSummary={opsSummary}
+              />
             )}
             {activeTab === "audit" && (
-              <AuditPanel call={call} projectId={projectId} />
+              <AuditPanel
+                call={call}
+                projectId={projectId}
+                opsSummary={opsSummary}
+              />
             )}
           </>
         )}
@@ -449,7 +485,7 @@ function useAsyncList(loader, deps) {
   return { ...state, reload };
 }
 
-function AgentsPanel({ call, projectId }) {
+function AgentsPanel({ call, projectId, opsSummary: _opsSummary }) {
   const [catalog, setCatalog] = useState([]);
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -481,6 +517,13 @@ function AgentsPanel({ call, projectId }) {
 
   async function register(slug) {
     if (!projectId) return;
+    if (
+      !window.confirm(
+        "Advanced Administration: manually register this agent instance? This does not advance the Founder Production Proof."
+      )
+    ) {
+      return;
+    }
     setBusySlug(slug);
     await call("/api/core/agents", {
       method: "POST",
@@ -505,52 +548,95 @@ function AgentsPanel({ call, projectId }) {
   }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
 
+  const hasLifecycle = catalog.some(
+    (a) => a.lifecycleStatus != null || a.lifecycle_status != null
+  );
+  const executableCount = hasLifecycle
+    ? catalog.filter((a) => {
+        const life = a.lifecycleStatus || a.lifecycle_status;
+        return life === "active" || life === "executable";
+      }).length
+    : catalog.length;
+  const activeInstances = instances.filter((i) => i.status === "active").length;
+  const idleInstances = instances.filter(
+    (i) => i.status === "idle" || i.status === "paused"
+  ).length;
+
   return (
     <div className="runtime-split">
       <section aria-labelledby="catalog-h">
         <h3 id="catalog-h">Agent catalog</h3>
+        <div className="runtime-cards" aria-label="Agent counters" data-testid="agent-counters">
+          <div className="runtime-card runtime-card-compact">
+            <h3>Executable Agent Definitions</h3>
+            <p className="runtime-metric">{executableCount}</p>
+          </div>
+          <div className="runtime-card runtime-card-compact">
+            <h3>Agent Catalogue Total</h3>
+            <p className="runtime-metric">{catalog.length}</p>
+          </div>
+          <div className="runtime-card runtime-card-compact">
+            <h3>Registered Project Instances</h3>
+            <p className="runtime-metric">{instances.length}</p>
+          </div>
+          <div className="runtime-card runtime-card-compact">
+            <h3>Active / Idle</h3>
+            <p className="runtime-metric">
+              {activeInstances} / {idleInstances}
+            </p>
+          </div>
+          <div className="runtime-card runtime-card-compact">
+            <h3>Future Capacity Slots</h3>
+            <p className="runtime-metric">445</p>
+          </div>
+        </div>
         <ul className="runtime-list">
-          {catalog.map((a) => (
-            <li key={a.slug} className="runtime-item">
-              <div>
-                <strong>{a.name}</strong>
-                <p className="runtime-muted">
-                  {a.slug} · v{a.version || 1} · {a.lifecycleStatus || a.lifecycle_status || "active"}
-                </p>
-                <p className="runtime-muted">{a.purpose}</p>
-                <p className="runtime-muted">
-                  Provider: {a.defaultProvider || a.default_provider || "anthropic"}
-                  {(a.defaultModel || a.default_model) ? ` / ${a.defaultModel || a.default_model}` : ""}
-                  {(a.requiresHumanApproval || a.requires_human_approval) ? " · approval required" : ""}
-                </p>
-                <p className="runtime-tags">
-                  {a.allowedCapabilities?.map((c) => (
-                    <span key={c} className="runtime-tag">{c}</span>
-                  ))}
-                </p>
-                {a.prohibitedCapabilities?.length > 0 && (
-                  <p className="runtime-tags" aria-label="Prohibited capabilities">
-                    {a.prohibitedCapabilities.map((c) => (
-                      <span key={c} className="runtime-tag" style={{ opacity: 0.7 }}>
-                        !{c}
-                      </span>
+          {catalog.map((a) => {
+            const life = a.lifecycleStatus || a.lifecycle_status || "active";
+            const isDraft = life === "draft";
+            return (
+              <li key={a.slug} className="runtime-item">
+                <div>
+                  <strong>{a.name}</strong>
+                  <p className="runtime-muted">
+                    {a.slug} · v{a.version || 1} · {life}
+                  </p>
+                  <p className="runtime-muted">{a.purpose}</p>
+                  <p className="runtime-muted">
+                    Provider: {a.defaultProvider || a.default_provider || "anthropic"}
+                    {(a.defaultModel || a.default_model) ? ` / ${a.defaultModel || a.default_model}` : ""}
+                    {(a.requiresHumanApproval || a.requires_human_approval) ? " · approval required" : ""}
+                  </p>
+                  <p className="runtime-tags">
+                    {a.allowedCapabilities?.map((c) => (
+                      <span key={c} className="runtime-tag">{c}</span>
                     ))}
                   </p>
-                )}
-              </div>
-              <button
-                className="header-btn"
-                disabled={!projectId || busySlug === a.slug}
-                onClick={() => register(a.slug)}
-              >
-                {busySlug === a.slug ? (
-                  <MianxLoader variant="inline" label="Registering agent…" />
-                ) : (
-                  "Register"
-                )}
-              </button>
-            </li>
-          ))}
+                  {a.prohibitedCapabilities?.length > 0 && (
+                    <p className="runtime-tags" aria-label="Prohibited capabilities">
+                      {a.prohibitedCapabilities.map((c) => (
+                        <span key={c} className="runtime-tag" style={{ opacity: 0.7 }}>
+                          !{c}
+                        </span>
+                      ))}
+                    </p>
+                  )}
+                </div>
+                <button
+                  className="header-btn"
+                  disabled={!projectId || busySlug === a.slug || isDraft}
+                  title={isDraft ? "Draft definitions cannot be registered" : undefined}
+                  onClick={() => register(a.slug)}
+                >
+                  {busySlug === a.slug ? (
+                    <MianxLoader variant="inline" label="Registering agent…" />
+                  ) : (
+                    "Register"
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </section>
       <section aria-labelledby="instances-h">
@@ -560,7 +646,7 @@ function AgentsPanel({ call, projectId }) {
             title="No agents registered"
             reason="This project has no registered agent instances yet. The catalog above lists definitions you can register — nothing is invented as sample data."
             configuration="Registration requires a selected project and manage_agents capability."
-            nextAction="Register an agent from the catalog, or open Settings if Supabase/runtime is unconfigured."
+            nextAction="Instances appear after Founder-gated allocation or advanced manual registration."
             projectLabel={projectId || "none"}
             cta={
               projectId ? (
@@ -630,7 +716,7 @@ function AgentsPanel({ call, projectId }) {
   );
 }
 
-function TasksPanel({ call, projectId }) {
+function TasksPanel({ call, projectId, opsSummary }) {
   const [tasks, setTasks] = useState([]);
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -693,9 +779,26 @@ function TasksPanel({ call, projectId }) {
     return <DelayedLoader active variant="section" label="Loading tasks…" />;
   }
 
+  const nextAction = opsSummary?.next_founder_action;
+
   return (
     <div>
-      <TaskCreator call={call} projectId={projectId} onCreated={load} />
+      {nextAction ? (
+        <p className="runtime-muted" data-testid="tasks-ops-next">
+          Next Founder action:{" "}
+          {nextAction.href ? (
+            <Link href={nextAction.href}>{nextAction.label || nextAction.reason}</Link>
+          ) : (
+            nextAction.label || nextAction.reason
+          )}
+        </p>
+      ) : null}
+      <TaskCreator
+        call={call}
+        projectId={projectId}
+        onCreated={load}
+        opsSummary={opsSummary}
+      />
       {error && <p className="runtime-error-text" role="alert">{error}</p>}
 
       <div className="runtime-filters" role="group" aria-label="Filter tasks by status">
@@ -760,11 +863,14 @@ function TasksPanel({ call, projectId }) {
   );
 }
 
-function TaskCreator({ call, projectId, onCreated }) {
+function TaskCreator({ call, projectId, onCreated, opsSummary }) {
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState("normal");
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [inputText, setInputText] = useState("{}");
+  const [sourceClassification, setSourceClassification] = useState(
+    "standalone_advanced"
+  );
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -778,15 +884,42 @@ function TaskCreator({ call, projectId, onCreated }) {
       setErr("Input must be valid JSON.");
       return;
     }
+    if (sourceClassification === "standalone_advanced") {
+      if (
+        !window.confirm(
+          "Create a standalone advanced runtime task? Manual tasks do not advance the Founder Production Proof unless explicitly linked to its canonical objective and run."
+        )
+      ) {
+        return;
+      }
+    }
+    const titleTrimmed = title.trim();
+    const claimProbe = `${titleTrimmed} ${JSON.stringify(input)}`.toLowerCase();
+    if (
+      claimProbe.includes("integration_proof") ||
+      claimProbe.includes("founder production proof")
+    ) {
+      setErr(
+        "Manual runtime tasks cannot claim integration_proof. Use Integration for Founder Production Proof work."
+      );
+      return;
+    }
+    const payloadInput = {
+      ...input,
+      manual_runtime_task: true,
+      source_classification: sourceClassification,
+    };
     setBusy(true);
     const res = await call("/api/core/tasks", {
       method: "POST",
       body: JSON.stringify({
         project_id: projectId,
-        title: title.trim(),
+        title: titleTrimmed,
         priority,
         requires_approval: requiresApproval,
-        input,
+        input: payloadInput,
+        source_classification: sourceClassification,
+        manual_runtime_task: true,
       }),
     });
     setBusy(false);
@@ -802,11 +935,25 @@ function TaskCreator({ call, projectId, onCreated }) {
     setTitle("");
     setInputText("{}");
     setRequiresApproval(false);
+    setSourceClassification("standalone_advanced");
     onCreated?.();
   }
 
+  const next = opsSummary?.next_founder_action;
+
   return (
-    <form className="runtime-form" onSubmit={submit} aria-label="Create task">
+    <form className="runtime-form" onSubmit={submit} aria-label="Advanced Runtime Task">
+      <h3>Advanced Runtime Task</h3>
+      <p className="runtime-muted" role="note">
+        Manual tasks do not advance the active Founder Production Proof unless
+        explicitly linked to its canonical objective and run.
+      </p>
+      {next?.href ? (
+        <p className="runtime-muted">
+          Prefer the Founder path:{" "}
+          <Link href={next.href}>{next.label || "Open next Founder action"}</Link>
+        </p>
+      ) : null}
       <div className="runtime-form-row">
         <label htmlFor="task-title">Title *</label>
         <input
@@ -816,6 +963,17 @@ function TaskCreator({ call, projectId, onCreated }) {
           required
           maxLength={200}
         />
+      </div>
+      <div className="runtime-form-row">
+        <label htmlFor="task-source">Source classification</label>
+        <select
+          id="task-source"
+          value={sourceClassification}
+          onChange={(e) => setSourceClassification(e.target.value)}
+        >
+          <option value="standalone_advanced">standalone_advanced</option>
+          <option value="linked_to_objective">linked_to_objective</option>
+        </select>
       </div>
       <div className="runtime-form-row">
         <label htmlFor="task-priority">Priority</label>
@@ -961,7 +1119,7 @@ function TaskRow({ task, instances, call, onChanged }) {
   );
 }
 
-function RunsPanel({ call, projectId }) {
+function RunsPanel({ call, projectId, opsSummary }) {
   const { loading, error, items } = useAsyncList(async () => {
     if (!projectId) return [];
     const res = await call(`/api/core/runs?project_id=${projectId}`);
@@ -989,16 +1147,29 @@ function RunsPanel({ call, projectId }) {
   }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
   if (items.length === 0) {
+    const next = opsSummary?.next_founder_action;
+    const integrationHref = `/admin/integration?project_id=${encodeURIComponent(projectId)}`;
     return (
       <EmptyState
-        title="No runs yet"
-        reason="Runs appear after queued jobs complete (or fail) for this project."
-        nextAction="Enqueue a task from Tasks, then process the queue with Run tick."
+        title="No Agent Runtime Runs yet"
+        reason="This list shows Agent Runtime Runs (queued agent executions), not Integration Founder Proof Runs. Proof progress lives under Integration."
+        nextAction={
+          next?.reason ||
+          next?.label ||
+          "Continue the Founder Production Proof from Integration when that is the active path."
+        }
         projectLabel={projectId}
         cta={
-          <Link className="header-btn" href={`/admin/runtime/queue?project_id=${encodeURIComponent(projectId)}`}>
-            Open queue
-          </Link>
+          <>
+            <Link className="header-btn" href={integrationHref}>
+              Open Integration
+            </Link>
+            {next?.href ? (
+              <Link className="header-btn-ghost" href={next.href}>
+                {next.label || "Next Founder action"}
+              </Link>
+            ) : null}
+          </>
         }
       />
     );
@@ -1032,12 +1203,17 @@ function RunsPanel({ call, projectId }) {
   );
 }
 
-function ApprovalsPanel({ call, projectId }) {
+function ApprovalsPanel({ call, projectId, opsSummary: opsSummaryProp }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(null);
   const [explanations, setExplanations] = useState({});
+  const [opsSummary, setOpsSummary] = useState(opsSummaryProp || null);
+
+  useEffect(() => {
+    setOpsSummary(opsSummaryProp || null);
+  }, [opsSummaryProp]);
 
   const load = useCallback(async () => {
     if (!projectId) {
@@ -1061,8 +1237,14 @@ function ApprovalsPanel({ call, projectId }) {
       }
       setExplanations(next);
     }
+    if (!opsSummaryProp) {
+      const sumRes = await call(
+        `/api/admin/operations/summary?project_id=${encodeURIComponent(projectId)}`
+      );
+      if (sumRes.ok) setOpsSummary(sumRes.data);
+    }
     setLoading(false);
-  }, [call, projectId]);
+  }, [call, projectId, opsSummaryProp]);
 
   useEffect(() => {
     load();
@@ -1097,16 +1279,47 @@ function ApprovalsPanel({ call, projectId }) {
   }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
   if (items.length === 0) {
+    const next = opsSummary?.next_founder_action;
+    const canonical = opsSummary?.canonical_integration_run;
+    const objective =
+      opsSummary?.objectives?.find(
+        (o) => o.is_canonical || o.source_type === "integration_proof"
+      ) ||
+      opsSummary?.objectives?.[0] ||
+      null;
+    const integrationHref = `/admin/integration?project_id=${encodeURIComponent(projectId)}`;
     return (
       <EmptyState
-        title="No approval requests"
-        reason="Nothing is waiting for Founder decision in this project."
-        nextAction="Protected actions create approval cards here; Founder Inbox also surfaces attention items."
+        title="No approval is currently due"
+        reason={[
+          next?.reason || next?.label || "No Founder approval is waiting in runtime for this project.",
+          objective ? `Canonical objective: ${objective.title}.` : null,
+          canonical
+            ? `Canonical run: ${canonical.id}${canonical.stage_label || canonical.stage ? ` · ${canonical.stage_label || canonical.stage}` : ""}.`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        nextAction={
+          next?.label ||
+          "Continue the Founder Production Proof from Integration when that is the active path."
+        }
         projectLabel={projectId}
         cta={
-          <Link className="header-btn-ghost" href="/admin/inbox">
-            Founder Inbox
-          </Link>
+          <>
+            <Link className="header-btn" href={integrationHref}>
+              Open Integration
+            </Link>
+            {next?.href ? (
+              <Link className="header-btn-ghost" href={next.href}>
+                {next.label || "Next Founder action"}
+              </Link>
+            ) : (
+              <Link className="header-btn-ghost" href="/admin/inbox">
+                Founder Inbox
+              </Link>
+            )}
+          </>
         }
       />
     );
@@ -1125,6 +1338,7 @@ function ApprovalsPanel({ call, projectId }) {
               <strong>{ex.requestedAction || a.requested_capability}</strong>
               <p className="runtime-muted">
                 <span className={`runtime-status status-${a.status}`}>{a.status}</span>
+                {" · source=runtime"}
                 {ex.requestingAgent ? ` · agent ${ex.requestingAgent}` : ""}
                 {a.project_id ? ` · project ${String(a.project_id).slice(0, 8)}…` : ""}
               </p>
@@ -1175,9 +1389,20 @@ function ApprovalsPanel({ call, projectId }) {
   );
 }
 
-function AuditPanel({ call, projectId }) {
+function AuditPanel({ call, projectId, opsSummary: _opsSummary }) {
   const { loading, error, items } = useAsyncList(async () => {
     if (!projectId) return [];
+    const unified = await call(
+      `/api/admin/audit/unified?project_id=${encodeURIComponent(projectId)}`
+    );
+    if (unified.ok) {
+      return (
+        unified.data?.events ||
+        unified.data?.logs ||
+        unified.data?.entries ||
+        []
+      );
+    }
     const res = await call(`/api/core/audit?project_id=${projectId}`);
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(errorMessage(res.data, "Failed to load audit log."));
@@ -1225,20 +1450,34 @@ function AuditPanel({ call, projectId }) {
 
   return (
     <ul className="runtime-list runtime-audit">
-      {items.map((e) => (
-        <li key={e.id} className="runtime-item">
-          <div>
-            <strong>{e.action}</strong>
-            <p className="runtime-muted">
-              {e.actor} · {e.resource_type}
-              {e.resource_id ? ` · ${e.resource_id.slice(0, 8)}` : ""}
-            </p>
-          </div>
-          <time className="runtime-muted">
-            {e.created_at ? new Date(e.created_at).toLocaleString() : ""}
-          </time>
-        </li>
-      ))}
+      {items.map((e) => {
+        const eventType = e.event_type || e.action || e.type || "event";
+        const source = e.source || e.resource_type || "runtime";
+        const actor = e.actor || e.actor_id || "system";
+        const outcome = e.outcome || e.status || e.result || null;
+        const ts = e.timestamp || e.created_at;
+        return (
+          <li key={e.id || `${eventType}-${ts}`} className="runtime-item">
+            <div>
+              <strong>{eventType}</strong>
+              <p className="runtime-muted">
+                source={source} · actor {actor}
+                {outcome ? ` · outcome ${outcome}` : ""}
+                {e.resource_id ? ` · ${String(e.resource_id).slice(0, 8)}` : ""}
+              </p>
+              <details className="runtime-audit-details">
+                <summary>Technical details</summary>
+                <pre className="runtime-code" aria-label="Audit event detail">
+                  {JSON.stringify(e, null, 2)}
+                </pre>
+              </details>
+            </div>
+            <time className="runtime-muted">
+              {ts ? new Date(ts).toLocaleString() : ""}
+            </time>
+          </li>
+        );
+      })}
     </ul>
   );
 }

@@ -8,7 +8,12 @@ import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
 import StatusChip from "@/components/admin/command-center/StatusChip";
+import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
+import {
+  useProjectOperationalSummary,
+  hasActiveFounderProof,
+} from "@/lib/admin-ops-summary";
 
 async function api(path, options, router) {
   const res = await fetch(path, {
@@ -51,6 +56,10 @@ export default function ObjectivesClient() {
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
   const selectedId = searchParams?.get("id") || "";
+  const { summary: opsSummary } = useProjectOperationalSummary(projectId, {
+    loginFallback: "/admin/objectives",
+  });
+  const activeProof = hasActiveFounderProof(opsSummary);
 
   const [projects, setProjects] = useState([]);
   const [list, setList] = useState(null);
@@ -132,6 +141,12 @@ export default function ObjectivesClient() {
   async function onSubmit(e) {
     e.preventDefault();
     if (!projectId || submitting) return;
+    if (activeProof) {
+      const ok = window.confirm(
+        "An active Founder Production Proof exists for this project. A General Founder Objective does NOT create or advance Production Proof. Continue?"
+      );
+      if (!ok) return;
+    }
     setSubmitting(true);
     setError("");
     const res = await call("/api/admin/objectives", {
@@ -189,6 +204,7 @@ export default function ObjectivesClient() {
   return (
     <AdminShell title="Objectives" actions={actions}>
       <div className="obj-page">
+        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
         {!projectId ? (
           <EmptyState
             title="Select a project"
@@ -212,13 +228,22 @@ export default function ObjectivesClient() {
 
         <div className="obj-layout">
           <section className="cc-card" aria-labelledby="obj-form-h">
-            <h2 id="obj-form-h">Issue objective</h2>
+            <h2 id="obj-form-h">
+              {activeProof ? "General Founder Objective" : "Issue objective"}
+            </h2>
             <p className="cc-muted">
               Routes through Executive orchestration → workstreams → agents →
               tasks/jobs. Protected actions stay Founder-gated. Production Proof
               objectives are created only from E2E Integration (Start or Continue
               Founder Proof), not this form.
             </p>
+            {activeProof ? (
+              <p className="admin-warning" role="note">
+                This form does not create Production Proof. Continue the canonical
+                proof in E2E Integration; a general objective is separate analysis
+                work only.
+              </p>
+            ) : null}
             <form className="obj-form" onSubmit={onSubmit}>
               <label>
                 Objective

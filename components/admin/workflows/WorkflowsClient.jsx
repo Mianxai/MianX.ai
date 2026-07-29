@@ -11,6 +11,8 @@ import MianxLoader from "@/components/shared/MianxLoader";
 import { useAdminProject } from "@/lib/admin-project";
 import { WORKFLOW_CHAINS } from "@/lib/core/command-center/workflows";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
+import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
+import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 
 async function fetchJson(path, router) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
@@ -25,6 +27,9 @@ async function fetchJson(path, router) {
 export default function WorkflowsClient() {
   const router = useRouter();
   const { projectId, setProjectId, hrefWithProject } = useAdminProject();
+  const { summary: opsSummary } = useProjectOperationalSummary(projectId, {
+    loginFallback: "/admin/workflows",
+  });
   const [data, setData] = useState(null);
   const [projects, setProjects] = useState([]);
   const [error, setError] = useState("");
@@ -80,6 +85,7 @@ export default function WorkflowsClient() {
           Workflow definitions and live instances. Instances require a selected
           project with runtime tasks.
         </p>
+        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
         {loading && !data ? (
           <DelayedLoader delayMs={150}>
             <MianxLoader variant="section" label="Loading workflows…" />
@@ -132,13 +138,37 @@ export default function WorkflowsClient() {
             <EmptyState
               title="No workflow instances"
               reason="No tasks with workflow metadata in this project yet."
-              configuration="Create objectives or runtime tasks that use a workflow chain."
-              nextAction="Open Objectives or Runtime Tasks to start work."
+              configuration={
+                opsSummary?.next_founder_action?.reason
+                  ? `Prerequisite: ${opsSummary.next_founder_action.reason}`
+                  : "Create objectives or runtime tasks that use a workflow chain."
+              }
+              nextAction={
+                opsSummary?.next_founder_action?.label
+                  ? `Next Founder action: ${opsSummary.next_founder_action.label} (e.g. Answer clarification / approve plan / approve simulation).`
+                  : "Open Objectives or Runtime Tasks to start work."
+              }
               projectLabel={projectId}
               cta={
-                <Link className="header-btn" href={hrefWithProject("/admin/objectives")}>
-                  Objectives
-                </Link>
+                opsSummary?.next_founder_action?.href &&
+                opsSummary.next_founder_action.severity === "action_required" ? (
+                  <Link
+                    className="header-btn"
+                    href={
+                      !String(opsSummary.next_founder_action.href).includes("project_id=")
+                        ? `${opsSummary.next_founder_action.href}${
+                            opsSummary.next_founder_action.href.includes("?") ? "&" : "?"
+                          }project_id=${encodeURIComponent(projectId)}`
+                        : opsSummary.next_founder_action.href
+                    }
+                  >
+                    {opsSummary.next_founder_action.label}
+                  </Link>
+                ) : (
+                  <Link className="header-btn" href={hrefWithProject("/admin/objectives")}>
+                    Objectives
+                  </Link>
+                )
               }
             />
           ) : (

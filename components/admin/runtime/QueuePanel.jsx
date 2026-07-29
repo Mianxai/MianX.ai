@@ -70,7 +70,45 @@ export function formatTokens(job) {
   } out`;
 }
 
-export default function QueuePanel({ call, projectId, health = null }) {
+function schedulerCopy(health) {
+  const scheduler = health?.config?.scheduler || health?.scheduler || null;
+  if (!scheduler) {
+    return {
+      mode: "unknown",
+      automaticProcessing: false,
+      lastTick: null,
+      summary:
+        "Scheduler status is unavailable from health. Queue processing remains manual until status is known.",
+    };
+  }
+  const lastTick =
+    scheduler.lastTickAt ||
+    scheduler.last_tick_at ||
+    health?.lastTickAt ||
+    health?.last_tick_at ||
+    null;
+  const mode = scheduler.mode || "manual";
+  const automatic = Boolean(scheduler.automaticProcessing);
+  let summary;
+  if (automatic) {
+    summary = `Scheduler mode: ${mode}. Automatic processing is active.`;
+  } else if (scheduler.readyForExternalScheduler) {
+    summary = `Scheduler mode: ${mode}. Worker secret is ready for an external scheduler; automatic processing is not claimed yet.`;
+  } else {
+    summary = `Scheduler mode: ${mode}. Automatic processing is off until a Founder configures the scheduler secret and external cron.`;
+  }
+  if (lastTick) {
+    summary += ` Last tick: ${new Date(lastTick).toLocaleString()}.`;
+  }
+  return { mode, automaticProcessing: automatic, lastTick, summary };
+}
+
+export default function QueuePanel({
+  call,
+  projectId,
+  health = null,
+  opsSummary: _opsSummary = null,
+}) {
   const [jobs, setJobs] = useState(null);
   const [counts, setCounts] = useState({});
   const [total, setTotal] = useState(0);
@@ -84,6 +122,7 @@ export default function QueuePanel({ call, projectId, health = null }) {
   const [confirming, setConfirming] = useState(null); // { id, action }
   const [expanded, setExpanded] = useState("");
   const seqRef = useRef(0);
+  const scheduler = schedulerCopy(health);
 
   const load = useCallback(
     async ({ background = false } = {}) => {
@@ -148,6 +187,16 @@ export default function QueuePanel({ call, projectId, health = null }) {
   }
 
   async function runManualTick() {
+    const autoNote = scheduler.automaticProcessing
+      ? " Automatic processing is already configured — manual Run tick is not the default operating path."
+      : "";
+    if (
+      !window.confirm(
+        `Run a manual worker tick? This processes queued jobs only; it does not bypass Founder approvals and does not advance Integration proof by itself.${autoNote}`
+      )
+    ) {
+      return;
+    }
     setTicking(true);
     const res = await call("/api/admin/runtime/tick", {
       method: "POST",
@@ -167,7 +216,7 @@ export default function QueuePanel({ call, projectId, health = null }) {
       <EmptyState
         title="Select a project"
         reason="The job queue is project-scoped. Queued jobs process on a worker tick (Run tick, npm run runtime:tick, or an external scheduler)."
-        configuration="This deployment does not claim automatic processing until a Founder configures a scheduler secret."
+        configuration={scheduler.summary}
         nextAction="Select or create a project to inspect queued jobs."
         projectLabel="none"
         cta={
@@ -208,19 +257,17 @@ export default function QueuePanel({ call, projectId, health = null }) {
         approval. Coding executor changes are workspace-scoped patch candidates —
         never autonomous production pushes or deploys.
       </p>
-      {health?.config && (
-        <p className="runtime-muted" data-testid="queue-runtime-readiness">
-          Rate limit:{" "}
-          {health.config.rateLimit?.durable ? "durable adapter" : "in-memory"}
-          {" · "}
-          Scheduler: {health.config.scheduler?.mode || "manual"}
-          {health.config.scheduler?.automaticProcessing
-            ? " (automatic)"
-            : health.config.scheduler?.readyForExternalScheduler
-              ? " (secret ready for external cron)"
-              : " (configure CRON_SECRET / INTERNAL_RUNTIME_SECRET)"}
-        </p>
-      )}
+      <p className="runtime-muted" data-testid="queue-runtime-readiness">
+        {health?.config?.rateLimit
+          ? `Rate limit: ${
+              health.config.rateLimit.durable ? "durable adapter" : "in-memory"
+            } · `
+          : null}
+        {scheduler.summary}
+        {scheduler.automaticProcessing
+          ? " Manual Run tick remains available for diagnostics."
+          : ""}
+      </p>
 
       <div className="runtime-queue-toolbar">
         <div
@@ -286,12 +333,23 @@ export default function QueuePanel({ call, projectId, health = null }) {
           }
           reason={
             statusFilter === "all"
-              ? "Jobs appear when a task is enqueued or a workflow starts. Queued jobs process when a worker tick runs (Run tick here, npm run runtime:tick, or an external scheduler). This deployment does not claim automatic processing."
+              ? `Jobs appear when a task is enqueued or a workflow starts. Queued jobs process when a worker tick runs (Run tick here, npm run runtime:tick, or an external scheduler). ${scheduler.summary}`
               : `No jobs currently in status “${statusFilter.replace("_", " ")}”.`
+          }
+          configuration={
+            statusFilter === "all"
+              ? `mode=${scheduler.mode}; automaticProcessing=${scheduler.automaticProcessing}${
+                  scheduler.lastTick
+                    ? `; lastTick=${new Date(scheduler.lastTick).toISOString()}`
+                    : ""
+                }`
+              : null
           }
           nextAction={
             statusFilter === "all"
-              ? "Create a task and enqueue it, then use Run tick to process."
+              ? scheduler.automaticProcessing
+                ? "Enqueue work from Tasks or Objectives; the configured scheduler should drain the queue."
+                : "Create a task and enqueue it, then use Run tick to process when operating manually."
               : "Try the All filter or refresh after a tick."
           }
           projectLabel={projectId}

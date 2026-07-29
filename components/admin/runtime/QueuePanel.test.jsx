@@ -189,6 +189,7 @@ describe("QueuePanel", () => {
 
   it("runs a manual worker tick then refreshes the queue", async () => {
     const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const call = makeCall([
       {
         match: "/api/core/jobs?",
@@ -216,5 +217,7 @@ describe("QueuePanel", () => {
         true
       );
     });
+    expect(confirmSpy).toHaveBeenCalled();
+    confirmSpy.mockRestore();
   });
 });
