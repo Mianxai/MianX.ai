@@ -7,7 +7,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
-import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
 
@@ -99,7 +99,7 @@ export default function OutputsClient() {
           Aggregated from existing agent runs — not a separate output store. Categories:
           Integration evidence · Proof Pack · Agent Runtime · Workflow · Approved final.
         </p>
-        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+        <FounderActionBanner summary={opsSummary} projectId={projectId} />
         {loading && !data ? (
           <DelayedLoader delayMs={200}>
             <MianxLoader variant="section" label="Loading outputs…" />

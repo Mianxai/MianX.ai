@@ -1,17 +1,17 @@
 {
-  "generatedAt": "2026-07-29T14:36:30.773Z",
+  "generatedAt": "2026-07-29T15:36:59.972Z",
   "results": [
     {
       "route": "/admin/command-center",
       "kind": "cold",
-      "ms": 1297,
+      "ms": 793,
       "apiCalls": 0,
       "dupes": 0
     },
     {
       "route": "/admin/command-center",
       "kind": "warm",
-      "ms": 51,
+      "ms": 58,
       "apiCalls": 0,
       "dupes": 0,
       "counts": {}
@@ -19,7 +19,7 @@
     {
       "route": "/admin/departments",
       "kind": "warm",
-      "ms": 104,
+      "ms": 123,
       "apiCalls": 1,
       "dupes": 0,
       "counts": {
@@ -29,7 +29,7 @@
     {
       "route": "/admin/workflows",
       "kind": "warm",
-      "ms": 73,
+      "ms": 84,
       "apiCalls": 1,
       "dupes": 0,
       "counts": {
@@ -39,7 +39,7 @@
     {
       "route": "/admin/leads",
       "kind": "warm",
-      "ms": 362,
+      "ms": 374,
       "apiCalls": 2,
       "dupes": 0,
       "counts": {
@@ -50,7 +50,7 @@
     {
       "route": "/admin/agents",
       "kind": "warm",
-      "ms": 82,
+      "ms": 96,
       "apiCalls": 1,
       "dupes": 0,
       "counts": {
@@ -60,7 +60,7 @@
     {
       "route": "/admin/runtime",
       "kind": "warm",
-      "ms": 389,
+      "ms": 406,
       "apiCalls": 4,
       "dupes": 0,
       "counts": {

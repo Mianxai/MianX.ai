@@ -329,7 +329,9 @@ function AdminShellInner({
                     }}
                   >
                     {group.label}
-                    <span aria-hidden="true">{advancedOpsOpen ? "▾" : "▸"}</span>
+                    <span className="sidebar-nav-chevron" aria-hidden="true">
+                      {advancedOpsOpen ? "▾" : "▸"}
+                    </span>
                   </button>
                 ) : (
                   <p className="sidebar-nav-group-label">{group.label}</p>

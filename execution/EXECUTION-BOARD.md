@@ -1095,26 +1095,32 @@ no fabricated live AI completion, no auto Founder approval.
 
 ---
 
-## 18. Phase H.1 — Founder Control Plane UX hardening (draft PR)
+## 18. Phase H.1 — Founder Control Plane UX hardening
 
-Branch: `cursor/phase-h1-founder-control-plane-premium-ux`  
-Base: `origin/main` @ `1cb99bf92c48fa945b83bc153f6cbae2440d2286` (PR #56 merged).
+**PR #57** (`cursor/phase-h1-founder-control-plane-premium-ux`) merged to main @ `0abb8d7`.
+
+### Follow-up — Final acceptance closeout (Draft PR)
+
+Branch: `cursor/phase-h1-final-acceptance-closeout`  
+Base: `origin/main` @ `0abb8d7` (includes merged #57).
+
+Cannot update closed PR #57 — ships as one new Draft PR on the follow-up branch.
 
 ### Delivered (code)
 
-- Selected project display fix (never “Selected project” as value)
-- Premium Next Founder Action card + compact Quick Start
-- Stage-aware Founder Proof tab routing
-- Command Center hierarchy: action-first, workforce preview (no default Agent Network)
-- Sticky Plan approval bar with explicit confirm boundaries
-- CEO Brief cancelled/archived toggle (hidden by default)
-- Canonical SchedulerStatus mapping + Schedule panel
-- Advanced Operations accordion labels (Runtime Overview + Advanced badges)
+- Compact Quick Start (current+next; expand/collapse persisted) only on Command Center + Founder Proof
+- Secondary pages: `FounderActionBanner` only (no nine-step Quick Start)
+- Plan metrics: unique task dependency edges; human risk cards; compact WBS; agent reasons; proposed departments
+- Onboarding allocation prefers CEO / HR / Security / Ops / QA (not lead-intelligence / research fillers)
+- Objectives: cancelled/archived hidden by default; analysis form collapses when proof active
+- Inbox: provider informational; attention excludes provider
+- Agents: summary + filters + pagination; Live Workforce status cards; Company Builder planning-only UX
+- Advanced Operations chevron accordion; H.1 screenshot artefacts under `e2e-artifacts/h1-final-acceptance/`
 
 ### Explicit non-goals (confirmed)
 
 No merge, no production deploy, no production proof mutation, no Anthropic,
-no Phase I, no migration.
+no plan/simulation approval or start, no Phase I, no migration.
 
 ---
 

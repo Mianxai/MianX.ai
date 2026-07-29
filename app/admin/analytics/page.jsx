@@ -6,7 +6,7 @@ import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import MianxLoader from "@/components/shared/MianxLoader";
 import DelayedLoader from "@/components/shared/DelayedLoader";
-import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { useAdminProject } from "@/lib/admin-project";
 import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
@@ -169,7 +169,7 @@ export default function AnalyticsPage() {
         </div>
       }
     >
-      <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+      <FounderActionBanner summary={opsSummary} projectId={projectId} />
       {notConfigured && (
         <div className="admin-notice" role="alert">
           Analytics are unavailable until Supabase is configured.

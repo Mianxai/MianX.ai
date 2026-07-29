@@ -1,13 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
+import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
+import {
+  useProjectOperationalSummary,
+  hasActiveFounderProof,
+} from "@/lib/admin-ops-summary";
+import { resolveProjectDisplayName } from "@/lib/admin/resolve-project-label";
+
+const EXAMPLE_OBJECTIVES = [
+  "Plan a MianX Core capability programme for Founder review",
+  "Design an internal employee onboarding workflow with identity and access controls",
+  "Scope a Project Factory delivery pod for a disposable beta programme",
+];
 
 async function fetchJson(path, router, opts) {
   const res = await fetch(path, {
@@ -26,9 +38,13 @@ export default function CompanyBuilderClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
-  const [objective, setObjective] = useState(
-    "Plan a MianX Core capability programme for Founder review"
-  );
+  const { summary: opsSummary } = useProjectOperationalSummary(projectId, {
+    loginFallback: "/admin/company-builder",
+  });
+  const activeProof = hasActiveFounderProof(opsSummary);
+  const [objective, setObjective] = useState(EXAMPLE_OBJECTIVES[0]);
+  const [industryHint, setIndustryHint] = useState("platform");
+  const [horizon, setHorizon] = useState("90d");
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState(null);
   const [projects, setProjects] = useState([]);
@@ -37,6 +53,16 @@ export default function CompanyBuilderClient() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [planTab, setPlanTab] = useState("overview");
+
+  const projectDisplayName = useMemo(
+    () =>
+      resolveProjectDisplayName({
+        projectId,
+        projects,
+        summary: opsSummary,
+      }),
+    [projectId, projects, opsSummary]
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -82,9 +108,16 @@ export default function CompanyBuilderClient() {
     }
     setBusy(true);
     setSuccess("");
+    const composedObjective = [
+      objective.trim(),
+      industryHint ? `Industry context: ${industryHint}.` : "",
+      horizon ? `Planning horizon: ${horizon}.` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
     const res = await fetchJson("/api/admin/company-builder", router, {
       method: "POST",
-      body: JSON.stringify({ objective, project_id: projectId }),
+      body: JSON.stringify({ objective: composedObjective, project_id: projectId }),
     });
     setBusy(false);
     if (!res.ok) {
@@ -92,7 +125,9 @@ export default function CompanyBuilderClient() {
       return;
     }
     setSelected(res.data.blueprint);
-    setSuccess("Blueprint created — awaiting Founder approval");
+    setSuccess(
+      "Blueprint created — awaiting Founder approval. Company Builder does not advance Founder Proof."
+    );
     await load();
   }
 
@@ -111,7 +146,7 @@ export default function CompanyBuilderClient() {
     setSelected(res.data.blueprint);
     setSuccess(
       decision === "approved"
-        ? "Approved — execution program materialised (see Execution)"
+        ? "Approved — execution program materialised (see Execution). Founder Proof is unchanged."
         : "Blueprint rejected"
     );
     await load();
@@ -131,6 +166,7 @@ export default function CompanyBuilderClient() {
     "execution_preview",
   ];
   const pi = bp?.planning_package || bp?.planning_intelligence;
+  const blueprints = Array.isArray(data?.blueprints) ? data.blueprints : [];
 
   return (
     <AdminShell
@@ -153,28 +189,103 @@ export default function CompanyBuilderClient() {
         </label>
       }
     >
-      <div className="cc-page">
-        <p className="cc-muted">
-          Self-building company engine: plan Company → Product → Program → Epic →
-          Feature → Story → Task → Agent Run. Planning only — does not build
-          industry products. Nothing executes before Founder approval.
-        </p>
-
-        <form className="cc-card" onSubmit={submitPlan} style={{ marginBottom: "1rem" }}>
-          <label htmlFor="cb-objective">
-            Founder objective
-            <textarea
-              id="cb-objective"
-              value={objective}
-              onChange={(ev) => setObjective(ev.target.value)}
-              rows={3}
-              style={{ width: "100%", marginTop: "0.35rem" }}
-              required
-            />
-          </label>
-          <p className="cc-muted">
-            Project: {projectId || "none selected"}
+      <div className="cc-page company-builder-page">
+        <div className="company-builder-header">
+          <span className="planning-only-badge" data-testid="cb-planning-badge">
+            Planning only
+          </span>
+          <p className="cc-muted company-builder-purpose" data-testid="cb-purpose">
+            Self-building company engine: plan Company → Product → Program → Epic →
+            Feature → Story → Task → Agent Run. Planning only — does not build industry
+            products, does not call paid providers, and does not advance Founder Proof.
+            Nothing executes before Founder approval.
           </p>
+        </div>
+
+        {projectId ? (
+          <FounderActionBanner summary={opsSummary} projectId={projectId} />
+        ) : null}
+
+        <div className="company-builder-context" data-testid="cb-project-context">
+          <p>
+            <strong>Current project:</strong> {projectDisplayName}
+          </p>
+          <p className="cc-muted" data-testid="cb-proof-guard">
+            Guard: Company Builder does not advance Founder Proof.
+          </p>
+        </div>
+
+        {activeProof ? (
+          <div
+            className="cc-banner company-builder-proof-notice"
+            role="status"
+            data-testid="cb-active-proof-notice"
+          >
+            Founder Proof is active. Company Builder is a separate planning tool and will
+            not change the current proof.
+          </div>
+        ) : null}
+
+        <form
+          className="cc-card company-builder-form"
+          onSubmit={submitPlan}
+          style={{ marginBottom: "1rem" }}
+          data-testid="cb-objective-form"
+        >
+          <h2>Founder objective</h2>
+          <p className="cc-muted" data-testid="cb-example-helper">
+            Example: pick a starter objective, then adjust industry and horizon.
+          </p>
+          <div className="company-builder-examples" role="group" aria-label="Example objectives">
+            {EXAMPLE_OBJECTIVES.map((ex) => (
+              <button
+                key={ex}
+                type="button"
+                className="header-btn-ghost"
+                onClick={() => setObjective(ex)}
+              >
+                Use example
+                <span className="cc-muted"> — {ex.slice(0, 48)}…</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="company-builder-fields">
+            <label htmlFor="cb-objective">
+              Objective
+              <textarea
+                id="cb-objective"
+                value={objective}
+                onChange={(ev) => setObjective(ev.target.value)}
+                rows={3}
+                required
+              />
+            </label>
+            <label htmlFor="cb-industry">
+              Industry / domain hint
+              <input
+                id="cb-industry"
+                value={industryHint}
+                onChange={(ev) => setIndustryHint(ev.target.value)}
+                placeholder="platform"
+              />
+            </label>
+            <label htmlFor="cb-horizon">
+              Planning horizon
+              <select
+                id="cb-horizon"
+                value={horizon}
+                onChange={(ev) => setHorizon(ev.target.value)}
+              >
+                <option value="30d">30 days</option>
+                <option value="90d">90 days</option>
+                <option value="180d">180 days</option>
+                <option value="12m">12 months</option>
+              </select>
+            </label>
+          </div>
+
+          <p className="cc-muted">Project: {projectDisplayName}</p>
           <button type="submit" className="header-btn-ghost" disabled={busy || !projectId}>
             Generate blueprint
           </button>
@@ -197,24 +308,51 @@ export default function CompanyBuilderClient() {
         ) : null}
         {data?.note ? <p className="cc-muted">{data.note}</p> : null}
 
-        {data?.blueprints?.length ? (
-          <ul className="inbox-list">
-            {data.blueprints.map((b) => (
-              <li key={b.id} className="inbox-item">
-                <button
-                  type="button"
-                  className="header-btn-ghost"
-                  onClick={() => setSelected(b)}
-                >
-                  <span className="inbox-kind">{b.status}</span>
-                  <h2 className="inbox-title">
-                    {b.objective?.product_hint || "Blueprint"} ·{" "}
-                    {b.objective?.industry}
-                  </h2>
-                </button>
-              </li>
-            ))}
-          </ul>
+        {!bp ? (
+          <section
+            className="cc-card company-builder-preview-empty"
+            data-testid="cb-blueprint-preview-empty"
+          >
+            <h2>Expected blueprint preview</h2>
+            <p className="cc-muted">
+              After you generate a blueprint you will see vision, departments, backlog
+              counts, roadmap waves, risks, and an execution preview — still planning-only
+              until Founder approval.
+            </p>
+            <ul className="cc-muted">
+              <li>CEO plan + department ownership</li>
+              <li>Epics → features → stories → tasks</li>
+              <li>Dependency graph and approval gate</li>
+              <li>Execution preview (no live runs)</li>
+            </ul>
+          </section>
+        ) : null}
+
+        {blueprints.length ? (
+          <section
+            className="company-builder-recent"
+            data-testid="cb-recent-blueprints"
+            aria-labelledby="cb-recent-h"
+          >
+            <h2 id="cb-recent-h">Recent blueprints</h2>
+            <ul className="inbox-list">
+              {blueprints.map((b) => (
+                <li key={b.id} className="inbox-item">
+                  <button
+                    type="button"
+                    className="header-btn-ghost"
+                    onClick={() => setSelected(b)}
+                  >
+                    <span className="inbox-kind">{b.status}</span>
+                    <h3 className="inbox-title">
+                      {b.objective?.product_hint || "Blueprint"} ·{" "}
+                      {b.objective?.industry}
+                    </h3>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : data ? (
           <EmptyState
             title="No blueprints yet"
@@ -223,17 +361,20 @@ export default function CompanyBuilderClient() {
                 ? "No Company Builder blueprints for this project."
                 : "Select a project, then generate a planning blueprint."
             }
-            configuration="Planning only — nothing executes before Founder approval."
+            configuration="Planning only — nothing executes before Founder approval. Does not advance Founder Proof."
             nextAction="Enter a Founder objective and generate a blueprint."
-            projectLabel={projectId || "none"}
+            projectLabel={projectDisplayName}
           />
         ) : null}
 
         {bp ? (
-          <section className="cc-card" style={{ marginTop: "1rem" }}>
+          <section
+            className="cc-card"
+            style={{ marginTop: "1rem" }}
+            data-testid="cb-blueprint-preview"
+          >
             <h2>
-              {bp.objective?.product_hint}{" "}
-              <code>{bp.status}</code>
+              {bp.objective?.product_hint} <code>{bp.status}</code>
             </h2>
             <p>{bp.ceo_plan?.vision}</p>
             <p className="cc-muted">
@@ -364,14 +505,14 @@ export default function CompanyBuilderClient() {
             ) : null}
 
             <p className="cc-muted">
-              Dependency edges: {bp.dependency_graph?.stats?.edge_count || 0} ·
-              acyclic: {String(bp.dependency_graph?.acyclic)} · Roadmap waves:{" "}
+              Dependency edges: {bp.dependency_graph?.stats?.edge_count || 0} · acyclic:{" "}
+              {String(bp.dependency_graph?.acyclic)} · Roadmap waves:{" "}
               {bp.roadmap?.waves?.length || 0} · frozen:{" "}
               {String(bp.roadmap?.execution_frozen)}
             </p>
             <p className="cc-muted">
-              Execution: program {bp.execution?.program_id || bp.execution_program_id || "—"} ·
-              industry OS built {String(Boolean(bp.execution?.industry_os_built))}
+              Execution: program {bp.execution?.program_id || bp.execution_program_id || "—"}{" "}
+              · industry OS built {String(Boolean(bp.execution?.industry_os_built))}
             </p>
             {bp.status === "awaiting_founder_approval" ? (
               <div style={{ display: "flex", gap: "0.5rem" }}>

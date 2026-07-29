@@ -12,7 +12,7 @@ import MianxLoader from "@/components/shared/MianxLoader";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { useAdminProject } from "@/lib/admin-project";
 import { useProjectOperationalSummary, hasActiveFounderProof } from "@/lib/admin-ops-summary";
-import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderActionBanner from "@/components/admin/FounderActionBanner";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -232,7 +232,7 @@ export default function PlanningClient() {
         title="Planning Intelligence"
         description="Deterministic planning between Template Intelligence and Execution. Structure and preview only — nothing executes. Founder approval required."
       />
-      <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+      <FounderActionBanner summary={opsSummary} projectId={projectId} />
 
       {activeProof ? (
         <div className="cc-card" data-testid="planning-active-proof-banner" role="status">

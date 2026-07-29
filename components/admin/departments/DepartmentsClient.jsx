@@ -11,7 +11,7 @@ import MianxLoader from "@/components/shared/MianxLoader";
 import { useAdminProject } from "@/lib/admin-project";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
-import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import { DEPARTMENTS } from "@/lib/workforce/departments";
 
 async function fetchJson(path, router) {
@@ -107,7 +107,7 @@ export default function DepartmentsClient() {
           agent status when a project is selected. Capacity slots are planning
           inventory — not created agents.
         </p>
-        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+        <FounderActionBanner summary={opsSummary} projectId={projectId} />
         {loading && !cc ? (
           <DelayedLoader delayMs={150}>
             <MianxLoader variant="section" label="Loading departments…" />

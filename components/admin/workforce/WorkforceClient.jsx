@@ -14,7 +14,7 @@ import {
   useProjectOperationalSummary,
   hasActiveFounderProof,
 } from "@/lib/admin-ops-summary";
-import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderActionBanner from "@/components/admin/FounderActionBanner";
 
 const TABS = [
   { id: "dashboard", label: "Dashboard" },
@@ -33,6 +33,15 @@ async function getJson(path, router) {
   }
   const data = await res.json().catch(() => null);
   return { ok: res.ok, data };
+}
+
+function StatusCard({ label, value, testId }) {
+  return (
+    <div className="workforce-status-card" data-testid={testId}>
+      <span className="workforce-status-label">{label}</span>
+      <strong className="workforce-status-value">{value}</strong>
+    </div>
+  );
 }
 
 export default function WorkforceClient() {
@@ -158,6 +167,37 @@ export default function WorkforceClient() {
     return data;
   }
 
+  const counts = dash?.counts || {};
+  const executableCount = dash?.executable_agents ?? 36;
+  const assignedCount = Number(dash?.assigned_count ?? counts.busy ?? 0);
+  const simState =
+    simResult?.simulation?.status ||
+    dash?.simulation_state?.status ||
+    "none";
+  const isZeroAssignment = assignedCount === 0;
+
+  const statusCards = [
+    { label: "Executable", value: executableCount, testId: "wf-card-executable" },
+    { label: "Idle", value: counts.idle ?? 0, testId: "wf-card-idle" },
+    { label: "Busy", value: counts.busy ?? 0, testId: "wf-card-busy" },
+    { label: "Waiting", value: counts.waiting ?? 0, testId: "wf-card-waiting" },
+    { label: "Blocked", value: counts.blocked ?? 0, testId: "wf-card-blocked" },
+    { label: "Executing", value: counts.executing ?? 0, testId: "wf-card-executing" },
+    { label: "Review", value: counts.review ?? 0, testId: "wf-card-review" },
+    { label: "Failed", value: counts.failed ?? 0, testId: "wf-card-failed" },
+    { label: "Completed", value: counts.completed ?? 0, testId: "wf-card-completed" },
+    {
+      label: "Current proof assignment",
+      value: assignedCount,
+      testId: "wf-card-proof-assignment",
+    },
+    {
+      label: "Simulation state",
+      value: String(simState).replace(/_/g, " "),
+      testId: "wf-card-simulation",
+    },
+  ];
+
   return (
     <AdminShell
       title="Live Workforce"
@@ -178,7 +218,7 @@ export default function WorkforceClient() {
         title="Real Autonomous Workforce"
         description="Activates the 36 executable agents only — lifecycle, collaboration, simulation. No filler agents. No auto Founder approval. No paid provider in simulation."
       />
-      <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+      <FounderActionBanner summary={opsSummary} projectId={projectId} />
 
       <div className="admin-tabs" role="tablist" aria-label="Workforce views">
         {TABS.map((t) => (
@@ -206,31 +246,41 @@ export default function WorkforceClient() {
           </button>
         </div>
       ) : tab === "dashboard" && dash ? (
-        <div className="admin-table-wrap">
+        <div className="workforce-dashboard" data-testid="workforce-dashboard">
           <p className="cc-muted">{dash.note}</p>
           <p className="cc-muted">
-            Engine: {dash.engine_version} · Executable: {dash.executable_agents} · Paused:{" "}
-            {String(dash.paused)}
+            Engine: {dash.engine_version} · Paused: {String(dash.paused)}
           </p>
-          <table className="admin-data-table">
-            <thead>
-              <tr>
-                <th>State</th>
-                <th>Count</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(dash.counts || {}).map(([k, v]) => (
-                <tr key={k}>
-                  <td>{k}</td>
-                  <td>{v}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+          <div className="workforce-status-grid" data-testid="workforce-status-cards">
+            {statusCards.map((c) => (
+              <StatusCard key={c.label} {...c} />
+            ))}
+          </div>
+
+          {isZeroAssignment ? (
+            <div
+              className="workforce-zero-state"
+              data-testid="workforce-zero-state"
+              role="status"
+            >
+              <p>
+                <strong>{executableCount} agents available</strong>
+              </p>
+              <p>
+                <strong>0 assigned</strong>
+              </p>
+              <p className="cc-muted">
+                Reason: Agent allocation begins only after simulation approval and
+                explicit start.
+              </p>
+            </div>
+          ) : null}
+
           <p className="cc-muted" style={{ marginTop: "0.75rem" }}>
-            Memory writes: {dash.memory_writes} · Learning proposals: {dash.learning_proposals} ·
-            Avg execution: {dash.average_execution_ms ?? "—"} ms
+            Memory writes: {dash.memory_writes} · Learning proposals:{" "}
+            {dash.learning_proposals} · Avg execution:{" "}
+            {dash.average_execution_ms ?? "—"} ms
           </p>
         </div>
       ) : tab === "agents" ? (
@@ -263,7 +313,11 @@ export default function WorkforceClient() {
               <tbody>
                 {(dash.busy_agents || [])
                   .concat(
-                    (dash.idle_agents || []).map((slug) => ({ slug, status: "idle", task_id: null }))
+                    (dash.idle_agents || []).map((slug) => ({
+                      slug,
+                      status: "idle",
+                      task_id: null,
+                    }))
                   )
                   .slice(0, 40)
                   .map((a) => (
@@ -330,8 +384,8 @@ export default function WorkforceClient() {
               : "Simulation mode"}
           </h2>
           <p className="cc-muted">
-            Runs the real workforce without production mutation, external API, or paid provider.
-            Founder approval is never auto-completed.
+            Runs the real workforce without production mutation, external API, or paid
+            provider. Founder approval is never auto-completed.
             {activeProof
               ? " This is NOT Founder production proof — it does not advance the canonical Integration proof."
               : ""}
@@ -428,16 +482,36 @@ export default function WorkforceClient() {
           <h2>Founder control</h2>
           <p className="cc-muted">Paused: {String(dash?.paused)}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-            <button type="button" className="header-btn-ghost" disabled={busy} onClick={() => post({ action: "bootstrap" })}>
+            <button
+              type="button"
+              className="header-btn-ghost"
+              disabled={busy}
+              onClick={() => post({ action: "bootstrap" })}
+            >
               Bootstrap workforce
             </button>
-            <button type="button" className="header-btn-ghost" disabled={busy} onClick={() => post({ action: "recover" })}>
+            <button
+              type="button"
+              className="header-btn-ghost"
+              disabled={busy}
+              onClick={() => post({ action: "recover" })}
+            >
               Recover
             </button>
-            <button type="button" className="header-btn-ghost" disabled={busy} onClick={() => post({ action: "pause" })}>
+            <button
+              type="button"
+              className="header-btn-ghost"
+              disabled={busy}
+              onClick={() => post({ action: "pause" })}
+            >
               Pause workforce
             </button>
-            <button type="button" className="header-btn-ghost" disabled={busy} onClick={() => post({ action: "resume" })}>
+            <button
+              type="button"
+              className="header-btn-ghost"
+              disabled={busy}
+              onClick={() => post({ action: "resume" })}
+            >
               Resume workforce
             </button>
           </div>

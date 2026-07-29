@@ -8,7 +8,7 @@ import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
-import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
 
 async function fetchJson(path, router) {
@@ -91,7 +91,7 @@ export default function KnowledgeClient() {
           Distinguishes organisation operating knowledge, global templates, project knowledge,
           workflow outputs, agent results, Integration evidence, and verified memory.
         </p>
-        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+        <FounderActionBanner summary={opsSummary} projectId={projectId} />
         {data?.canonical_objective ? (
           <p className="cc-muted" data-testid="knowledge-canonical-objective">
             Canonical objective: <strong>{data.canonical_objective.title}</strong>

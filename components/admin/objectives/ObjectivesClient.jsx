@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
@@ -8,12 +8,29 @@ import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
 import StatusChip from "@/components/admin/command-center/StatusChip";
-import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import {
   useProjectOperationalSummary,
   hasActiveFounderProof,
 } from "@/lib/admin-ops-summary";
+
+function isCancelledOrArchived(item) {
+  const s = String(item?.status || item?.stage || item?.proof_status || "").toLowerCase();
+  return (
+    s.includes("cancel") ||
+    s.includes("archiv") ||
+    Boolean(item?.cancelled_as_duplicate) ||
+    Boolean(item?.is_duplicate_cancelled)
+  );
+}
+
+function isPrimaryProductionProof(item) {
+  return (
+    item?.source_type === "integration_proof" &&
+    (Boolean(item?.is_canonical) || Boolean(item?.is_canonical_active))
+  );
+}
 
 async function api(path, options, router) {
   const res = await fetch(path, {
@@ -67,6 +84,8 @@ export default function ObjectivesClient() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showCancelled, setShowCancelled] = useState(false);
+  const [showAnalysisForm, setShowAnalysisForm] = useState(false);
   const [form, setForm] = useState({
     objective: "",
     priority: "high",
@@ -75,6 +94,10 @@ export default function ObjectivesClient() {
     risk_class: "R2",
   });
   const [idempotencyKey, setIdempotencyKey] = useState(() => newIdempotencyKey());
+
+  useEffect(() => {
+    setShowAnalysisForm(false);
+  }, [projectId]);
 
   const call = useCallback((path, options) => api(path, options, router), [router]);
 
@@ -199,12 +222,28 @@ export default function ObjectivesClient() {
     </div>
   );
 
-  const objectives = list?.objectives || [];
+  const allObjectives = useMemo(() => list?.objectives || [], [list?.objectives]);
+  const hiddenCancelledCount = useMemo(
+    () => allObjectives.filter(isCancelledOrArchived).length,
+    [allObjectives]
+  );
+  const objectives = useMemo(() => {
+    const visible = showCancelled
+      ? allObjectives
+      : allObjectives.filter((o) => !isCancelledOrArchived(o));
+    return [...visible].sort((a, b) => {
+      const ap = isPrimaryProductionProof(a) ? 0 : 1;
+      const bp = isPrimaryProductionProof(b) ? 0 : 1;
+      return ap - bp;
+    });
+  }, [allObjectives, showCancelled]);
+
+  const formExpanded = !activeProof || showAnalysisForm;
 
   return (
     <AdminShell title="Objectives" actions={actions}>
       <div className="obj-page">
-        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+        <FounderActionBanner summary={opsSummary} projectId={projectId} />
         {!projectId ? (
           <EmptyState
             title="Select a project"
@@ -237,91 +276,122 @@ export default function ObjectivesClient() {
               objectives are created only from Founder Proof (Start or Continue
               Founder Proof), not this form.
             </p>
-            {activeProof ? (
-              <p className="admin-warning" role="note">
-                This form does not create Production Proof. Continue the canonical
-                proof in Founder Proof; a general objective is separate analysis
-                work only.
-              </p>
-            ) : null}
-            <form className="obj-form" onSubmit={onSubmit}>
-              <label>
-                Objective
-                <textarea
-                  required
-                  minLength={8}
-                  maxLength={8000}
-                  rows={5}
-                  value={form.objective}
-                  onChange={(e) => setForm((f) => ({ ...f, objective: e.target.value }))}
-                  disabled={!projectId || submitting}
-                  placeholder="e.g. Assess whether we should build HospitalOS."
-                />
-              </label>
-              <div className="obj-form-row">
-                <label>
-                  Priority
-                  <select
-                    value={form.priority}
-                    onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
-                    disabled={!projectId || submitting}
-                  >
-                    <option value="low">Low</option>
-                    <option value="normal">Normal</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
-                </label>
-                <label>
-                  Optional deadline
-                  <input
-                    type="date"
-                    value={form.deadline}
-                    onChange={(e) => setForm((f) => ({ ...f, deadline: e.target.value }))}
-                    disabled={!projectId || submitting}
-                  />
-                </label>
-                <label>
-                  Risk class
-                  <select
-                    value={form.risk_class}
-                    onChange={(e) => setForm((f) => ({ ...f, risk_class: e.target.value }))}
-                    disabled={!projectId || submitting}
-                  >
-                    <option value="R1">R1</option>
-                    <option value="R2">R2</option>
-                    <option value="R3">R3</option>
-                  </select>
-                </label>
-              </div>
-              <label>
-                Protected-action intent (optional)
-                <select
-                  value={form.proposed_action}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, proposed_action: e.target.value }))
-                  }
-                  disabled={!projectId || submitting}
+            {activeProof && !formExpanded ? (
+              <div className="obj-form-collapsed" data-testid="obj-analysis-collapsed">
+                <p className="admin-warning" role="note">
+                  An active Founder Production Proof already exists. Creating a
+                  separate analysis objective will not create or alter Founder Proof.
+                </p>
+                <button
+                  type="button"
+                  className="header-btn-ghost"
+                  data-testid="obj-create-analysis"
+                  onClick={() => setShowAnalysisForm(true)}
                 >
-                  {PROTECTED_OPTIONS.map((o) => (
-                    <option key={o.value || "none"} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <p className="cc-muted">
-                Capabilities cannot be injected from this form. Idempotency key
-                rotates after each successful submit.
-              </p>
-              <button
-                type="submit"
-                className="header-btn"
-                disabled={!projectId || submitting || form.objective.trim().length < 8}
-              >
-                {submitting ? "Starting…" : "Start objective"}
-              </button>
-            </form>
+                  Create separate analysis objective
+                </button>
+              </div>
+            ) : null}
+            {formExpanded ? (
+              <>
+                {activeProof ? (
+                  <p className="admin-warning" role="note">
+                    This form does not create or alter Founder Proof. Continue the
+                    canonical proof in Founder Proof; a general objective is
+                    separate analysis work only.
+                  </p>
+                ) : null}
+                <form className="obj-form" onSubmit={onSubmit}>
+                  <label>
+                    Objective
+                    <textarea
+                      required
+                      minLength={8}
+                      maxLength={8000}
+                      rows={5}
+                      value={form.objective}
+                      onChange={(e) => setForm((f) => ({ ...f, objective: e.target.value }))}
+                      disabled={!projectId || submitting}
+                      placeholder="e.g. Assess whether we should build HospitalOS."
+                    />
+                  </label>
+                  <div className="obj-form-row">
+                    <label>
+                      Priority
+                      <select
+                        value={form.priority}
+                        onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
+                        disabled={!projectId || submitting}
+                      >
+                        <option value="low">Low</option>
+                        <option value="normal">Normal</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                      </select>
+                    </label>
+                    <label>
+                      Optional deadline
+                      <input
+                        type="date"
+                        value={form.deadline}
+                        onChange={(e) => setForm((f) => ({ ...f, deadline: e.target.value }))}
+                        disabled={!projectId || submitting}
+                      />
+                    </label>
+                    <label>
+                      Risk class
+                      <select
+                        value={form.risk_class}
+                        onChange={(e) => setForm((f) => ({ ...f, risk_class: e.target.value }))}
+                        disabled={!projectId || submitting}
+                      >
+                        <option value="R1">R1</option>
+                        <option value="R2">R2</option>
+                        <option value="R3">R3</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label>
+                    Protected-action intent (optional)
+                    <select
+                      value={form.proposed_action}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, proposed_action: e.target.value }))
+                      }
+                      disabled={!projectId || submitting}
+                    >
+                      {PROTECTED_OPTIONS.map((o) => (
+                        <option key={o.value || "none"} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <p className="cc-muted">
+                    Capabilities cannot be injected from this form. Idempotency key
+                    rotates after each successful submit.
+                  </p>
+                  <div className="obj-form-actions">
+                    <button
+                      type="submit"
+                      className="header-btn"
+                      disabled={!projectId || submitting || form.objective.trim().length < 8}
+                    >
+                      {submitting ? "Starting…" : "Start objective"}
+                    </button>
+                    {activeProof ? (
+                      <button
+                        type="button"
+                        className="header-btn-ghost"
+                        onClick={() => setShowAnalysisForm(false)}
+                      >
+                        Collapse
+                      </button>
+                    ) : null}
+                  </div>
+                </form>
+              </>
+            ) : null}
           </section>
 
           <section className="cc-card" aria-labelledby="obj-list-h">
@@ -352,38 +422,61 @@ export default function ObjectivesClient() {
               />
             ) : (
               <ul className="obj-list">
-                {objectives.map((o) => (
-                  <li key={`${o.source_type || "task"}:${o.id}`}>
-                    <button
-                      type="button"
-                      className={`obj-row${selectedId === o.id ? " selected" : ""}`}
-                      onClick={() => {
-                        if (o.source_type === "integration_proof" && o.href) {
-                          router.push(o.href);
-                          return;
-                        }
-                        replaceParams({ id: o.id });
-                      }}
-                    >
-                      <span className="obj-row-top">
-                        <strong>{o.title}</strong>
-                        <StatusChip status={o.status} />
-                      </span>
-                      <span className="cc-muted">
-                        {o.source_badge || o.workflow || "—"}
-                        {o.stage ? ` · ${o.stage}` : ""}
-                        {o.required_action ? ` · ${o.required_action}` : ""}
-                      </span>
-                      {o.associated_run_id ? (
-                        <span className="cc-muted">
-                          Run …{String(o.associated_run_id).slice(-8)}
+                {objectives.map((o) => {
+                  const primary = isPrimaryProductionProof(o);
+                  return (
+                    <li key={`${o.source_type || "task"}:${o.id}`}>
+                      <button
+                        type="button"
+                        className={`obj-row${selectedId === o.id ? " selected" : ""}${
+                          primary ? " obj-row-primary" : ""
+                        }`}
+                        data-testid={primary ? "obj-row-production-proof" : undefined}
+                        onClick={() => {
+                          if (o.source_type === "integration_proof" && o.href) {
+                            router.push(o.href);
+                            return;
+                          }
+                          replaceParams({ id: o.id });
+                        }}
+                      >
+                        <span className="obj-row-top">
+                          <strong>
+                            {primary ? "★ " : ""}
+                            {o.title}
+                          </strong>
+                          <StatusChip status={o.status} />
                         </span>
-                      ) : null}
-                    </button>
-                  </li>
-                ))}
+                        <span className="cc-muted">
+                          {o.source_badge || o.workflow || "—"}
+                          {o.stage ? ` · ${o.stage}` : ""}
+                          {o.required_action ? ` · ${o.required_action}` : ""}
+                        </span>
+                        {o.associated_run_id ? (
+                          <span className="cc-muted">
+                            Run …{String(o.associated_run_id).slice(-8)}
+                          </span>
+                        ) : null}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
+            {hiddenCancelledCount > 0 && !showCancelled ? (
+              <p className="cc-muted" data-testid="obj-hidden-cancelled">
+                {hiddenCancelledCount} cancelled/archived objective(s) hidden.
+              </p>
+            ) : null}
+            <label className="ceo-brief-toggle">
+              <input
+                type="checkbox"
+                checked={showCancelled}
+                data-testid="obj-show-cancelled"
+                onChange={(e) => setShowCancelled(e.target.checked)}
+              />
+              Show cancelled / archived
+            </label>
           </section>
         </div>
 

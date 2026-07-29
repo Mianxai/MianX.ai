@@ -11,7 +11,7 @@ import MianxLoader from "@/components/shared/MianxLoader";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { useAdminProject } from "@/lib/admin-project";
 import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
-import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderActionBanner from "@/components/admin/FounderActionBanner";
 
 const KINDS = [
   { id: "overview", label: "Overview" },
@@ -196,7 +196,7 @@ export default function TemplatesClient() {
         title="Template Intelligence"
         description="Global reusable industry, capability, module, and risk templates. Catalogue is organisation/platform-scoped — not filtered by project. Applied project context is preserved for Planning and Company Builder links only."
       />
-      <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+      <FounderActionBanner summary={opsSummary} projectId={projectId} />
 
       <div className="admin-tabs" role="tablist" aria-label="Template kinds">
         {KINDS.map((k) => (

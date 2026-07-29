@@ -10,7 +10,7 @@ import MianxLoader from "@/components/shared/MianxLoader";
 import CeoBriefPanel from "@/components/admin/command-center/CeoBriefPanel";
 import SchedulePanel from "@/components/admin/command-center/SchedulePanel";
 import StatusChip from "@/components/admin/command-center/StatusChip";
-import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
 
@@ -101,7 +101,7 @@ export default function CeoBriefClient() {
           Deterministic operational brief from stored runtime state. No generative
           provider call is required.
         </p>
-        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+        <FounderActionBanner summary={opsSummary} projectId={projectId} />
         {error ? (
           <div className="cc-banner cc-banner-error" role="alert">
             {error}
