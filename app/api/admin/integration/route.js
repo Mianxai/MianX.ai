@@ -460,6 +460,79 @@ export const POST = withErrorHandling(async (req) => {
     await finish(run);
     return NextResponse.json({ ok: true, run });
   }
+  if (action === "cancel_founder_proof_duplicate") {
+    const project = await requireActiveProjectForProof(body.project_id);
+    const canonicalRunId = body.canonical_run_id;
+    const duplicateRunId = body.duplicate_run_id;
+    const reason = body.reason || "cancelled_duplicate";
+
+    if (!canonicalRunId || !duplicateRunId) {
+      throw badRequest("canonical_run_id and duplicate_run_id are required");
+    }
+
+    const persisted = await listPersistedIntegrationRuns({
+      project_id: project.id,
+      limit: 50,
+    });
+
+    const isFounderProductionProof = (run) =>
+      Boolean(run?.proof?.is_production_proof || run?.payload?.is_production_proof) &&
+      (run?.objective?.title || run?.objective_title || "") ===
+        FOUNDER_PRODUCTION_PROOF_OBJECTIVE.title;
+
+    const isTerminalProof = (run) => {
+      const ps = mapProofStatusFromRun(run);
+      return ["completed", "rejected", "failed"].includes(ps);
+    };
+
+    const proofScore = (run) =>
+      (run?.evidence?.count || 0) +
+      (run?.memory?.count || 0) +
+      (run?.learning?.count || 0);
+
+    const proofCandidates = (persisted || []).filter(isFounderProductionProof);
+    const activeProofRuns = proofCandidates.filter((r) => !isTerminalProof(r));
+
+    let canonicalActive = null;
+    if (activeProofRuns.length > 0) {
+      activeProofRuns.sort((a, b) => {
+        const at = String(a.started_at || a.updated_at || "");
+        const bt = String(b.started_at || b.updated_at || "");
+        const t = at.localeCompare(bt);
+        if (t !== 0) return t;
+        return proofScore(b) - proofScore(a);
+      });
+      canonicalActive = activeProofRuns[0] || null;
+    }
+
+    if (!canonicalActive) {
+      throw badRequest("No active canonical production Founder proof run found.");
+    }
+
+    if (String(canonicalActive.id) !== String(canonicalRunId)) {
+      throw badRequest("canonical_run_id does not match current canonical active run.");
+    }
+
+    const duplicateOk = activeProofRuns.some(
+      (r) => String(r.id) === String(duplicateRunId) && String(r.id) !== String(canonicalRunId)
+    );
+    if (!duplicateOk) {
+      throw badRequest(
+        "duplicate_run_id must be a non-canonical active production Founder proof run."
+      );
+    }
+
+    const run = cancelIntegrationRun(duplicateRunId, { actor, failure_reason: reason });
+    await finish(run);
+
+    return NextResponse.json({
+      ok: true,
+      run,
+      cancelled_run_id: duplicateRunId,
+      canonical_run_id: canonicalRunId,
+      note: "Non-canonical duplicate marked as cancelled.",
+    });
+  }
   if (action === "recover" || action === "deterministic_recovery_test") {
     const run = recoverIntegrationRun(body.run_id, { actor });
     run.payload = {

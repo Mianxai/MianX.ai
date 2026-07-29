@@ -130,6 +130,11 @@ export default function IntegrationClient() {
   );
   const activeFounderProofRunCount = dash?.activeFounderProofRunCount || 0;
   const hasActiveFounderProofRun = activeFounderProofRunCount > 0;
+  const duplicateActiveFounderProofDetected = Boolean(
+    dash?.duplicateActiveFounderProofDetected
+  );
+  const nonCanonicalActiveFounderProofRunIds =
+    dash?.nonCanonicalActiveFounderProofRunIds || [];
   const canStartProof = Boolean(
     !busy &&
       !loading &&
@@ -626,6 +631,45 @@ export default function IntegrationClient() {
                 )}
               </pre>
             </details>
+
+            {duplicateActiveFounderProofDetected &&
+            nonCanonicalActiveFounderProofRunIds.length ? (
+              <div
+                className="admin-warning"
+                role="status"
+                data-testid="duplicate-founder-proof-warning"
+              >
+                <p>
+                  Multiple non-terminal active production Founder proof runs were detected.
+                  Cancel the non-canonical duplicates to ensure a single canonical flow.
+                </p>
+                <button
+                  type="button"
+                  disabled={busy}
+                  data-testid="cancel-duplicate-founder-proof"
+                  onClick={async () => {
+                    if (!dash?.canonicalFounderProofRunId) return;
+                    const ok = window.confirm(
+                      `Cancel ${nonCanonicalActiveFounderProofRunIds.length} non-canonical duplicate run(s)?`
+                    );
+                    if (!ok) return;
+                    for (const duplicateRunId of nonCanonicalActiveFounderProofRunIds) {
+                      // eslint-disable-next-line no-await-in-loop
+                      await act({
+                        action: "cancel_founder_proof_duplicate",
+                        project_id: projectId,
+                        canonical_run_id: dash.canonicalFounderProofRunId,
+                        duplicate_run_id: duplicateRunId,
+                        reason: "cancelled_duplicate",
+                        actor: "founder",
+                      });
+                    }
+                  }}
+                >
+                  Cancel non-canonical duplicates
+                </button>
+              </div>
+            ) : null}
 
             <div className="admin-actions">
               {hasActiveFounderProofRun ? (
