@@ -10,7 +10,9 @@ import MianxLoader from "@/components/shared/MianxLoader";
 import CeoBriefPanel from "@/components/admin/command-center/CeoBriefPanel";
 import SchedulePanel from "@/components/admin/command-center/SchedulePanel";
 import StatusChip from "@/components/admin/command-center/StatusChip";
+import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
+import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
 
 async function fetchJson(path, router) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
@@ -31,6 +33,9 @@ export default function CeoBriefClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
+  const { summary: opsSummary } = useProjectOperationalSummary(projectId, {
+    loginFallback: "/admin/ceo-brief",
+  });
   const [projects, setProjects] = useState([]);
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -96,6 +101,7 @@ export default function CeoBriefClient() {
           Deterministic operational brief from stored runtime state. No generative
           provider call is required.
         </p>
+        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
         {error ? (
           <div className="cc-banner cc-banner-error" role="alert">
             {error}

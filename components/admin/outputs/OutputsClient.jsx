@@ -7,7 +7,9 @@ import AdminShell from "@/components/admin/AdminShell";
 import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
+import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
+import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
 
 async function fetchJson(path, router) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
@@ -24,10 +26,21 @@ async function fetchJson(path, router) {
   return { ok: res.ok, data };
 }
 
+function nextActionHref(next, projectId) {
+  if (!next?.href) return null;
+  if (projectId && !String(next.href).includes("project_id=")) {
+    return `${next.href}${next.href.includes("?") ? "&" : "?"}project_id=${encodeURIComponent(projectId)}`;
+  }
+  return next.href;
+}
+
 export default function OutputsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
+  const { summary: opsSummary } = useProjectOperationalSummary(projectId, {
+    loginFallback: "/admin/outputs",
+  });
   const [data, setData] = useState(null);
   const [projects, setProjects] = useState([]);
   const [error, setError] = useState("");
@@ -83,8 +96,10 @@ export default function OutputsClient() {
     >
       <div className="cc-page">
         <p className="cc-muted">
-          Aggregated from existing agent runs — not a separate output store.
+          Aggregated from existing agent runs — not a separate output store. Categories:
+          Integration evidence · Proof Pack · Agent Runtime · Workflow · Approved final.
         </p>
+        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
         {loading && !data ? (
           <DelayedLoader delayMs={200}>
             <MianxLoader variant="section" label="Loading outputs…" />
@@ -99,12 +114,26 @@ export default function OutputsClient() {
           <EmptyState
             title="Outputs unavailable"
             reason={data.label || data.note || "Output aggregation needs a configured runtime scope."}
-            nextAction="Select a project or open Runtime Runs directly."
+            nextAction={
+              opsSummary?.next_founder_action?.reason ||
+              "Select a project or follow the next Founder action."
+            }
             projectLabel={projectId || "All projects"}
             cta={
-              <Link className="header-btn" href="/admin/runtime/runs">
-                Open runs
-              </Link>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                {opsSummary?.next_founder_action?.href &&
+                opsSummary.next_founder_action.severity === "action_required" ? (
+                  <Link
+                    className="header-btn"
+                    href={nextActionHref(opsSummary.next_founder_action, projectId)}
+                  >
+                    {opsSummary.next_founder_action.label}
+                  </Link>
+                ) : null}
+                <Link className="header-btn-ghost" href="/admin/runtime/runs">
+                  Runtime Runs
+                </Link>
+              </div>
             }
           />
         ) : null}
@@ -112,13 +141,31 @@ export default function OutputsClient() {
           data.items.length === 0 ? (
             <EmptyState
               title="No outputs yet"
-              reason="Aggregated from existing agent runs — not a separate output store."
-              nextAction="Enqueue and complete runs to populate this list."
+              reason="Aggregated from existing agent runs — not a separate output store. Integration evidence and Proof Pack live under E2E Integration."
+              nextAction={
+                opsSummary?.next_founder_action?.reason ||
+                "Follow the next Founder action, or enqueue agent runs."
+              }
               projectLabel={projectId || "All projects"}
               cta={
-                <Link className="header-btn" href="/admin/runtime/runs">
-                  Open runs
-                </Link>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                  {opsSummary?.next_founder_action?.href &&
+                  opsSummary.next_founder_action.severity === "action_required" ? (
+                    <Link
+                      className="header-btn"
+                      href={nextActionHref(opsSummary.next_founder_action, projectId)}
+                    >
+                      {opsSummary.next_founder_action.label}
+                    </Link>
+                  ) : (
+                    <Link className="header-btn" href="/admin/integration">
+                      Open Integration
+                    </Link>
+                  )}
+                  <Link className="header-btn-ghost" href="/admin/runtime/runs">
+                    Runtime Runs
+                  </Link>
+                </div>
               }
             />
           ) : (
@@ -126,17 +173,20 @@ export default function OutputsClient() {
               {data.items.map((item) => (
                 <li key={item.id} className="inbox-item">
                   <div>
-                    <span className="inbox-kind">{item.kind.replace(/_/g, " ")}</span>
+                    <span className="inbox-kind">
+                      {item.category || item.kind?.replace(/_/g, " ") || "Agent Runtime"}
+                    </span>
                     <h2 className="inbox-title">
                       {item.agentSlug || "run"} · {item.status || "—"}
                     </h2>
                     <p className="cc-muted">
                       {item.summary || "—"}
                       {item.workflow ? ` · ${item.workflow}` : ""}
+                      {item.kind ? ` · kind ${item.kind.replace(/_/g, " ")}` : ""}
                     </p>
                   </div>
                   <Link href={item.href} className="header-btn-ghost">
-                    Runs
+                    Runtime Runs
                   </Link>
                 </li>
               ))}

@@ -7,7 +7,9 @@ import AdminShell from "@/components/admin/AdminShell";
 import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
+import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
+import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
 
 async function fetchJson(path, router, opts) {
   const res = await fetch(path, {
@@ -31,6 +33,9 @@ export default function InboxClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
+  const { summary: opsSummary } = useProjectOperationalSummary(projectId, {
+    loginFallback: "/admin/inbox",
+  });
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -129,6 +134,7 @@ export default function InboxClient() {
           Operational attention queue — not email. Approve, reject, pause, resume,
           and cancel from here when the item supports it.
         </p>
+        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
         {loading && !data ? (
           <DelayedLoader delayMs={200}>
             <MianxLoader variant="section" label="Loading Founder Inbox…" />

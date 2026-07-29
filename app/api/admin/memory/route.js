@@ -6,7 +6,9 @@ import {
   listMemory,
   proposeMemory,
   decideMemory,
+  memoryLearningPersistenceStatus,
 } from "@/lib/core/memory";
+import { buildMemoryListPresentation } from "@/lib/core/memory/list-presentation";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +21,23 @@ export const GET = withErrorHandling(async (req) => {
   }
   const url = new URL(req.url);
   const projectId = url.searchParams.get("project_id") || null;
-  const items = await listMemory({ projectId });
+  const [items, persistence] = await Promise.all([
+    listMemory({ projectId }),
+    memoryLearningPersistenceStatus(),
+  ]);
+  const presentation = buildMemoryListPresentation({
+    items,
+    persistence,
+    projectId,
+  });
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
     projectId,
     items,
-    note: "Memory tables require additive migration before durable persistence.",
+    persistence,
+    empty_state: presentation.empty_state,
+    counts: presentation.counts,
+    note: presentation.note,
   });
 });
 

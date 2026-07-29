@@ -8,6 +8,8 @@ import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
+import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
 
 async function fetchJson(path, router) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
@@ -28,6 +30,9 @@ export default function KnowledgeClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
+  const { summary: opsSummary } = useProjectOperationalSummary(projectId, {
+    loginFallback: "/admin/knowledge",
+  });
   const [data, setData] = useState(null);
   const [projects, setProjects] = useState([]);
   const [error, setError] = useState("");
@@ -83,8 +88,16 @@ export default function KnowledgeClient() {
     >
       <div className="cc-page">
         <p className="cc-muted">
-          Exposes existing scoped audit and run results. Not a new RAG platform.
+          Distinguishes organisation operating knowledge, global templates, project knowledge,
+          workflow outputs, agent results, Integration evidence, and verified memory.
         </p>
+        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+        {data?.canonical_objective ? (
+          <p className="cc-muted" data-testid="knowledge-canonical-objective">
+            Canonical objective: <strong>{data.canonical_objective.title}</strong>
+            {data.canonical_stage ? ` · Stage: ${data.canonical_stage}` : ""}
+          </p>
+        ) : null}
         {loading && !data ? (
           <DelayedLoader delayMs={200}>
             <MianxLoader variant="section" label="Loading knowledge…" />
@@ -103,7 +116,7 @@ export default function KnowledgeClient() {
                 <div className="cc-card-head">
                   <h2 id={`kn-${key}`}>{section.label}</h2>
                   <Link href={section.href} className="header-btn-ghost">
-                    Open
+                    {section.action_label || "Open"}
                   </Link>
                 </div>
                 <p className="cc-muted">{section.note}</p>

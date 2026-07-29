@@ -7,10 +7,11 @@ import AdminShell from "@/components/admin/AdminShell";
 import EmptyState from "@/components/admin/EmptyState";
 import PageHeader from "@/components/admin/PageHeader";
 import StatusBadge from "@/components/admin/StatusBadge";
-import ProjectPicker from "@/components/admin/ProjectPicker";
 import MianxLoader from "@/components/shared/MianxLoader";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { useAdminProject } from "@/lib/admin-project";
+import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
+import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 
 const KINDS = [
   { id: "overview", label: "Overview" },
@@ -40,6 +41,9 @@ export default function TemplatesClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { projectId, setProjectId } = useAdminProject();
+  const { summary: opsSummary } = useProjectOperationalSummary(projectId, {
+    loginFallback: "/admin/templates",
+  });
   const kind = searchParams?.get("kind") || "overview";
   const [q, setQ] = useState(searchParams?.get("q") || "");
   const [loading, setLoading] = useState(true);
@@ -50,6 +54,16 @@ export default function TemplatesClient() {
   const [versions, setVersions] = useState([]);
   const [relations, setRelations] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [projects, setProjects] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      const res = await getJson("/api/core/projects", router);
+      if (res.ok && Array.isArray(res.data?.projects)) {
+        setProjects(res.data.projects);
+      }
+    })();
+  }, [router]);
 
   const setKind = useCallback(
     (next) => {
@@ -124,17 +138,65 @@ export default function TemplatesClient() {
         { label: "Templates" },
       ]}
       actions={
-        <ProjectPicker
-          value={projectId}
-          onChange={(id) => setProjectId(id)}
-          allowAll
-        />
+        <div className="cc-header-actions" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.35rem" }}>
+          <p className="cc-muted" style={{ margin: 0 }} data-testid="templates-catalogue-label">
+            Global Template Catalogue
+          </p>
+          {projectId ? (
+            <p className="cc-muted" style={{ margin: 0 }} data-testid="templates-applied-project">
+              Applied project context: <code>{projectId}</code>
+            </p>
+          ) : (
+            <p className="cc-muted" style={{ margin: 0 }}>
+              No applied project context (catalog remains global)
+            </p>
+          )}
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            <Link
+              className="header-btn-ghost"
+              href={
+                projectId
+                  ? `/admin/planning?project_id=${encodeURIComponent(projectId)}`
+                  : "/admin/planning"
+              }
+            >
+              Open Planning
+            </Link>
+            <Link
+              className="header-btn-ghost"
+              href={
+                projectId
+                  ? `/admin/company-builder?project_id=${encodeURIComponent(projectId)}`
+                  : "/admin/company-builder"
+              }
+            >
+              Company Builder
+            </Link>
+            <label className="cc-project-select">
+              <span className="sr-only">Applied project context</span>
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                aria-label="Applied project context (does not filter global catalogue)"
+                data-testid="templates-project-context"
+              >
+                <option value="">No project context</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name || p.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
       }
     >
       <PageHeader
         title="Template Intelligence"
-        description="Reusable industry, capability, module, and risk templates. Not an industry product. Deterministic catalog — provider optional."
+        description="Global reusable industry, capability, module, and risk templates. Catalogue is organisation/platform-scoped — not filtered by project. Applied project context is preserved for Planning and Company Builder links only."
       />
+      <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
 
       <div className="admin-tabs" role="tablist" aria-label="Template kinds">
         {KINDS.map((k) => (
@@ -184,11 +246,11 @@ export default function TemplatesClient() {
           <p className="cc-muted">{overview?.note}</p>
           <p className="cc-muted">Engine: {overview?.engine_version}</p>
           {projectId ? (
-            <p className="cc-muted">
-              Project context: <code>{projectId}</code>
+            <p className="cc-muted" data-testid="templates-applied-context-body">
+              Applied project context (links only): <code>{projectId}</code>
             </p>
           ) : (
-            <p className="cc-muted">Project context: all projects (catalog is platform-scoped)</p>
+            <p className="cc-muted">No applied project context — catalogue remains global</p>
           )}
           <table className="admin-data-table">
             <thead>

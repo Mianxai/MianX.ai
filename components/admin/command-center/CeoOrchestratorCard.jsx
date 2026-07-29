@@ -7,7 +7,7 @@ import StatusChip from "./StatusChip";
  * Prominent CEO / Executive Orchestrator command node.
  * Real data only — Data unavailable when missing.
  */
-export default function CeoOrchestratorCard({ agent, brief, projectId }) {
+export default function CeoOrchestratorCard({ agent, brief, projectId, opsSummary = null }) {
   const status = agent?.status || "idle";
   const live = agent?.live || {};
 
@@ -15,7 +15,13 @@ export default function CeoOrchestratorCard({ agent, brief, projectId }) {
   const blocked = brief?.blockedObjectives?.length;
   const pending = brief?.pendingApprovals?.length;
   const completed = brief?.recentCompleted?.[0] || null;
+  const proof = opsSummary?.canonical_integration_run;
+  const proofObjective =
+    opsSummary?.objectives?.find((o) => o.is_canonical || o.source_type === "integration_proof") ||
+    brief?.activeObjectives?.[0] ||
+    null;
   const activeTitle =
+    proofObjective?.title ||
     brief?.activeObjectives?.[0]?.title ||
     brief?.activeObjectives?.[0]?.workflow ||
     null;
@@ -24,9 +30,25 @@ export default function CeoOrchestratorCard({ agent, brief, projectId }) {
     ? live.projectId || projectId
     : "All projects — select a project for live scope";
 
-  const objectiveEmpty = projectId
-    ? "None active — issue an objective for this project"
-    : "None active — select a project, then open Objectives";
+  let waitingLabel = null;
+  if (projectId && proof) {
+    const stage = String(proof.stage || proof.proof_status || "");
+    if (stage.includes("clarification")) {
+      waitingLabel = "Waiting for Founder clarification";
+    } else if (stage.includes("simulation") || stage.includes("founder_approval_required")) {
+      waitingLabel = "Waiting for simulation approval";
+    } else if (stage.includes("approval") || stage.includes("plan")) {
+      waitingLabel = "Waiting for plan approval";
+    } else if (opsSummary?.next_founder_action?.severity === "action_required") {
+      waitingLabel = opsSummary.next_founder_action.label;
+    }
+  }
+
+  const objectiveEmpty = waitingLabel
+    ? waitingLabel
+    : projectId
+      ? "None active — issue an objective for this project"
+      : "None active — select a project, then open Objectives";
   const completedEmpty = projectId
     ? "None recorded for this project yet"
     : "None recorded — select a project for scoped history";
@@ -45,7 +67,7 @@ export default function CeoOrchestratorCard({ agent, brief, projectId }) {
               : "Data unavailable"}
           </p>
         </div>
-        <StatusChip status={status} />
+        <StatusChip status={waitingLabel ? "waiting" : status} />
       </div>
       <dl className="cc-ceo-grid">
         <div>
@@ -54,7 +76,16 @@ export default function CeoOrchestratorCard({ agent, brief, projectId }) {
         </div>
         <div>
           <dt>Active objective</dt>
-          <dd>{activeTitle || objectiveEmpty}</dd>
+          <dd data-testid="ceo-orchestrator-objective">
+            {activeTitle || objectiveEmpty}
+            {waitingLabel && activeTitle ? (
+              <span className="cc-muted"> · {waitingLabel}</span>
+            ) : null}
+          </dd>
+        </div>
+        <div>
+          <dt>Current proof stage</dt>
+          <dd>{proof?.stage_label || proof?.stage || "—"}</dd>
         </div>
         <div>
           <dt>Delegated workstreams</dt>
@@ -75,6 +106,10 @@ export default function CeoOrchestratorCard({ agent, brief, projectId }) {
           <dd>{completed?.title || completedEmpty}</dd>
         </div>
       </dl>
+      <p className="cc-muted" data-testid="agent-inventory-clarity">
+        Executable agents: 36 · Catalogue: 43 · Future capacity slots: 445 (not live processes).
+        Idle before simulation approval is expected.
+      </p>
       <div className="cc-link-row">
         <Link
           href={
@@ -82,13 +117,20 @@ export default function CeoOrchestratorCard({ agent, brief, projectId }) {
               ? `/admin/objectives?project_id=${encodeURIComponent(projectId)}`
               : "/admin/objectives"
           }
+          className="header-btn-ghost"
         >
           Objectives
         </Link>
-        <Link href="/admin/ceo-brief">CEO Brief</Link>
-        <Link href="/admin/inbox">Founder Inbox</Link>
-        <Link href="/admin/runtime/approvals">Approvals</Link>
-        {!projectId ? <Link href="/admin/projects">Projects</Link> : null}
+        <Link
+          href={
+            projectId
+              ? `/admin/integration?project_id=${encodeURIComponent(projectId)}`
+              : "/admin/integration"
+          }
+          className="header-btn"
+        >
+          E2E Integration
+        </Link>
       </div>
     </section>
   );

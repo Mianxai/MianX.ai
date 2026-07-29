@@ -7,7 +7,9 @@ import AdminShell from "@/components/admin/AdminShell";
 import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
+import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
+import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
 
 async function fetchJson(path, router, opts) {
   const res = await fetch(path, {
@@ -26,6 +28,9 @@ export default function LearningClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
+  const { summary: opsSummary } = useProjectOperationalSummary(projectId, {
+    loginFallback: "/admin/learning",
+  });
   const [data, setData] = useState(null);
   const [projects, setProjects] = useState([]);
   const [error, setError] = useState("");
@@ -105,6 +110,7 @@ export default function LearningClient() {
           Verified learning candidates. Unsafe capability or prompt self-modification
           proposals are rejected. Promotion never rewrites agent system prompts.
         </p>
+        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
         {loading && !data ? (
           <DelayedLoader delayMs={200}>
             <MianxLoader variant="section" label="Loading learning…" />
@@ -153,14 +159,58 @@ export default function LearningClient() {
         ) : data ? (
           <EmptyState
             title="No learning candidates"
-            reason="No verified learning candidates for this scope. Unsafe capability or prompt self-modification proposals are rejected."
-            configuration="Promotion never rewrites agent system prompts."
-            nextAction="Candidates appear after reviewed runtime outcomes produce lessons."
+            reason="No verified learning candidates for this scope. Learning never auto-applies to prompts, capabilities, or production policy."
+            configuration={[
+              (() => {
+                const objective =
+                  opsSummary?.objectives?.find(
+                    (o) => o.is_canonical || o.source_type === "integration_proof"
+                  ) || opsSummary?.objectives?.[0];
+                return objective
+                  ? `Canonical objective: ${objective.title}`
+                  : "No canonical objective in scope yet.";
+              })(),
+              opsSummary?.canonical_integration_run
+                ? `Proof stage: ${
+                    opsSummary.canonical_integration_run.stage_label ||
+                    opsSummary.canonical_integration_run.stage ||
+                    "—"
+                  }`
+                : "Proof stage: none (no active Founder Proof).",
+              opsSummary?.next_founder_action?.reason
+                ? `Prerequisite: ${opsSummary.next_founder_action.reason}`
+                : "Prerequisite: complete Founder gates before learning candidates appear.",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+            nextAction={
+              opsSummary?.next_founder_action?.label
+                ? `Next Founder action: ${opsSummary.next_founder_action.label}`
+                : "Candidates appear after reviewed runtime outcomes produce lessons."
+            }
             projectLabel={projectId || "All projects"}
             cta={
-              <Link className="header-btn-ghost" href="/admin/memory">
-                Open Memory
-              </Link>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                {opsSummary?.next_founder_action?.href &&
+                opsSummary.next_founder_action.severity === "action_required" ? (
+                  <Link
+                    className="header-btn"
+                    href={
+                      projectId &&
+                      !String(opsSummary.next_founder_action.href).includes("project_id=")
+                        ? `${opsSummary.next_founder_action.href}${
+                            opsSummary.next_founder_action.href.includes("?") ? "&" : "?"
+                          }project_id=${encodeURIComponent(projectId)}`
+                        : opsSummary.next_founder_action.href
+                    }
+                  >
+                    {opsSummary.next_founder_action.label}
+                  </Link>
+                ) : null}
+                <Link className="header-btn-ghost" href="/admin/memory">
+                  Open Memory
+                </Link>
+              </div>
             }
           />
         ) : null}

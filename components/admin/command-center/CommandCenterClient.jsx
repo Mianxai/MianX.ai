@@ -223,6 +223,7 @@ export default function CommandCenterClient({ title = "Command Center" }) {
               agent={ceoAgent}
               brief={data.ceoBrief}
               projectId={projectId || null}
+              opsSummary={opsSummary}
             />
 
             <div className="cc-layout">

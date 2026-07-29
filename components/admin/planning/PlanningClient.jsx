@@ -11,6 +11,8 @@ import ProjectPicker from "@/components/admin/ProjectPicker";
 import MianxLoader from "@/components/shared/MianxLoader";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { useAdminProject } from "@/lib/admin-project";
+import { useProjectOperationalSummary, hasActiveFounderProof } from "@/lib/admin-ops-summary";
+import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 
 const TABS = [
   { id: "overview", label: "Overview" },
@@ -36,7 +38,11 @@ async function getJson(path, router) {
 export default function PlanningClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { projectId, setProjectId } = useAdminProject();
+  const { projectId, setProjectId, suggestStoredProjectId } = useAdminProject();
+  const { summary: opsSummary } = useProjectOperationalSummary(projectId, {
+    loginFallback: "/admin/planning",
+  });
+  const activeProof = hasActiveFounderProof(opsSummary);
   const tab = searchParams?.get("tab") || "overview";
   const [objective, setObjective] = useState(
     "Plan a generic industry platform capability programme for Founder review"
@@ -50,6 +56,22 @@ export default function PlanningClient() {
   const [selected, setSelected] = useState(null);
   const [approvals, setApprovals] = useState([]);
   const [history, setHistory] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [showAdvancedCreate, setShowAdvancedCreate] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const res = await getJson("/api/core/projects", router);
+      if (res.ok && Array.isArray(res.data?.projects)) {
+        setProjects(res.data.projects);
+      }
+    })();
+  }, [router]);
+
+  useEffect(() => {
+    if (projectId) return;
+    if (suggestStoredProjectId) setProjectId(suggestStoredProjectId);
+  }, [projectId, suggestStoredProjectId, setProjectId]);
 
   const setTab = useCallback(
     (next) => {
@@ -112,6 +134,16 @@ export default function PlanningClient() {
 
   async function createPlan(e) {
     e.preventDefault();
+    if (!projectId) {
+      setError("Select a project before creating a planning package.");
+      return;
+    }
+    if (activeProof) {
+      const ok = window.confirm(
+        "An active Founder Production Proof exists for this project. Creating a separate planning package will NOT advance the proof. Continue as Advanced / Separate planning package?"
+      );
+      if (!ok) return;
+    }
     setBusy(true);
     setError("");
     const res = await fetch("/api/admin/planning", {
@@ -121,7 +153,10 @@ export default function PlanningClient() {
         action: "create_plan",
         objective,
         horizon,
-        project_id: projectId || null,
+        project_id: projectId,
+        source_objective_id: opsSummary?.canonical_integration_run?.id || null,
+        source_classification: activeProof ? "separate_advanced_package" : "planning_package",
+        does_not_advance_founder_proof: Boolean(activeProof),
       }),
     });
     const data = await res.json().catch(() => null);
@@ -183,13 +218,47 @@ export default function PlanningClient() {
         { label: "Planning" },
       ]}
       actions={
-        <ProjectPicker value={projectId} onChange={(id) => setProjectId(id)} allowAll />
+        <ProjectPicker
+          value={projectId}
+          onChange={(id) => setProjectId(id)}
+          projects={projects}
+          allowAll={false}
+          required
+          label="Project"
+        />
       }
     >
       <PageHeader
         title="Planning Intelligence"
         description="Deterministic planning between Template Intelligence and Execution. Structure and preview only — nothing executes. Founder approval required."
       />
+      <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+
+      {activeProof ? (
+        <div className="cc-card" data-testid="planning-active-proof-banner" role="status">
+          <h2>Active Founder Production Proof</h2>
+          <p>
+            Stage:{" "}
+            <strong>
+              {opsSummary?.canonical_integration_run?.stage_label ||
+                opsSummary?.canonical_integration_run?.stage ||
+                "—"}
+            </strong>
+          </p>
+          <p className="cc-muted">
+            Continue the canonical proof plan in E2E Integration. Do not create a parallel planning
+            package unless you explicitly need a separate advanced package.
+          </p>
+          <Link
+            className="header-btn"
+            href={`/admin/integration?project_id=${encodeURIComponent(projectId)}&run_id=${encodeURIComponent(
+              opsSummary.canonical_integration_run.id
+            )}&tab=plan`}
+          >
+            Continue canonical proof plan
+          </Link>
+        </div>
+      ) : null}
 
       <div className="admin-tabs" role="tablist" aria-label="Planning views">
         {TABS.map((t) => (
@@ -206,37 +275,74 @@ export default function PlanningClient() {
         ))}
       </div>
 
-      <form className="cc-card" onSubmit={createPlan} style={{ margin: "0.75rem 0" }}>
-        <label htmlFor="plan-objective">
-          Founder objective
-          <textarea
-            id="plan-objective"
-            value={objective}
-            onChange={(e) => setObjective(e.target.value)}
-            rows={2}
-            style={{ width: "100%", marginTop: "0.35rem" }}
-            required
-          />
-        </label>
-        <label htmlFor="plan-horizon" style={{ display: "block", marginTop: "0.5rem" }}>
-          Horizon
-          <select
-            id="plan-horizon"
-            value={horizon}
-            onChange={(e) => setHorizon(e.target.value)}
-            style={{ marginLeft: "0.5rem" }}
+      {activeProof && !showAdvancedCreate ? (
+        <div className="cc-card" style={{ margin: "0.75rem 0" }}>
+          <p className="cc-muted">
+            Advanced / Separate planning package is hidden while a Founder Proof is active.
+          </p>
+          <button
+            type="button"
+            className="header-btn-ghost"
+            data-testid="planning-show-advanced-create"
+            onClick={() => setShowAdvancedCreate(true)}
           >
-            <option value="30_day">30 day</option>
-            <option value="90_day">90 day</option>
-            <option value="180_day">180 day</option>
-            <option value="1_year">1 year</option>
-            <option value="multi_year">Multi-year</option>
-          </select>
-        </label>
-        <button type="submit" className="header-btn-ghost" disabled={busy} style={{ marginTop: "0.5rem" }}>
-          {busy ? "Creating…" : "Create planning package"}
-        </button>
-      </form>
+            Show advanced separate package form
+          </button>
+        </div>
+      ) : (
+        <form
+          className="cc-card"
+          onSubmit={createPlan}
+          style={{ margin: "0.75rem 0" }}
+          data-testid="planning-create-form"
+        >
+          <h3>
+            {activeProof
+              ? "Advanced / Separate planning package"
+              : "Create planning package"}
+          </h3>
+          {activeProof ? (
+            <p className="admin-warning" role="note">
+              This package will not alter the canonical Founder Proof stage or appear as proof
+              evidence.
+            </p>
+          ) : null}
+          <label htmlFor="plan-objective">
+            Founder objective
+            <textarea
+              id="plan-objective"
+              value={objective}
+              onChange={(e) => setObjective(e.target.value)}
+              rows={2}
+              style={{ width: "100%", marginTop: "0.35rem" }}
+              required
+            />
+          </label>
+          <label htmlFor="plan-horizon" style={{ display: "block", marginTop: "0.5rem" }}>
+            Horizon
+            <select
+              id="plan-horizon"
+              value={horizon}
+              onChange={(e) => setHorizon(e.target.value)}
+              style={{ marginLeft: "0.5rem" }}
+            >
+              <option value="30_day">30 day</option>
+              <option value="90_day">90 day</option>
+              <option value="180_day">180 day</option>
+              <option value="1_year">1 year</option>
+              <option value="multi_year">Multi-year</option>
+            </select>
+          </label>
+          <button
+            type="submit"
+            className="header-btn-ghost"
+            disabled={busy || !projectId}
+            style={{ marginTop: "0.5rem" }}
+          >
+            {busy ? "Creating…" : activeProof ? "Create separate package" : "Create planning package"}
+          </button>
+        </form>
+      )}
 
       {loading ? (
         <MianxLoader variant="section" label="Loading planning…" />

@@ -10,6 +10,11 @@ import ProjectPicker from "@/components/admin/ProjectPicker";
 import MianxLoader from "@/components/shared/MianxLoader";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { useAdminProject } from "@/lib/admin-project";
+import {
+  useProjectOperationalSummary,
+  hasActiveFounderProof,
+} from "@/lib/admin-ops-summary";
+import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 
 const TABS = [
   { id: "dashboard", label: "Dashboard" },
@@ -34,6 +39,10 @@ export default function WorkforceClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { projectId, setProjectId, suggestStoredProjectId } = useAdminProject();
+  const { summary: opsSummary } = useProjectOperationalSummary(projectId, {
+    loginFallback: "/admin/workforce",
+  });
+  const activeProof = hasActiveFounderProof(opsSummary);
   const [projects, setProjects] = useState([]);
   const tab = searchParams?.get("tab") || "dashboard";
   const agentSlug = searchParams?.get("agent") || "";
@@ -169,6 +178,7 @@ export default function WorkforceClient() {
         title="Real Autonomous Workforce"
         description="Activates the 36 executable agents only — lifecycle, collaboration, simulation. No filler agents. No auto Founder approval. No paid provider in simulation."
       />
+      <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
 
       <div className="admin-tabs" role="tablist" aria-label="Workforce views">
         {TABS.map((t) => (
@@ -314,11 +324,24 @@ export default function WorkforceClient() {
         </div>
       ) : tab === "simulation" ? (
         <div className="cc-card">
-          <h2>Simulation mode</h2>
+          <h2>
+            {activeProof
+              ? "Isolated workforce diagnostic simulation"
+              : "Simulation mode"}
+          </h2>
           <p className="cc-muted">
             Runs the real workforce without production mutation, external API, or paid provider.
             Founder approval is never auto-completed.
+            {activeProof
+              ? " This is NOT Founder production proof — it does not advance the canonical Integration proof."
+              : ""}
           </p>
+          {!projectId ? (
+            <p className="admin-warning" role="status">
+              Select a project before starting simulation. The placeholder project_id
+              &quot;sim-project&quot; is not used when a real project is available.
+            </p>
+          ) : null}
           <label htmlFor="sim-obj">
             Objective
             <textarea
@@ -332,18 +355,29 @@ export default function WorkforceClient() {
           <button
             type="button"
             className="header-btn-ghost"
-            disabled={busy}
+            disabled={busy || !projectId}
+            title={!projectId ? "Select a project to start simulation" : undefined}
             style={{ marginTop: "0.5rem" }}
             onClick={async () => {
+              if (!projectId) {
+                setError("Select a project before starting workforce simulation.");
+                return;
+              }
+              if (activeProof) {
+                const ok = window.confirm(
+                  "An active Founder Production Proof exists. This starts an Isolated workforce diagnostic simulation only — it will NOT advance Founder production proof. Continue?"
+                );
+                if (!ok) return;
+              }
               const data = await post({
                 action: "simulate",
                 objective,
-                project_id: projectId || "sim-project",
+                project_id: projectId,
               });
               if (data) setSimResult(data);
             }}
           >
-            Start simulation
+            {projectId ? "Start simulation" : "Start simulation (select project)"}
           </button>
           {simResult?.simulation ? (
             <div style={{ marginTop: "1rem" }}>

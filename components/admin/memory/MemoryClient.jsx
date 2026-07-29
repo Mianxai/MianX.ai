@@ -7,7 +7,9 @@ import AdminShell from "@/components/admin/AdminShell";
 import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
+import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
+import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
 
 async function fetchJson(path, router, opts) {
   const res = await fetch(path, {
@@ -26,6 +28,9 @@ export default function MemoryClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
+  const { summary: opsSummary } = useProjectOperationalSummary(projectId, {
+    loginFallback: "/admin/memory",
+  });
   const [data, setData] = useState(null);
   const [projects, setProjects] = useState([]);
   const [error, setError] = useState("");
@@ -106,6 +111,7 @@ export default function MemoryClient() {
           Scoped enterprise memory. Candidates are not trusted until validated.
           Cross-project access is denied by default.
         </p>
+        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
         {loading && !data ? (
           <DelayedLoader delayMs={200}>
             <MianxLoader variant="section" label="Loading memory…" />
@@ -121,7 +127,16 @@ export default function MemoryClient() {
             {success}
           </div>
         ) : null}
-        {data?.note ? <p className="cc-muted">{data.note}</p> : null}
+        {data?.note ? <p className="cc-muted" data-testid="memory-note">{data.note}</p> : null}
+        {data?.persistence ? (
+          <p className="cc-muted" data-testid="memory-persistence">
+            Persistence:{" "}
+            {data.persistence.durable
+              ? `durable (${data.persistence.backend || "configured"})`
+              : `fallback (${data.persistence.reason || "unavailable"})`}
+            {data.empty_state ? ` · state: ${data.empty_state}` : ""}
+          </p>
+        ) : null}
         {data?.items?.length ? (
           <ul className="inbox-list">
             {data.items.map((item) => (
@@ -155,14 +170,51 @@ export default function MemoryClient() {
           </ul>
         ) : data ? (
           <EmptyState
-            title="No memory entries"
-            reason="Scoped enterprise memory is empty for this filter. Candidates are not trusted until validated."
-            nextAction="Memory appears after verified runtime outcomes produce candidates."
+            title={
+              data.empty_state === "storage_unconfigured" ||
+              data.empty_state === "schema_unavailable"
+                ? "Memory storage unavailable"
+                : data.empty_state === "awaiting_verification"
+                  ? "Candidates awaiting verification"
+                  : "No memory entries"
+            }
+            reason={
+              data.note ||
+              "Scoped enterprise memory is empty for this filter. Candidates are not trusted until validated."
+            }
+            configuration={
+              data.persistence?.durable
+                ? "Durable persistence is configured — empty means no verified entries yet, not a missing migration."
+                : data.persistence?.reason
+                  ? `Persistence reason: ${data.persistence.reason}`
+                  : null
+            }
+            nextAction={
+              opsSummary?.next_founder_action?.reason ||
+              "Complete simulation and review on the Production Proof so verified memory can appear."
+            }
             projectLabel={projectId || "All projects"}
             cta={
-              <Link className="header-btn-ghost" href="/admin/learning">
-                Learning candidates
-              </Link>
+              opsSummary?.next_founder_action?.href &&
+              opsSummary.next_founder_action.severity === "action_required" ? (
+                <Link
+                  className="header-btn"
+                  href={
+                    projectId &&
+                    !String(opsSummary.next_founder_action.href).includes("project_id=")
+                      ? `${opsSummary.next_founder_action.href}${
+                          opsSummary.next_founder_action.href.includes("?") ? "&" : "?"
+                        }project_id=${encodeURIComponent(projectId)}`
+                      : opsSummary.next_founder_action.href
+                  }
+                >
+                  {opsSummary.next_founder_action.label}
+                </Link>
+              ) : (
+                <Link className="header-btn-ghost" href="/admin/learning">
+                  Learning candidates
+                </Link>
+              )
             }
           />
         ) : null}
