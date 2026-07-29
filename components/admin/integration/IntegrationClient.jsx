@@ -34,6 +34,8 @@ import IntegrationContextBanner from "@/components/admin/integration/Integration
 import IntegrationFlowStepper from "@/components/admin/integration/IntegrationFlowStepper";
 import IntegrationRunSelector from "@/components/admin/integration/IntegrationRunSelector";
 import IntegrationObjectiveForm from "@/components/admin/integration/IntegrationObjectiveForm";
+import IntegrationClarificationView from "@/components/admin/integration/IntegrationClarificationView";
+import IntegrationFounderWorkflowGuide from "@/components/admin/integration/IntegrationFounderWorkflowGuide";
 import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 
 const TABS = [
@@ -112,6 +114,9 @@ export default function IntegrationClient() {
   const [proofConfirmOpen, setProofConfirmOpen] = useState(false);
   const [opsSummary, setOpsSummary] = useState(null);
   const [proofStartInFlight, setProofStartInFlight] = useState(false);
+  const [clarificationAnswer, setClarificationAnswer] = useState("");
+  const [clarificationSubmitting, setClarificationSubmitting] = useState(false);
+  const [clarificationError, setClarificationError] = useState("");
   const [proofStatus, setProofStatus] = useState("not_started");
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
@@ -448,6 +453,12 @@ export default function IntegrationClient() {
         <strong>Proof level:</strong> DETERMINISTIC SIMULATION. Live provider execution stays
         blocked unless a provider is configured and Founder enables live mode separately.
       </div>
+
+      <IntegrationFounderWorkflowGuide
+        runStage={run?.current_stage}
+        proofStatus={proofStatus}
+        hasRun={Boolean(run?.id || hasActiveFounderProofRun)}
+      />
 
       <div className="admin-tabs" role="tablist" aria-label="Integration views">
         {TABS.map((t) => (
@@ -802,80 +813,162 @@ export default function IntegrationClient() {
 
       {!loading && tab === "objective" ? (
         <section className="admin-panel" data-testid="integration-objective">
-          <h2>Founder Objective Intake</h2>
-          <p>
-            <Link href="/admin/company-builder">Company Builder</Link> can attach an integration
-            pipeline after blueprint approval. Simulation does not equal a completed real company.
-          </p>
-          <IntegrationObjectiveForm
-            title={title}
-            setTitle={setTitle}
-            purpose={purpose}
-            setPurpose={setPurpose}
-            deliverables={deliverables}
-            setDeliverables={setDeliverables}
-            criteria={criteria}
-            setCriteria={setCriteria}
-            constraints={constraints}
-            setConstraints={setConstraints}
-            questions={questions}
-            setQuestions={setQuestions}
-            executionMode={executionMode}
-            setExecutionMode={setExecutionMode}
-            priority={priority}
-            setPriority={setPriority}
-            riskTolerance={riskTolerance}
-            setRiskTolerance={setRiskTolerance}
-            protectedActions={protectedActions}
-            providerGate={providerGate}
-            selectedProjectName={selectedProject?.name}
-            createDisabledReason={createObjectiveDisabledReason}
-            busy={busy}
-            clarificationRequired={run?.current_stage === "clarification_required"}
-            run={run}
-            onPrefillTemplate={applyProofTemplate}
-            onCreate={() =>
-              act({
-                action: "create",
-                objective: {
-                  title,
-                  business_purpose: purpose,
-                  expected_deliverables: parseListField(deliverables),
-                  success_criteria: parseListField(criteria),
-                  constraints: parseListField(constraints),
-                  unresolved_questions: questions ? [questions] : [],
-                  protected_actions: protectedActions,
-                  project_id: projectId,
-                  industry: FOUNDER_PRODUCTION_PROOF_OBJECTIVE.industry,
-                  business_model: FOUNDER_PRODUCTION_PROOF_OBJECTIVE.business_model,
-                  priority,
-                  risk_tolerance: riskTolerance,
-                  execution_mode: executionMode,
-                  required_approvals: FOUNDER_PRODUCTION_PROOF_OBJECTIVE.required_approvals,
-                  known_assumptions: FOUNDER_PRODUCTION_PROOF_OBJECTIVE.known_assumptions,
-                },
-              })
-            }
-            onSubmitClarification={() =>
-              act({
-                action: "clarify",
-                run_id: run.id,
-                answers: {
-                  title,
-                  business_purpose: purpose,
-                  expected_deliverables: deliverables,
-                  success_criteria: criteria,
-                  clear_questions: true,
-                },
-              })
-            }
-          />
+          {run?.current_stage === "clarification_required" ? (
+            <IntegrationClarificationView
+              run={run}
+              projectName={selectedProject?.name}
+              answer={clarificationAnswer}
+              setAnswer={setClarificationAnswer}
+              busy={busy}
+              submitting={clarificationSubmitting}
+              error={clarificationError || error}
+              onSubmit={async () => {
+                if (clarificationSubmitting || busy) return;
+                setClarificationSubmitting(true);
+                setClarificationError("");
+                setError("");
+                const res = await postJson(
+                  "/api/admin/integration",
+                  {
+                    action: "submit_clarification",
+                    project_id: projectId,
+                    run_id: run.id,
+                    answer: clarificationAnswer,
+                    actor: "founder",
+                  },
+                  router
+                );
+                setClarificationSubmitting(false);
+                if (!res.ok) {
+                  const msg =
+                    res.data?.error?.message ||
+                    res.data?.message ||
+                    "Clarification submission failed";
+                  setClarificationError(msg);
+                  setError(msg);
+                  return;
+                }
+                const nextRun = res.data?.run;
+                if (nextRun?.id) {
+                  setRun(nextRun);
+                  if (res.data?.proof_status) setProofStatus(res.data.proof_status);
+                  setTab("plan", { run_id: nextRun.id });
+                }
+                setClarificationAnswer("");
+                await load();
+              }}
+            />
+          ) : hasActiveFounderProofRun && run ? (
+            <div data-testid="integration-objective-readonly">
+              <h2>Canonical objective</h2>
+              <p className="cc-muted">
+                A Founder Proof is already active. Objective creation is unavailable for this
+                project until the current run completes or is cancelled.
+              </p>
+              <dl className="cc-detail-dl">
+                <div>
+                  <dt>Title</dt>
+                  <dd>{run.objective?.title || "—"}</dd>
+                </div>
+                <div>
+                  <dt>Stage</dt>
+                  <dd>{run.current_stage}</dd>
+                </div>
+                <div>
+                  <dt>Canonical run</dt>
+                  <dd>
+                    <code>{run.id}</code>
+                  </dd>
+                </div>
+              </dl>
+              <p role="status" data-testid="create-objective-disabled-reason">
+                Create objective is unavailable while an active Founder Proof exists. Use the next
+                Founder action for the current stage.
+              </p>
+              <details>
+                <summary>Technical details</summary>
+                <pre className="runtime-code">{JSON.stringify(run.objective, null, 2)}</pre>
+              </details>
+            </div>
+          ) : (
+            <>
+              <h2>Founder Objective Intake</h2>
+              <p>
+                <Link href="/admin/company-builder">Company Builder</Link> can attach an integration
+                pipeline after blueprint approval. Simulation does not equal a completed real
+                company.
+              </p>
+              <IntegrationObjectiveForm
+                title={title}
+                setTitle={setTitle}
+                purpose={purpose}
+                setPurpose={setPurpose}
+                deliverables={deliverables}
+                setDeliverables={setDeliverables}
+                criteria={criteria}
+                setCriteria={setCriteria}
+                constraints={constraints}
+                setConstraints={setConstraints}
+                questions={questions}
+                setQuestions={setQuestions}
+                executionMode={executionMode}
+                setExecutionMode={setExecutionMode}
+                priority={priority}
+                setPriority={setPriority}
+                riskTolerance={riskTolerance}
+                setRiskTolerance={setRiskTolerance}
+                protectedActions={protectedActions}
+                providerGate={providerGate}
+                selectedProjectName={selectedProject?.name}
+                createDisabledReason={createObjectiveDisabledReason}
+                busy={busy}
+                clarificationRequired={false}
+                run={run}
+                onPrefillTemplate={applyProofTemplate}
+                onCreate={() =>
+                  act({
+                    action: "create",
+                    objective: {
+                      title,
+                      business_purpose: purpose,
+                      expected_deliverables: parseListField(deliverables),
+                      success_criteria: parseListField(criteria),
+                      constraints: parseListField(constraints),
+                      unresolved_questions: questions ? [questions] : [],
+                      protected_actions: protectedActions,
+                      project_id: projectId,
+                      industry: FOUNDER_PRODUCTION_PROOF_OBJECTIVE.industry,
+                      business_model: FOUNDER_PRODUCTION_PROOF_OBJECTIVE.business_model,
+                      priority,
+                      risk_tolerance: riskTolerance,
+                      execution_mode: executionMode,
+                      required_approvals: FOUNDER_PRODUCTION_PROOF_OBJECTIVE.required_approvals,
+                      known_assumptions: FOUNDER_PRODUCTION_PROOF_OBJECTIVE.known_assumptions,
+                    },
+                  })
+                }
+                onSubmitClarification={() => {}}
+              />
+            </>
+          )}
         </section>
       ) : null}
 
       {!loading && tab === "plan" ? (
         <section className="admin-panel" data-testid="integration-plan">
           <h2>Plan & Approval</h2>
+          {run?.current_stage === "founder_approval_required" ? (
+            <div className="cc-card" data-testid="plan-review-card">
+              <p role="status">
+                <strong>Clarification completed.</strong> Deterministic plan is ready for Founder
+                review.
+              </p>
+              <p className="admin-warning" role="note">
+                Approving does not start simulation automatically. Simulation requires a separate
+                Founder action after plan approval.
+              </p>
+            </div>
+          ) : null}
           {getPlanGuidance(flowCtx) ? (
             <EmptyState
               title={getPlanGuidance(flowCtx).title}
@@ -902,37 +995,79 @@ export default function IntegrationClient() {
                 Stage: <StatusBadge status={run.current_stage} /> Status:{" "}
                 <StatusBadge status={run.status} />
               </p>
-              <p>Correlation: {run.correlation_id}</p>
-              <p>Trace: {run.trace_id}</p>
+              {run.approval_package || run.planning_plan ? (
+                <div data-testid="plan-summary">
+                  <h3>Plan summary</h3>
+                  <p>
+                    Selected agents:{" "}
+                    {(
+                      run.approval_package?.agents ||
+                      run.planning_plan?.execution_preview?.agents ||
+                      []
+                    ).length || "—"}
+                  </p>
+                  <p>
+                    Proposed tasks:{" "}
+                    {run.planning_plan?.wbs?.tasks?.length ||
+                      run.planning_plan?.payload?.wbs?.tasks?.length ||
+                      run.execution_preview?.task_count ||
+                      "—"}
+                  </p>
+                  <p>
+                    Protected actions:{" "}
+                    {(run.objective?.protected_actions || []).join(", ") || "none listed"}
+                  </p>
+                  <p>Simulation boundary: deterministic simulation only until Founder approval.</p>
+                </div>
+              ) : null}
               {run.current_stage === "objective_validated" ? (
                 <button
                   type="button"
+                  className="header-btn"
                   disabled={busy}
-                  onClick={() => act({ action: "plan", run_id: run.id })}
+                  onClick={() => act({ action: "plan", run_id: run.id, project_id: projectId })}
                 >
-                  Generate deterministic plan
+                  Review plan
                 </button>
               ) : null}
               {run.current_stage === "founder_approval_required" ? (
                 <div className="admin-actions">
                   <button
                     type="button"
+                    className="header-btn"
+                    data-testid="approve-plan-for-simulation"
                     disabled={busy}
-                    onClick={() => act({ action: "approve_simulation", run_id: run.id })}
+                    onClick={() =>
+                      act({
+                        action: "approve_simulation",
+                        run_id: run.id,
+                        project_id: projectId,
+                      })
+                    }
                   >
-                    Approve Simulation
+                    Approve plan for deterministic simulation
                   </button>
                   <button
                     type="button"
+                    className="header-btn-ghost"
                     disabled={busy}
-                    onClick={() => act({ action: "return_for_changes", run_id: run.id })}
+                    onClick={() =>
+                      act({
+                        action: "return_for_changes",
+                        run_id: run.id,
+                        project_id: projectId,
+                      })
+                    }
                   >
                     Return for Changes
                   </button>
                   <button
                     type="button"
+                    className="header-btn-ghost"
                     disabled={busy}
-                    onClick={() => act({ action: "reject", run_id: run.id })}
+                    onClick={() =>
+                      act({ action: "reject", run_id: run.id, project_id: projectId })
+                    }
                   >
                     Reject
                   </button>
@@ -946,6 +1081,11 @@ export default function IntegrationClient() {
                   yet.
                 </p>
               ) : null}
+              <details>
+                <summary>Technical details</summary>
+                <p>Correlation: {run.correlation_id}</p>
+                <p>Trace: {run.trace_id}</p>
+              </details>
               <h3>Inspect</h3>
               <details open>
                 <summary>Templates</summary>

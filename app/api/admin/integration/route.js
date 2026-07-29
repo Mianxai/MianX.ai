@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { withErrorHandling, badRequest } from "@/lib/core/errors";
 import { requireAdmin } from "@/lib/core/auth";
 import {
@@ -384,6 +385,27 @@ export const POST = withErrorHandling(async (req) => {
     } else {
       throw badRequest("project_id required");
     }
+    // Block accidental second proof/objective while a canonical Founder proof is active.
+    const persistedExisting = await listPersistedIntegrationRuns({
+      project_id: projectId,
+      limit: 50,
+    });
+    for (const r of persistedExisting || []) {
+      if (r?.id) saveRun(r);
+    }
+    const existingMap = new Map();
+    for (const r of listRuns({ project_id: projectId })) {
+      if (r?.id) existingMap.set(r.id, r);
+    }
+    for (const r of persistedExisting || []) {
+      if (r?.id) existingMap.set(r.id, r);
+    }
+    const activeProof = resolveCanonicalFounderProofRuns([...existingMap.values()]);
+    if (activeProof.canonical_run && !body.force_separate_objective) {
+      throw badRequest(
+        "An active Founder Production Proof already exists for this project. Continue that run instead of creating another objective."
+      );
+    }
     const result = createIntegrationRun(rawObjective, {
       actor,
       idempotency_key: body.idempotency_key || null,
@@ -393,9 +415,139 @@ export const POST = withErrorHandling(async (req) => {
     return NextResponse.json({ ok: true, ...result });
   }
   if (action === "clarify" || action === "submit_clarification") {
-    const result = submitClarification(body.run_id, body.answers || body, { actor });
-    await finish(result.run);
-    return NextResponse.json({ ok: true, ...result });
+    const project = await requireActiveProjectForProof(body.project_id);
+    const runId = body.run_id;
+    if (!runId) throw badRequest("run_id required");
+
+    const answerText = String(
+      body.answer ||
+        body.answers?.founder_answer ||
+        body.answers?.answer ||
+        body.answers?.clarification_answer ||
+        ""
+    ).trim();
+    if (!answerText) {
+      throw badRequest("Founder clarification answer is required.");
+    }
+
+    const persisted = await listPersistedIntegrationRuns({
+      project_id: project.id,
+      limit: 50,
+    });
+    for (const r of persisted || []) {
+      if (r?.id) saveRun(r);
+    }
+    const mergedMap = new Map();
+    for (const r of listRuns({ project_id: project.id })) {
+      if (r?.id) mergedMap.set(r.id, r);
+    }
+    for (const r of persisted || []) {
+      if (r?.id) mergedMap.set(r.id, r);
+    }
+    const resolution = resolveCanonicalFounderProofRuns([...mergedMap.values()]);
+    const canonical = resolution.canonical_run;
+    if (!canonical) {
+      throw badRequest("No active canonical production Founder proof run found.");
+    }
+    if (canonical.id !== runId) {
+      throw badRequest(
+        "run_id is not the canonical active Founder proof run for this project."
+      );
+    }
+    if (canonical.project_id && canonical.project_id !== project.id) {
+      throw badRequest("Cross-project clarification is rejected.");
+    }
+    if (resolution.duplicate_warning) {
+      throw badRequest(
+        "Duplicate active Founder proof runs exist — resolve duplicates before clarification."
+      );
+    }
+
+    const idempotencyKey =
+      body.idempotency_key ||
+      `clarify:${project.id}:${canonical.id}:${createHash("sha256")
+        .update(answerText)
+        .digest("hex")
+        .slice(0, 16)}`;
+
+    const alreadyAnswered = (canonical.clarifications || []).some(
+      (c) =>
+        c?.idempotency_key === idempotencyKey ||
+        String(c?.answers?.founder_answer || c?.answers?.answer || "").trim() ===
+          answerText
+    );
+
+    // Idempotent resume when clarification already applied (double-submit safe).
+    if (canonical.current_stage !== "clarification_required") {
+      if (alreadyAnswered) {
+        return NextResponse.json({
+          ok: true,
+          run: canonical,
+          resumed_existing_clarification: true,
+          proof_status: mapProofStatusFromRun(canonical),
+          plan_auto_approved: false,
+          simulation_started: false,
+          provider_called: false,
+          idempotency_key: idempotencyKey,
+        });
+      }
+      throw badRequest(
+        `Clarification rejected: current stage is ${canonical.current_stage}, not clarification_required.`
+      );
+    }
+
+    const answers = {
+      ...(body.answers && typeof body.answers === "object" ? body.answers : {}),
+      founder_answer: answerText,
+      known_assumptions: [
+        ...((canonical.objective?.known_assumptions || []).length
+          ? canonical.objective.known_assumptions
+          : []),
+        `Founder clarification: ${answerText}`,
+      ],
+      clear_questions: true,
+      unresolved_questions: [],
+    };
+
+    const result = submitClarification(canonical.id, answers, { actor });
+    if (result.run) {
+      result.run.clarifications = (result.run.clarifications || []).map((c, idx, arr) =>
+        idx === arr.length - 1 ? { ...c, idempotency_key: idempotencyKey } : c
+      );
+      saveRun(result.run);
+    }
+
+    if (result.still_needs_clarification) {
+      await finish(result.run);
+      return NextResponse.json({
+        ok: true,
+        ...result,
+        still_needs_clarification: true,
+        plan_auto_approved: false,
+        simulation_started: false,
+        provider_called: false,
+      });
+    }
+
+    // Deterministic plan generation — never auto-approve, never call provider.
+    let planned = result.run;
+    if (planned?.current_stage === "objective_validated") {
+      planned = generateIntegrationPlan(planned.id, { actor });
+    }
+    await finish(planned);
+
+    return NextResponse.json({
+      ok: true,
+      run: planned,
+      still_needs_clarification: false,
+      proof_status: mapProofStatusFromRun(planned),
+      plan_generated: planned?.current_stage === "founder_approval_required",
+      plan_auto_approved: false,
+      simulation_started: false,
+      provider_called: false,
+      idempotency_key: idempotencyKey,
+      note: "Clarification accepted. Deterministic plan generated for Founder review — not approved.",
+    });
   }
   if (action === "plan" || action === "generate_plan") {
     const run = generateIntegrationPlan(body.run_id, { actor });
