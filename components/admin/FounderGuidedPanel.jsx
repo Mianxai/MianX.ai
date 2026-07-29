@@ -25,7 +25,7 @@ export function withProjectAndRun(href, projectId, runId) {
  * Compact guided operations panel for Founder project context.
  * When duplicates exist, embeds real cancel controls (not navigation-only).
  */
-export default function FounderGuidedPanel({ summary, projectId, onRefresh }) {
+export default function FounderGuidedPanel({ summary, projectId, projectName, onRefresh }) {
   const [dupBusy, setDupBusy] = useState(false);
   const [dupMessage, setDupMessage] = useState("");
   const [dupError, setDupError] = useState("");
@@ -157,31 +157,27 @@ export default function FounderGuidedPanel({ summary, projectId, onRefresh }) {
         data-testid="founder-guided-panel"
         aria-label="Founder guided operations"
       >
-        <h2>Next Founder action</h2>
+        <h2>Next Founder Action</h2>
         <dl className="founder-guided-meta" data-testid="founder-guided-context">
           <div>
             <dt>Selected project</dt>
-            <dd>{projectId}</dd>
+            <dd>{projectName || "Selected project"}</dd>
           </div>
           {objective ? (
             <div>
-              <dt>Canonical objective</dt>
+              <dt>Current objective</dt>
               <dd>{objective.title}</dd>
             </div>
           ) : null}
           {canonical ? (
             <>
               <div>
-                <dt>Canonical run</dt>
-                <dd>{canonical.id}</dd>
-              </div>
-              <div>
                 <dt>Current stage</dt>
-                <dd>{canonical.stage_label || canonical.stage || "—"}</dd>
+                <dd>{canonical.stage_label || canonical.stage || "Not available"}</dd>
               </div>
               <div>
                 <dt>Proof status</dt>
-                <dd>{canonical.proof_status || "—"}</dd>
+                <dd>{canonical.proof_status || "Not available"}</dd>
               </div>
             </>
           ) : null}
@@ -189,6 +185,16 @@ export default function FounderGuidedPanel({ summary, projectId, onRefresh }) {
         {next ? (
           <>
             <p className="founder-guided-reason">{next.reason}</p>
+            {next.will_happen ? (
+              <p className="cc-muted" data-testid="guided-will-happen">
+                After clicking: {next.will_happen}
+              </p>
+            ) : null}
+            {next.will_not_happen ? (
+              <p className="cc-muted" data-testid="guided-will-not-happen">
+                Will not happen automatically: {next.will_not_happen}
+              </p>
+            ) : null}
             {resolveDuplicates ? (
               <button
                 type="button"
@@ -214,6 +220,17 @@ export default function FounderGuidedPanel({ summary, projectId, onRefresh }) {
                 {next.label}
               </p>
             )}
+            <details className="founder-guided-tech">
+              <summary>Technical details</summary>
+              <p>
+                Project ID: <code>{projectId}</code>
+              </p>
+              {runId ? (
+                <p>
+                  Run ID: <code>{runId}</code>
+                </p>
+              ) : null}
+            </details>
           </>
         ) : (
           <p className="admin-muted">No action required for this project right now.</p>

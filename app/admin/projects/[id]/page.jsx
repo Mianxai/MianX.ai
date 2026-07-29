@@ -155,7 +155,7 @@ export default function ProjectDetailPage() {
                 <Link href={`/admin/command-center${runtimeQs}`}>Command Center</Link>
               </li>
               <li>
-                <Link href={`/admin/integration${runtimeQs}`}>E2E Integration</Link>
+                <Link href={`/admin/integration${runtimeQs}`}>Founder Proof</Link>
               </li>
               <li>
                 <Link href={`/admin/objectives${runtimeQs}`}>Objectives</Link>

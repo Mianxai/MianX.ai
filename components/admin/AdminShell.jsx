@@ -12,6 +12,7 @@ import {
 } from "@/components/admin/nav";
 import { NavIcon } from "@/components/admin/navIcons";
 import { useAdminNotifications } from "@/components/admin/AdminNotificationProvider";
+import FounderHelpDrawer from "@/components/admin/FounderHelpDrawer";
 import {
   formatNewSubmissionsBadge,
   newSubmissionsAriaLabel,
@@ -19,6 +20,7 @@ import {
 import { ADMIN_PROJECT_STORAGE_KEY } from "@/lib/admin-project";
 
 const MOBILE_MQ = "(max-width: 900px)";
+const ADVANCED_OPS_STORAGE_KEY = "mianx.admin.advancedOpsOpen";
 
 export default function AdminShell(props) {
   return (
@@ -56,9 +58,21 @@ function AdminShellInner({
   const projectId = searchParams?.get("project_id") || "";
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [advancedOpsOpen, setAdvancedOpsOpen] = useState(false);
   const closeBtnRef = useRef(null);
   const sidebarRef = useRef(null);
   const titleId = useId();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = window.localStorage.getItem(ADVANCED_OPS_STORAGE_KEY);
+      if (stored === "1") setAdvancedOpsOpen(true);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return undefined;
@@ -283,12 +297,44 @@ function AdminShellInner({
           </button>
         </div>
         <nav className="sidebar-nav-groups" aria-label="Primary">
-          {ADMIN_NAV_GROUPS.map((group) => (
-            <div key={group.id} className="sidebar-nav-group">
-              <p className="sidebar-nav-group-label">{group.label}</p>
-              <ul className="sidebar-nav">{group.items.map(renderNavItem)}</ul>
-            </div>
-          ))}
+          {ADMIN_NAV_GROUPS.map((group) => {
+            const isAdvanced = group.collapsedByDefault;
+            const showItems = !isAdvanced || advancedOpsOpen;
+            return (
+              <div key={group.id} className="sidebar-nav-group">
+                {isAdvanced ? (
+                  <button
+                    type="button"
+                    className="sidebar-nav-group-label sidebar-nav-group-toggle"
+                    aria-expanded={advancedOpsOpen}
+                    data-testid="advanced-ops-toggle"
+                    onClick={() => {
+                      setAdvancedOpsOpen((v) => {
+                        const next = !v;
+                        try {
+                          window.localStorage.setItem(
+                            ADVANCED_OPS_STORAGE_KEY,
+                            next ? "1" : "0"
+                          );
+                        } catch {
+                          /* ignore */
+                        }
+                        return next;
+                      });
+                    }}
+                  >
+                    {group.label}
+                    <span aria-hidden="true">{advancedOpsOpen ? "▾" : "▸"}</span>
+                  </button>
+                ) : (
+                  <p className="sidebar-nav-group-label">{group.label}</p>
+                )}
+                {showItems ? (
+                  <ul className="sidebar-nav">{group.items.map(renderNavItem)}</ul>
+                ) : null}
+              </div>
+            );
+          })}
         </nav>
         <div className="sidebar-footer">
           <button type="button" className="sidebar-logout" onClick={logout}>
@@ -349,10 +395,21 @@ function AdminShellInner({
               {title && <h1>{title}</h1>}
             </div>
           </div>
-          {actions && <div className="header-actions">{actions}</div>}
+          <div className="header-actions">
+            <button
+              type="button"
+              className="header-btn-ghost"
+              data-testid="founder-help-open"
+              onClick={() => setHelpOpen(true)}
+            >
+              Help
+            </button>
+            {actions}
+          </div>
         </div>
         <div className="admin-body">{children}</div>
       </main>
+      <FounderHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

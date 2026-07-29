@@ -1,15 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import ScopeBadge from "@/components/admin/ScopeBadge";
 
 /**
- * Compact page header with optional breadcrumbs and actions.
+ * Compact page header with optional breadcrumbs, scope, and actions.
  */
 export default function PageHeader({
   title,
   description = null,
   breadcrumbs = null,
   actions = null,
+  scope = null,
+  scopeLabel = null,
+  howThisWorks = null,
 }) {
   return (
     <header className="admin-page-header">
@@ -30,8 +34,18 @@ export default function PageHeader({
       ) : null}
       <div className="admin-page-header-row">
         <div>
+          {scope ? (
+            <div className="admin-page-scope-row">
+              <ScopeBadge scope={scope} label={scopeLabel} />
+            </div>
+          ) : null}
           <h1 className="admin-page-title">{title}</h1>
-          {description ? <p className="cc-muted">{description}</p> : null}
+          {description ? <p className="admin-page-lede cc-muted">{description}</p> : null}
+          {howThisWorks ? (
+            <p className="admin-page-how cc-muted" data-testid="page-how-this-works">
+              {howThisWorks}
+            </p>
+          ) : null}
         </div>
         {actions ? <div className="admin-page-actions">{actions}</div> : null}
       </div>

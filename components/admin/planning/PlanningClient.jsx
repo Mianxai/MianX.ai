@@ -246,7 +246,7 @@ export default function PlanningClient() {
             </strong>
           </p>
           <p className="cc-muted">
-            Continue the canonical proof plan in E2E Integration. Do not create a parallel planning
+            Continue the canonical proof plan in Founder Proof. Do not create a parallel planning
             package unless you explicitly need a separate advanced package.
           </p>
           <Link

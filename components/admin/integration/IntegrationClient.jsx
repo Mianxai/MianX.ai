@@ -36,7 +36,16 @@ import IntegrationRunSelector from "@/components/admin/integration/IntegrationRu
 import IntegrationObjectiveForm from "@/components/admin/integration/IntegrationObjectiveForm";
 import IntegrationClarificationView from "@/components/admin/integration/IntegrationClarificationView";
 import IntegrationFounderWorkflowGuide from "@/components/admin/integration/IntegrationFounderWorkflowGuide";
+import IntegrationPlanReview from "@/components/admin/integration/IntegrationPlanReview";
+import IntegrationSimulationPanel from "@/components/admin/integration/IntegrationSimulationPanel";
+import {
+  EvidenceCards,
+  MemoryCards,
+  LearningCards,
+  ProofPackSummary,
+} from "@/components/admin/integration/IntegrationArtifactCards";
 import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderQuickStart from "@/components/admin/FounderQuickStart";
 
 const TABS = [
   { id: "dashboard", label: "Control Room" },
@@ -445,10 +454,12 @@ export default function IntegrationClient() {
   }
 
   return (
-    <AdminShell title="End-to-End Integration">
+    <AdminShell title="Founder Proof">
       <PageHeader
-        title="End-to-End Integration"
-        description="LEVEL 1 — Deterministic simulation proof. Not live AI execution."
+        title="Founder Proof"
+        description="LEVEL 1 — Deterministic simulation proof. Not live AI execution. Founder-operated: no provider calls, no automatic approvals."
+        scope="proof"
+        howThisWorks="Follow Next Founder Action and Quick Start. Advanced Runtime tools are optional and not required to complete this proof."
         actions={
           <div className="integration-project-picker" data-testid="integration-project-picker">
             {projectsLoading ? (
@@ -518,11 +529,15 @@ export default function IntegrationClient() {
             onFocusProjectPicker={focusProjectPicker}
           />
           {projectId ? (
-            <FounderGuidedPanel
-              summary={opsSummary}
-              projectId={projectId}
-              onRefresh={load}
-            />
+            <>
+              <FounderGuidedPanel
+                summary={opsSummary}
+                projectId={projectId}
+                projectName={selectedProject?.name}
+                onRefresh={load}
+              />
+              <FounderQuickStart run={run} hasProject={Boolean(projectId && selectedProject)} />
+            </>
           ) : null}
           <IntegrationFlowStepper stepStates={stepStates} />
           {projectId && projectRuns.length > 0 ? (
@@ -544,7 +559,7 @@ export default function IntegrationClient() {
 
       {tab === "dashboard" ? (
         <section className="admin-panel" data-testid="integration-dashboard">
-          <h2>Control Room — Integration</h2>
+          <h2>Control Room — Founder Proof</h2>
           {loading ? <MianxLoader variant="section" label="Loading integration…" /> : null}
           {!loading ? (
           <>
@@ -1002,379 +1017,130 @@ export default function IntegrationClient() {
 
       {!loading && tab === "plan" ? (
         <section className="admin-panel" data-testid="integration-plan">
-          <h2>Plan & Approval</h2>
-          {run?.current_stage === "founder_approval_required" ? (
-            <div className="cc-card" data-testid="plan-review-card">
-              <p role="status">
-                <strong>Clarification completed.</strong> Deterministic plan is ready for Founder
-                review.
-              </p>
-              <p className="admin-warning" role="note">
-                Approving does not start simulation automatically. Simulation requires a separate
-                Founder action after plan approval.
-              </p>
-            </div>
-          ) : null}
           {getPlanGuidance(flowCtx) ? (
             <EmptyState
               title={getPlanGuidance(flowCtx).title}
               reason={getPlanGuidance(flowCtx).reason}
               nextAction={getPlanGuidance(flowCtx).nextAction}
               cta={
-                getPlanGuidance(flowCtx).actionTab
-                  ? (
-                      <button
-                        type="button"
-                        className="header-btn"
-                        onClick={() => setTab(getPlanGuidance(flowCtx).actionTab)}
-                      >
-                        Go to {getPlanGuidance(flowCtx).actionTab === "objective" ? "Objective" : "Control Room"}
-                      </button>
-                    )
-                  : null
-              }
-            />
-          ) : null}
-          {!run ? null : (
-            <>
-              <p>
-                Stage: <StatusBadge status={run.current_stage} /> Status:{" "}
-                <StatusBadge status={run.status} />
-              </p>
-              {run.approval_package || run.planning_plan ? (
-                <div data-testid="plan-summary">
-                  <h3>Plan summary</h3>
-                  <p>
-                    Selected agents:{" "}
-                    {(
-                      run.approval_package?.agents ||
-                      run.planning_plan?.execution_preview?.agents ||
-                      []
-                    ).length || "—"}
-                  </p>
-                  <p>
-                    Proposed tasks:{" "}
-                    {run.planning_plan?.wbs?.tasks?.length ||
-                      run.planning_plan?.payload?.wbs?.tasks?.length ||
-                      run.execution_preview?.task_count ||
-                      "—"}
-                  </p>
-                  <p>
-                    Protected actions:{" "}
-                    {(run.objective?.protected_actions || []).join(", ") || "none listed"}
-                  </p>
-                  <p>Simulation boundary: deterministic simulation only until Founder approval.</p>
-                </div>
-              ) : null}
-              {run.current_stage === "objective_validated" ? (
-                <button
-                  type="button"
-                  className="header-btn"
-                  disabled={busy}
-                  onClick={() => act({ action: "plan", run_id: run.id, project_id: projectId })}
-                >
-                  Review plan
-                </button>
-              ) : null}
-              {run.current_stage === "founder_approval_required" ? (
-                <div className="admin-actions">
+                getPlanGuidance(flowCtx).actionTab ? (
                   <button
                     type="button"
                     className="header-btn"
-                    data-testid="approve-plan-for-simulation"
-                    disabled={busy}
-                    onClick={() =>
-                      act({
-                        action: "approve_simulation",
-                        run_id: run.id,
-                        project_id: projectId,
-                      })
-                    }
+                    onClick={() => setTab(getPlanGuidance(flowCtx).actionTab)}
                   >
-                    Approve plan for deterministic simulation
+                    Go to{" "}
+                    {getPlanGuidance(flowCtx).actionTab === "objective"
+                      ? "Objective"
+                      : "Control Room"}
                   </button>
-                  <button
-                    type="button"
-                    className="header-btn-ghost"
-                    disabled={busy}
-                    onClick={() =>
-                      act({
-                        action: "return_for_changes",
-                        run_id: run.id,
-                        project_id: projectId,
-                      })
-                    }
-                  >
-                    Return for Changes
-                  </button>
-                  <button
-                    type="button"
-                    className="header-btn-ghost"
-                    disabled={busy}
-                    onClick={() =>
-                      act({ action: "reject", run_id: run.id, project_id: projectId })
-                    }
-                  >
-                    Reject
-                  </button>
-                </div>
-              ) : null}
-              {["objective_validated", "clarification_required", "founder_approval_required"].includes(
-                run.current_stage
-              ) ? (
-                <p role="status" data-testid="sim-blocked-banner">
-                  Simulation is blocked until Founder explicitly approves. Tasks cannot be claimed
-                  yet.
-                </p>
-              ) : null}
-              <details>
-                <summary>Technical details</summary>
-                <p>Correlation: {run.correlation_id}</p>
-                <p>Trace: {run.trace_id}</p>
-              </details>
-              <h3>Inspect</h3>
-              <details open>
-                <summary>Templates</summary>
-                <pre className="admin-pre">
-                  {JSON.stringify(
-                    {
-                      selected:
-                        run.template_plan?.match?.selected_templates ||
-                        run.template_plan?.selected_templates,
-                      rejected:
-                        run.template_plan?.match?.rejected_templates ||
-                        run.template_plan?.rejected_templates,
-                      confidence: run.template_plan?.match?.confidence,
-                      assumptions: run.objective?.known_assumptions,
-                    },
-                    null,
-                    2
-                  )}
-                </pre>
-              </details>
-              <details>
-                <summary>Plan / WBS / capabilities</summary>
-                <pre className="admin-pre">
-                  {JSON.stringify(
-                    {
-                      plan_id: run.planning_plan?.id,
-                      departments:
-                        run.planning_plan?.capability_plan?.department_ownership ||
-                        run.planning_plan?.departments,
-                      risks: run.planning_plan?.risks,
-                      preview: run.execution_preview || run.planning_plan?.execution_preview,
-                      validation: run.validation,
-                    },
-                    null,
-                    2
-                  )}
-                </pre>
-              </details>
-              {run.approval_package ? (
-                <details>
-                  <summary>Founder approval package</summary>
-                  <pre className="admin-pre">{JSON.stringify(run.approval_package, null, 2)}</pre>
-                </details>
-              ) : null}
-            </>
-          )}
+                ) : null
+              }
+            />
+          ) : null}
+          {run?.current_stage === "objective_validated" ? (
+            <button
+              type="button"
+              className="header-btn"
+              disabled={busy}
+              onClick={() => act({ action: "plan", run_id: run.id, project_id: projectId })}
+            >
+              Generate deterministic plan
+            </button>
+          ) : null}
+          {run &&
+          ([
+            "founder_approval_required",
+            "simulation_approval_required",
+            "approved_for_simulation",
+            "founder_final_review",
+            "completed",
+          ].includes(run.current_stage) ||
+            run.approval_package) ? (
+            <IntegrationPlanReview
+              run={run}
+              projectName={selectedProject?.name}
+              busy={busy}
+              onApprove={() =>
+                act({
+                  action: "approve_plan",
+                  run_id: run.id,
+                  project_id: projectId,
+                })
+              }
+              onReturn={(note) =>
+                act({
+                  action: "return_for_changes",
+                  run_id: run.id,
+                  project_id: projectId,
+                  note,
+                })
+              }
+              onReject={(note) =>
+                act({
+                  action: "reject",
+                  run_id: run.id,
+                  project_id: projectId,
+                  note,
+                })
+              }
+            />
+          ) : null}
+          {run &&
+          ["objective_validated", "clarification_required", "founder_approval_required"].includes(
+            run.current_stage
+          ) ? (
+            <p role="status" data-testid="sim-blocked-banner">
+              Simulation is blocked until Founder explicitly approves the plan and then the
+              simulation. Tasks cannot be claimed yet.
+            </p>
+          ) : null}
         </section>
       ) : null}
 
       {!loading && tab === "simulation" ? (
         <section className="admin-panel" data-testid="integration-simulation">
-          <h2>Workforce Simulation</h2>
-          <p>Simulation does not equal a completed real company or live AI execution.</p>
-          {getSimulationGuidance(flowCtx) ? (
-            <EmptyState
-              title={getSimulationGuidance(flowCtx).title}
-              reason={getSimulationGuidance(flowCtx).reason}
-              nextAction={getSimulationGuidance(flowCtx).nextAction}
-              cta={
-                getSimulationGuidance(flowCtx).actionTab
-                  ? (
-                      <button
-                        type="button"
-                        className="header-btn"
-                        onClick={() => setTab(getSimulationGuidance(flowCtx).actionTab)}
-                      >
-                        Open {getSimulationGuidance(flowCtx).actionTab === "plan" ? "Plan" : "Objective"}
-                      </button>
-                    )
-                  : null
-              }
-              data-testid="simulation-guided-empty"
-            />
-          ) : null}
-          {run?.current_stage === "approved_for_simulation" ? (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => act({ action: "start_simulation", run_id: run.id })}
-            >
-              Start simulation
-            </button>
-          ) : null}
-          {run && !["completed", "rejected", "cancelled"].includes(run.current_stage) ? (
-            <div className="admin-actions">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => act({ action: "pause", run_id: run.id })}
-              >
-                Pause
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => act({ action: "resume", run_id: run.id })}
-              >
-                Resume
-              </button>
-              <button
-                type="button"
-                data-testid="deterministic-recovery-test"
-                disabled={busy}
-                onClick={() =>
-                  act({ action: "deterministic_recovery_test", run_id: run.id })
-                }
-              >
-                Deterministic recovery test
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => act({ action: "cancel", run_id: run.id })}
-              >
-                Cancel
-              </button>
-            </div>
-          ) : null}
-          <p className="admin-note" role="note">
-            Deterministic recovery test creates/restores a checkpoint without simulating a live
-            outage. It increments recovery count and writes an audit event.
-          </p>
+          <IntegrationSimulationPanel
+            run={run}
+            busy={busy}
+            guidance={getSimulationGuidance(flowCtx)}
+            onOpenPlan={() => setTab("plan")}
+            onApproveSimulation={() =>
+              act({
+                action: "approve_deterministic_simulation",
+                run_id: run.id,
+                project_id: projectId,
+              })
+            }
+            onStartSimulation={() =>
+              act({ action: "start_simulation", run_id: run.id, project_id: projectId })
+            }
+            onPause={() => act({ action: "pause", run_id: run.id })}
+            onResume={() => act({ action: "resume", run_id: run.id })}
+            onCancel={() => act({ action: "cancel", run_id: run.id })}
+            onRecoveryTest={() =>
+              act({ action: "deterministic_recovery_test", run_id: run.id })
+            }
+          />
           {run?.current_stage === "founder_final_review" ? (
             <div className="admin-actions">
               <button
                 type="button"
+                className="header-btn"
                 disabled={busy}
-                onClick={() =>
-                  act({ action: "final_review", run_id: run.id, decision: "approve" })
-                }
+                onClick={() => setTab("proof", { run_id: run.id })}
               >
-                Approve final result
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() =>
-                  act({ action: "final_review", run_id: run.id, decision: "reject" })
-                }
-              >
-                Reject final result
+                Open Proof Pack / Final Review
               </button>
             </div>
           ) : null}
-          {run?.allocation ? (
-            <div data-testid="agent-allocation">
-              <p>
-                Available/routable workforce: 36. Participating: {run.allocation.count}.{" "}
-                activated_all_36: {String(run.allocation.activated_all_36)}
-              </p>
-              <details open>
-                <summary>Why each participating agent was selected</summary>
-                <pre className="admin-pre">
-                  {JSON.stringify(run.allocation.selection_reasons || [], null, 2)}
-                </pre>
-              </details>
-              <details>
-                <summary>High-ranking agents not selected (sample)</summary>
-                <pre className="admin-pre">
-                  {JSON.stringify((run.allocation.rejected_agents || []).slice(0, 8), null, 2)}
-                </pre>
-              </details>
-              <p>
-                Delegation:{" "}
-                {run.delegation?.chain?.map((c) => `${c.from}→${c.to}`).join(", ") || "—"}
-              </p>
-            </div>
-          ) : null}
-          {run?.protected_actions || run?.proof_pack?.protected_actions ? (
-            <div data-testid="protected-actions">
-              <h3>Protected actions</h3>
-              <pre className="admin-pre">
-                {JSON.stringify(
-                  run.protected_actions || run.proof_pack?.protected_actions,
-                  null,
-                  2
-                )}
-              </pre>
-            </div>
-          ) : null}
-          <div data-testid="simulation-progress">
-            <h3>Simulation progress</h3>
-            {run ? (
-              <dl className="integration-metrics-grid">
-                <div className="integration-metric-card">
-                  <dt>Ready tasks</dt>
-                  <dd>{run?.progress?.ready || 0}</dd>
-                </div>
-                <div className="integration-metric-card">
-                  <dt>Running</dt>
-                  <dd>{run?.progress?.running || 0}</dd>
-                </div>
-                <div className="integration-metric-card">
-                  <dt>Blocked</dt>
-                  <dd>{run?.progress?.blocked || 0}</dd>
-                </div>
-                <div className="integration-metric-card">
-                  <dt>Completed</dt>
-                  <dd>{run?.progress?.completed ?? (run?.verification?.ok ? 1 : 0)}</dd>
-                </div>
-                <div className="integration-metric-card">
-                  <dt>Evidence</dt>
-                  <dd>{run?.evidence?.count || 0}</dd>
-                </div>
-                <div className="integration-metric-card">
-                  <dt>Memory</dt>
-                  <dd>{run?.memory?.count || 0}</dd>
-                </div>
-                <div className="integration-metric-card">
-                  <dt>Learning</dt>
-                  <dd>{run?.learning?.count || 0}</dd>
-                </div>
-                <div className="integration-metric-card">
-                  <dt>Recovery</dt>
-                  <dd>{run?.recovery_count || 0}</dd>
-                </div>
-              </dl>
-            ) : null}
-            <details>
-              <summary>Technical JSON</summary>
-              <pre className="admin-pre">
-                {JSON.stringify(
-                  run
-                    ? {
-                        active_stage: run.current_stage,
-                        status: run.status,
-                        verification: run.verification,
-                        delegations: run.delegation?.chain || [],
-                        note: "No fabricated live agent prose.",
-                      }
-                    : { note: "No run loaded" },
-                  null,
-                  2
-                )}
-              </pre>
-            </details>
-          </div>
         </section>
       ) : null}
 
       {!loading && tab === "evidence" ? (
         <section className="admin-panel" data-testid="integration-evidence">
-          <h2>Evidence Manifest</h2>
+          <h2>Evidence</h2>
+          <p className="cc-muted">Readable simulation artefacts — not raw JSON.</p>
           {getEvidenceGuidance(flowCtx) ? (
             <EmptyState
               title={getEvidenceGuidance(flowCtx).title}
@@ -1382,28 +1148,28 @@ export default function IntegrationClient() {
               nextAction={getEvidenceGuidance(flowCtx).nextAction}
             />
           ) : (
-            <ul className="admin-list" data-testid="evidence-list">
-              {(evidence?.items || evidence?.entries || []).map((item, i) => (
-                <li key={item.id || i}>
-                  <strong>{item.kind || item.type || "evidence"}</strong>
-                  {item.task_id ? ` · task ${item.task_id}` : ""}
-                  {item.agent ? ` · ${item.agent}` : ""}
-                  {item.verified != null ? ` · verified: ${item.verified}` : ""}
-                  {item.created_at ? ` · ${item.created_at}` : ""}
-                </li>
-              ))}
-            </ul>
+            <EvidenceCards
+              evidence={evidence}
+              empty={
+                <EmptyState
+                  title="No evidence yet"
+                  reason="Evidence appears after deterministic simulation completes verification."
+                  nextAction="Start or continue simulation from the Simulation tab."
+                />
+              }
+            />
           )}
-          <details>
-            <summary>Technical JSON</summary>
-            <pre className="admin-pre">{JSON.stringify(evidence || run?.evidence, null, 2)}</pre>
+          <details className="cc-card">
+            <summary>Technical details</summary>
+            <pre className="admin-pre">{JSON.stringify(evidence, null, 2)}</pre>
           </details>
         </section>
       ) : null}
 
       {!loading && tab === "memory" ? (
         <section className="admin-panel" data-testid="integration-memory">
-          <h2>Memory (project-scoped)</h2>
+          <h2>Memory candidates</h2>
+          <p className="cc-muted">Candidates only — nothing auto-promotes.</p>
           {getMemoryGuidance(flowCtx) ? (
             <div data-testid="memory-empty-state">
               <EmptyState
@@ -1412,22 +1178,19 @@ export default function IntegrationClient() {
               />
             </div>
           ) : (
-            <ul className="admin-list" data-testid="memory-list">
-              {memory.map((entry, i) => (
-                <li key={entry.id || i}>
-                  <strong>{entry.scope || entry.kind || "memory"}</strong>
-                  {entry.summary ? ` — ${entry.summary}` : ""}
-                  {entry.created_at ? ` · ${entry.created_at}` : ""}
-                </li>
-              ))}
-            </ul>
+            <MemoryCards memory={memory} />
           )}
+          <details className="cc-card">
+            <summary>Technical details</summary>
+            <pre className="admin-pre">{JSON.stringify(memory, null, 2)}</pre>
+          </details>
         </section>
       ) : null}
 
       {!loading && tab === "learning" ? (
         <section className="admin-panel" data-testid="integration-learning">
-          <h2>Learning Proposals (never auto-applied)</h2>
+          <h2>Learning proposals</h2>
+          <p className="cc-muted">Never auto-applied to agent system prompts.</p>
           {getLearningGuidance(flowCtx) ? (
             <div data-testid="learning-empty-state">
               <EmptyState
@@ -1436,73 +1199,43 @@ export default function IntegrationClient() {
               />
             </div>
           ) : (
-            <ul className="admin-list" data-testid="learning-list">
-              {learning.map((p, i) => (
-                <li key={p.id || i}>
-                  <strong>{p.status || "proposal"}</strong>
-                  {p.scope ? ` · ${p.scope}` : ""}
-                  {p.summary ? ` — ${p.summary}` : ""}
-                </li>
-              ))}
-            </ul>
+            <LearningCards learning={learning} />
           )}
+          <details className="cc-card">
+            <summary>Technical details</summary>
+            <pre className="admin-pre">{JSON.stringify(learning, null, 2)}</pre>
+          </details>
         </section>
       ) : null}
 
       {!loading && tab === "proof" ? (
         <section className="admin-panel" data-testid="integration-proof">
-          <h2>Founder Proof Pack</h2>
-          <p role="status">
-            Proof status: <StatusBadge status={proofStatus} />{" "}
-            <span data-testid="proof-pack-status">{proofStatus}</span>
-          </p>
           {getProofPackGuidance(flowCtx) ? (
             <EmptyState
               title={getProofPackGuidance(flowCtx).title}
               reason={getProofPackGuidance(flowCtx).reason}
               nextAction={getProofPackGuidance(flowCtx).nextAction}
               data-testid="proof-pack-guided-empty"
-            >
-              {getProofPackGuidance(flowCtx).prerequisites ? (
-                <ul>
-                  {getProofPackGuidance(flowCtx).prerequisites.map((p) => (
-                    <li key={p}>{p}</li>
-                  ))}
-                </ul>
-              ) : null}
-              <p className="admin-muted">
-                Live execution: false · Fabricated execution: false · Provider: unconfigured
-              </p>
-            </EmptyState>
+            />
           ) : null}
-          <details>
-            <summary>Lineage (technical details)</summary>
-            <pre className="admin-pre">
-              {JSON.stringify(
-                {
-                  objective: run?.objective,
-                  approval: run?.approval_package,
-                  evidence: run?.evidence,
-                  memory: run?.memory,
-                  learning: run?.learning,
-                  final_review: run?.final_review,
-                  live_provider_limitations: {
-                    provider_called: run?.provider_called === true,
-                    fabricated_execution: run?.fabricated_execution === true,
-                    live_execution_ready: false,
-                  },
-                },
-                null,
-                2
-              )}
-            </pre>
-          </details>
-          {proof || run?.proof_pack ? (
-            <details>
-              <summary>Raw proof pack JSON</summary>
-              <pre className="admin-pre">{JSON.stringify(proof || run?.proof_pack, null, 2)}</pre>
-            </details>
-          ) : null}
+          <ProofPackSummary
+            run={run}
+            proof={proof}
+            busy={busy}
+            onFinalApprove={() =>
+              act({ action: "final_review", run_id: run.id, decision: "approve" })
+            }
+            onFinalReject={() =>
+              act({ action: "final_review", run_id: run.id, decision: "reject" })
+            }
+            onFinalReturn={() =>
+              act({
+                action: "final_review",
+                run_id: run.id,
+                decision: "return_for_changes",
+              })
+            }
+          />
         </section>
       ) : null}
     </AdminShell>

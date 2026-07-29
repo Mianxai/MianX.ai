@@ -27,7 +27,7 @@ export default function CeoBriefPanel({ brief }) {
           <h3>Duplicate production proof runs</h3>
           <p>
             {brief.duplicateProofWarning.count} duplicate active run(s) detected. Resolve via
-            E2E Integration before continuing.
+            Founder Proof before continuing.
           </p>
         </div>
       ) : null}

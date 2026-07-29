@@ -1451,3 +1451,217 @@
   font-size: 0.85rem;
   color: var(--text-muted);
 }
+
+/* Founder Mode closeout */
+.scope-badge {
+  display: inline-block;
+  margin: 0 0 0.5rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.founder-plan-review-header,
+.founder-plan-review-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.founder-plan-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.founder-metric-row {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+.founder-metric-row li {
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: grid;
+  gap: 0.25rem;
+}
+.founder-metric-row strong {
+  font-size: 1.25rem;
+}
+.founder-metric-row span {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.founder-task-list,
+.founder-artifact-list,
+.founder-agent-list,
+.founder-quick-start-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.founder-task-card,
+.founder-artifact-card {
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.founder-task-card h4,
+.founder-artifact-card h3 {
+  margin: 0 0 0.35rem;
+}
+.founder-approval-truth {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.4rem;
+}
+.founder-quick-start-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.founder-quick-start-item.is-current {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+.founder-quick-start-item.is-completed {
+  opacity: 0.85;
+}
+.founder-quick-start-index {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+.founder-quick-start-state {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sidebar-nav-group-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+.founder-help-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+}
+.founder-help-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+.founder-help-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(420px, 100%);
+  height: 100%;
+  background: var(--bg-card, #111);
+  border-left: 1px solid var(--border);
+  padding: 1rem 1.1rem 2rem;
+  overflow: auto;
+}
+.founder-help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+.founder-glossary {
+  display: grid;
+  gap: 0.85rem;
+}
+.founder-glossary dt {
+  font-weight: 600;
+}
+.founder-glossary dd {
+  margin: 0.2rem 0 0;
+  color: var(--text-secondary);
+}
+.admin-body {
+  max-width: 1200px;
+}
+.admin-panel > h2:first-child {
+  margin-top: 0;
+}
+.admin-page-scope-row {
+  margin-bottom: 0.35rem;
+}
+.admin-page-lede {
+  max-width: 52rem;
+  margin: 0.35rem 0 0;
+}
+.admin-page-how {
+  max-width: 52rem;
+  margin: 0.45rem 0 0;
+  font-size: 0.9rem;
+}
+.scope-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+}
+.scope-badge--org {
+  border-color: rgba(120, 160, 220, 0.45);
+}
+.scope-badge--project {
+  border-color: rgba(120, 200, 160, 0.45);
+}
+.scope-badge--proof {
+  border-color: rgba(220, 180, 100, 0.5);
+  color: #e8d5a3;
+}
+.scope-badge--advanced {
+  border-color: rgba(180, 140, 220, 0.4);
+}
+.scope-badge--sim {
+  border-color: rgba(100, 190, 210, 0.5);
+}
+.scope-badge--blocked {
+  border-color: rgba(220, 120, 100, 0.55);
+  color: #f0b4a8;
+}
+@media (max-width: 900px) {
+  .founder-plan-review-header {
+    flex-direction: column;
+  }
+  .admin-body {
+    max-width: none;
+  }
+}
+

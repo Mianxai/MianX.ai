@@ -1,4 +1,4 @@
-/** Shared admin navigation — grouped IA, one canonical page per intent. */
+/** Shared admin navigation — Founder-first IA, one canonical page per intent. */
 
 export const RUNTIME_TAB_PATHS = {
   overview: "/admin/runtime",
@@ -17,10 +17,10 @@ export const PATH_TO_RUNTIME_TAB = Object.fromEntries(
 export const ADMIN_NAV_GROUPS = [
   {
     id: "control",
-    label: "Control",
+    label: "Founder Control",
     items: [
       { href: "/admin/command-center", label: "Command Center", match: "prefix", icon: "command" },
-      { href: "/admin/integration", label: "E2E Integration", match: "prefix", icon: "runtime" },
+      { href: "/admin/integration", label: "Founder Proof", match: "prefix", icon: "runtime" },
       { href: "/admin/ceo-brief", label: "CEO Brief", match: "prefix", icon: "brief" },
       { href: "/admin/objectives", label: "Objectives", match: "prefix", icon: "objectives" },
       { href: "/admin/company-builder", label: "Company Builder", match: "prefix", icon: "workflows" },
@@ -54,6 +54,7 @@ export const ADMIN_NAV_GROUPS = [
         match: "prefix",
         icon: "submissions",
         badgeKey: "newCount",
+        scope: "organisation",
       },
       { href: "/admin/projects", label: "Projects", match: "prefix", icon: "projects" },
       { href: "/admin/runtime/approvals", label: "Approvals", match: "prefix", icon: "approvals" },
@@ -74,7 +75,8 @@ export const ADMIN_NAV_GROUPS = [
   },
   {
     id: "operations",
-    label: "Operations",
+    label: "Advanced Operations",
+    collapsedByDefault: true,
     items: [
       {
         href: "/admin/runtime",
@@ -82,7 +84,7 @@ export const ADMIN_NAV_GROUPS = [
         match: "prefix",
         icon: "runtime",
         children: [
-          { href: "/admin/runtime/agents", label: "Instances", match: "prefix" },
+          { href: "/admin/runtime/agents", label: "Agent Instances", match: "prefix" },
           { href: "/admin/runtime/tasks", label: "Tasks", match: "prefix" },
           { href: "/admin/runtime/queue", label: "Queue", match: "prefix" },
           { href: "/admin/runtime/runs", label: "Runs", match: "prefix" },
@@ -112,8 +114,6 @@ export function isNavActive(pathname, item) {
 export function isNavItemCurrent(pathname, item) {
   if (item.match === "exact") return pathname === item.href;
   if (item.href === "/admin/runtime") {
-    // Runtime parent active for overview + child tabs, but not for Approvals/Audit
-    // which are first-class Operations items.
     if (pathname === "/admin/runtime") return true;
     if (pathname.startsWith("/admin/runtime/approvals")) return false;
     if (pathname.startsWith("/admin/runtime/audit")) return false;

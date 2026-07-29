@@ -1,8 +1,25 @@
 "use client";
 
-/** Compact truthful status badge. */
-export default function StatusBadge({ tone = "unconfigured", children }) {
-  return <span className={`admin-status-badge ${tone}`}>{children}</span>;
+import {
+  humanStageLabel,
+  humanStatusLabel,
+  statusTone,
+} from "@/lib/core/integration/founder-labels";
+
+/** Compact truthful status badge with human labels. */
+export default function StatusBadge({
+  tone,
+  status,
+  stage,
+  children,
+}) {
+  const label =
+    children ||
+    (stage ? humanStageLabel(stage) : null) ||
+    (status ? humanStatusLabel(status, stage) : null) ||
+    "Not available";
+  const resolvedTone = tone || statusTone(status || stage || label);
+  return <span className={`admin-status-badge ${resolvedTone}`}>{label}</span>;
 }
 
 export function schedulerTone(mode, automaticProcessing) {

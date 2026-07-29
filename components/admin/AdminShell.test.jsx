@@ -82,7 +82,31 @@ describe("AdminShell", () => {
       "href",
       "/admin/agents"
     );
-    expect(screen.queryByRole("link", { name: /^Instances$/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Founder Proof/i })).toHaveAttribute(
+      "href",
+      "/admin/integration"
+    );
+    // Advanced Operations is collapsed by default.
+    expect(screen.queryByRole("link", { name: /^Instances$/i })).toBeNull();
+    expect(screen.getByTestId("advanced-ops-toggle")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Skip to main content/i })).toHaveAttribute(
+      "href",
+      "#main-content"
+    );
+  });
+
+  it("expands Advanced Operations to show Runtime children", async () => {
+    const user = userEvent.setup();
+    render(
+      <AdminShell title="Command Center">
+        <p>body</p>
+      </AdminShell>
+    );
+    await user.click(screen.getByTestId("advanced-ops-toggle"));
+    expect(screen.getByRole("link", { name: /Agent Instances/i })).toHaveAttribute(
+      "href",
+      "/admin/runtime/agents"
+    );
     expect(screen.getByRole("link", { name: /^Runtime$/i })).toHaveAttribute(
       "href",
       "/admin/runtime"
@@ -95,23 +119,13 @@ describe("AdminShell", () => {
       "href",
       "/admin/runtime/runs"
     );
-    const approvals = screen.getAllByRole("link", { name: /^Approvals$/i });
-    expect(approvals).toHaveLength(1);
-    expect(approvals[0]).toHaveAttribute("href", "/admin/runtime/approvals");
-    const audits = screen.getAllByRole("link", { name: /^Audit$/i });
-    expect(audits).toHaveLength(1);
-    expect(audits[0]).toHaveAttribute("href", "/admin/runtime/audit");
-    expect(screen.getByRole("link", { name: /Analytics/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /^Audit$/i })).toHaveAttribute(
       "href",
-      "/admin/analytics"
+      "/admin/runtime/audit"
     );
     expect(screen.getByRole("link", { name: /Settings/i })).toHaveAttribute(
       "href",
       "/admin/settings"
-    );
-    expect(screen.getByRole("link", { name: /Skip to main content/i })).toHaveAttribute(
-      "href",
-      "#main-content"
     );
   });
 
