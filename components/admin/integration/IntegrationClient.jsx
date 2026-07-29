@@ -301,15 +301,33 @@ export default function IntegrationClient() {
     const match = dash.runs.find((r) => r.id === runIdParam);
     if (match?.project_id && match.project_id !== projectId) {
       setTab(tab, { run_id: "" });
+      return;
     }
-  }, [projectId, runIdParam, dash?.runs, tab, setTab]);
+    // Never keep a duplicate active run selected — align URL to canonical.
+    if (
+      match?.is_duplicate_active &&
+      dash?.canonicalFounderProofRunId &&
+      runIdParam !== dash.canonicalFounderProofRunId
+    ) {
+      setTab(tab, { run_id: dash.canonicalFounderProofRunId });
+    }
+  }, [projectId, runIdParam, dash?.runs, dash?.canonicalFounderProofRunId, tab, setTab]);
 
   useEffect(() => {
     if (!projectId || runIdParam || !projectRuns.length) return;
-    if (projectRuns.length === 1) {
+    if (projectRuns.length === 1 && !projectRuns[0].is_duplicate_active) {
       setTab(tab, { run_id: projectRuns[0].id });
+      return;
     }
-  }, [projectId, runIdParam, projectRuns, tab, setTab]);
+    const canonical =
+      projectRuns.find((r) => r.is_canonical_active) ||
+      (dash?.canonicalFounderProofRunId
+        ? projectRuns.find((r) => r.id === dash.canonicalFounderProofRunId)
+        : null);
+    if (canonical?.id) {
+      setTab(tab, { run_id: canonical.id });
+    }
+  }, [projectId, runIdParam, projectRuns, dash?.canonicalFounderProofRunId, tab, setTab]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -329,10 +347,17 @@ export default function IntegrationClient() {
     );
 
     const runsForProject = filterRunsForProject(dashRes.data?.runs, projectId);
+    const paramRun = runIdParam
+      ? runsForProject.find((r) => r.id === runIdParam)
+      : null;
+    // Prefer canonical; never treat an active duplicate as the loaded run.
     const activeRunId =
-      runIdParam ||
+      (paramRun && !paramRun.is_duplicate_active ? paramRun.id : null) ||
       dashRes.data?.canonicalFounderProofRunId ||
-      (runsForProject.length === 1 ? runsForProject[0].id : null);
+      (runsForProject.find((r) => r.is_canonical_active)?.id ?? null) ||
+      (runsForProject.length === 1 && !runsForProject[0].is_duplicate_active
+        ? runsForProject[0].id
+        : null);
     if (activeRunId) {
       const runRes = await getJson(
         `/api/admin/integration?action=run&run_id=${encodeURIComponent(activeRunId)}${q}`,
@@ -405,9 +430,15 @@ export default function IntegrationClient() {
       return null;
     }
     const nextRun = res.data?.run || res.data?.value?.run || res.data;
-    if (nextRun?.id) {
+    const preferCanonical =
+      res.data?.canonical_run_id || dash?.canonicalFounderProofRunId || null;
+    if (body?.action === "cancel_founder_proof_duplicate" && preferCanonical) {
+      setTab(tab, { run_id: preferCanonical });
+    } else if (nextRun?.id && body?.action !== "cancel_founder_proof_duplicate") {
       setRun(nextRun);
       setTab(tab, { run_id: nextRun.id });
+    } else if (nextRun?.id && preferCanonical) {
+      setTab(tab, { run_id: preferCanonical });
     }
     await load();
     return res.data;
@@ -486,12 +517,26 @@ export default function IntegrationClient() {
             selectedProject={selectedProject}
             onFocusProjectPicker={focusProjectPicker}
           />
+          {projectId ? (
+            <FounderGuidedPanel
+              summary={opsSummary}
+              projectId={projectId}
+              onRefresh={load}
+            />
+          ) : null}
           <IntegrationFlowStepper stepStates={stepStates} />
           {projectId && projectRuns.length > 0 ? (
             <IntegrationRunSelector
               runs={projectRuns}
               value={runIdParam || run?.id || ""}
-              onChange={(id) => setTab(tab, { run_id: id })}
+              onChange={(id) => {
+                const target = projectRuns.find((r) => r.id === id);
+                if (target?.is_duplicate_active && dash?.canonicalFounderProofRunId) {
+                  setTab(tab, { run_id: dash.canonicalFounderProofRunId });
+                  return;
+                }
+                setTab(tab, { run_id: id });
+              }}
             />
           ) : null}
         </>
@@ -516,9 +561,6 @@ export default function IntegrationClient() {
                 }
               />
             </div>
-          ) : null}
-          {projectId ? (
-            <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
           ) : null}
           <p>
             Routable agents:{" "}
@@ -674,32 +716,19 @@ export default function IntegrationClient() {
               >
                 <p>
                   Multiple non-terminal active production Founder proof runs were detected.
-                  Cancel the non-canonical duplicates to ensure a single canonical flow.
+                  Use the Resolve duplicate proof runs panel above — cancel each non-canonical
+                  duplicate before clarification.
                 </p>
                 <button
                   type="button"
-                  disabled={busy}
-                  data-testid="cancel-duplicate-founder-proof"
-                  onClick={async () => {
-                    if (!dash?.canonicalFounderProofRunId) return;
-                    const ok = window.confirm(
-                      `Cancel ${nonCanonicalActiveFounderProofRunIds.length} non-canonical duplicate run(s)?`
-                    );
-                    if (!ok) return;
-                    for (const duplicateRunId of nonCanonicalActiveFounderProofRunIds) {
-                      // eslint-disable-next-line no-await-in-loop
-                      await act({
-                        action: "cancel_founder_proof_duplicate",
-                        project_id: projectId,
-                        canonical_run_id: dash.canonicalFounderProofRunId,
-                        duplicate_run_id: duplicateRunId,
-                        reason: "cancelled_duplicate",
-                        actor: "founder",
-                      });
-                    }
+                  className="header-btn-ghost"
+                  data-testid="jump-to-duplicate-resolution"
+                  onClick={() => {
+                    const el = document.getElementById("duplicates");
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
                 >
-                  Cancel non-canonical duplicates
+                  Jump to duplicate resolution
                 </button>
               </div>
             ) : null}
@@ -814,50 +843,67 @@ export default function IntegrationClient() {
       {!loading && tab === "objective" ? (
         <section className="admin-panel" data-testid="integration-objective">
           {run?.current_stage === "clarification_required" ? (
-            <IntegrationClarificationView
-              run={run}
-              projectName={selectedProject?.name}
-              answer={clarificationAnswer}
-              setAnswer={setClarificationAnswer}
-              busy={busy}
-              submitting={clarificationSubmitting}
-              error={clarificationError || error}
-              onSubmit={async () => {
-                if (clarificationSubmitting || busy) return;
-                setClarificationSubmitting(true);
-                setClarificationError("");
-                setError("");
-                const res = await postJson(
-                  "/api/admin/integration",
-                  {
-                    action: "submit_clarification",
-                    project_id: projectId,
-                    run_id: run.id,
-                    answer: clarificationAnswer,
-                    actor: "founder",
-                  },
-                  router
-                );
-                setClarificationSubmitting(false);
-                if (!res.ok) {
-                  const msg =
-                    res.data?.error?.message ||
-                    res.data?.message ||
-                    "Clarification submission failed";
-                  setClarificationError(msg);
-                  setError(msg);
-                  return;
-                }
-                const nextRun = res.data?.run;
-                if (nextRun?.id) {
-                  setRun(nextRun);
-                  if (res.data?.proof_status) setProofStatus(res.data.proof_status);
-                  setTab("plan", { run_id: nextRun.id });
-                }
-                setClarificationAnswer("");
-                await load();
-              }}
-            />
+            <>
+              {duplicateActiveFounderProofDetected ? (
+                <p className="admin-warning" role="status">
+                  Resolve duplicates in the panel above before submitting clarification. Your typed
+                  answer is retained.
+                </p>
+              ) : null}
+              <IntegrationClarificationView
+                run={run}
+                projectName={selectedProject?.name}
+                answer={clarificationAnswer}
+                setAnswer={setClarificationAnswer}
+                busy={busy}
+                submitting={clarificationSubmitting}
+                error={clarificationError || error}
+                duplicateActive={duplicateActiveFounderProofDetected}
+                duplicateCount={nonCanonicalActiveFounderProofRunIds.length}
+                onSubmit={async () => {
+                  if (clarificationSubmitting || busy) return;
+                  if (duplicateActiveFounderProofDetected) {
+                    setClarificationError(
+                      "Duplicate active Founder proof runs exist — resolve duplicates before clarification."
+                    );
+                    return;
+                  }
+                  setClarificationSubmitting(true);
+                  setClarificationError("");
+                  setError("");
+                  const res = await postJson(
+                    "/api/admin/integration",
+                    {
+                      action: "submit_clarification",
+                      project_id: projectId,
+                      run_id: run.id,
+                      answer: clarificationAnswer,
+                      actor: "founder",
+                    },
+                    router
+                  );
+                  setClarificationSubmitting(false);
+                  if (!res.ok) {
+                    const msg =
+                      res.data?.error?.message ||
+                      res.data?.message ||
+                      "Clarification submission failed";
+                    setClarificationError(msg);
+                    setError(msg);
+                    // Retain typed answer on failure / duplicate rejection.
+                    return;
+                  }
+                  const nextRun = res.data?.run;
+                  if (nextRun?.id) {
+                    setRun(nextRun);
+                    if (res.data?.proof_status) setProofStatus(res.data.proof_status);
+                    setTab("plan", { run_id: nextRun.id });
+                  }
+                  setClarificationAnswer("");
+                  await load();
+                }}
+              />
+            </>
           ) : hasActiveFounderProofRun && run ? (
             <div data-testid="integration-objective-readonly">
               <h2>Canonical objective</h2>

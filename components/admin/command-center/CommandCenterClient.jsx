@@ -216,7 +216,11 @@ export default function CommandCenterClient({ title = "Command Center" }) {
             />
             <FounderAuthorityBanner />
             {projectId ? (
-              <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+              <FounderGuidedPanel
+                summary={opsSummary}
+                projectId={projectId}
+                onRefresh={() => load({ soft: true })}
+              />
             ) : null}
             <OverviewMetrics metrics={data.overview} />
             <CeoOrchestratorCard

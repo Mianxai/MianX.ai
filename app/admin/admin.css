@@ -1411,3 +1411,43 @@
   border-radius: 8px;
   border: 1px solid var(--border);
 }
+
+.duplicate-resolution-panel {
+  margin: 1rem 0;
+  scroll-margin-top: 1.25rem;
+}
+.duplicate-resolution-canonical {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.duplicate-resolution-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.duplicate-resolution-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--warning, #c47b2c) 45%, var(--border));
+  border-radius: 10px;
+}
+.integration-confirm-dialog {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-elevated, #111) 92%, transparent);
+}
+.integration-disabled-reason {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}

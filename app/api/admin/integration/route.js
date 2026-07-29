@@ -37,6 +37,7 @@ import {
   buildIntegrationReadinessAsync,
   FOUNDER_PRODUCTION_PROOF_OBJECTIVE,
   requireActiveProjectForProof,
+  recordAudit,
 } from "@/lib/core/integration";
 
 import {
@@ -601,12 +602,12 @@ export const POST = withErrorHandling(async (req) => {
   }
   if (action === "cancel_founder_proof_duplicate") {
     const project = await requireActiveProjectForProof(body.project_id);
-    const canonicalRunId = body.canonical_run_id;
+    const clientCanonicalRunId = body.canonical_run_id;
     const duplicateRunId = body.duplicate_run_id;
     const reason = body.reason || "cancelled_duplicate";
 
-    if (!canonicalRunId || !duplicateRunId) {
-      throw badRequest("canonical_run_id and duplicate_run_id are required");
+    if (!duplicateRunId) {
+      throw badRequest("duplicate_run_id is required");
     }
 
     const persisted = await listPersistedIntegrationRuns({
@@ -623,35 +624,140 @@ export const POST = withErrorHandling(async (req) => {
     for (const r of persisted || []) {
       if (r?.id) mergedMap.set(r.id, r);
     }
-    const resolution = resolveCanonicalFounderProofRuns([...mergedMap.values()]);
+    const allRuns = [...mergedMap.values()];
+    const resolution = resolveCanonicalFounderProofRuns(allRuns);
+    // Server independently determines canonical — never trust client-only flag.
     const canonicalActive = resolution.canonical_run;
 
     if (!canonicalActive) {
       throw badRequest("No active canonical production Founder proof run found.");
     }
 
-    if (String(canonicalActive.id) !== String(canonicalRunId)) {
-      throw badRequest("canonical_run_id does not match current canonical active run.");
+    if (
+      clientCanonicalRunId &&
+      String(canonicalActive.id) !== String(clientCanonicalRunId)
+    ) {
+      throw badRequest(
+        "canonical_run_id does not match server-resolved canonical active run."
+      );
+    }
+
+    if (String(duplicateRunId) === String(canonicalActive.id)) {
+      recordAudit({
+        action: "integration.duplicate_cancel_rejected",
+        integration_run_id: duplicateRunId,
+        project_id: project.id,
+        actor,
+        outcome: "rejected_canonical",
+        detail: "Cannot cancel the canonical Founder proof run.",
+      });
+      throw badRequest("Cannot cancel the canonical Founder proof run.");
+    }
+
+    const target = mergedMap.get(duplicateRunId) || getRun(duplicateRunId);
+    if (!target) {
+      throw badRequest("duplicate_run_id not found.");
+    }
+    if (target.project_id && String(target.project_id) !== String(project.id)) {
+      recordAudit({
+        action: "integration.duplicate_cancel_rejected",
+        integration_run_id: duplicateRunId,
+        project_id: project.id,
+        actor,
+        outcome: "rejected_cross_project",
+      });
+      throw badRequest("Cross-project duplicate cancellation is rejected.");
+    }
+
+    // Idempotent: already terminal / cancelled duplicate.
+    if (isTerminalFounderProofRun(target)) {
+      recordAudit({
+        action: "integration.duplicate_cancel_idempotent",
+        integration_run_id: duplicateRunId,
+        project_id: project.id,
+        actor,
+        outcome: "already_terminal",
+        canonical_run_id: canonicalActive.id,
+      });
+      return NextResponse.json({
+        ok: true,
+        run: target,
+        cancelled_run_id: duplicateRunId,
+        canonical_run_id: canonicalActive.id,
+        resumed_existing_cancellation: true,
+        note: "Duplicate already terminal — canonical run unchanged.",
+      });
     }
 
     const duplicateOk = resolution.duplicate_runs.some(
       (r) => String(r.id) === String(duplicateRunId)
     );
     if (!duplicateOk) {
+      recordAudit({
+        action: "integration.duplicate_cancel_rejected",
+        integration_run_id: duplicateRunId,
+        project_id: project.id,
+        actor,
+        outcome: "rejected_not_duplicate",
+      });
       throw badRequest(
         "duplicate_run_id must be a non-canonical active production Founder proof run."
       );
     }
 
-    const run = cancelIntegrationRun(duplicateRunId, { actor, failure_reason: reason });
+    recordAudit({
+      action: "integration.duplicate_resolution_requested",
+      integration_run_id: duplicateRunId,
+      project_id: project.id,
+      actor,
+      canonical_run_id: canonicalActive.id,
+      reason,
+    });
+
+    const run = cancelIntegrationRun(duplicateRunId, {
+      actor,
+      failure_reason: reason,
+    });
+    run.proof = {
+      ...(run.proof || {}),
+      cancelled_as_duplicate: true,
+      cancelled_duplicate_of: canonicalActive.id,
+      cancel_reason: reason,
+    };
+    run.payload = {
+      ...(run.payload || {}),
+      cancelled_as_duplicate: true,
+      canonical_run_preserved: canonicalActive.id,
+    };
+    run.current_stage = "cancelled";
+    run.status = "cancelled";
+    saveRun(run);
     await finish(run);
+
+    recordAudit({
+      action: "integration.duplicate_cancelled",
+      integration_run_id: duplicateRunId,
+      project_id: project.id,
+      actor,
+      outcome: "cancelled_duplicate",
+      canonical_run_id: canonicalActive.id,
+      reason,
+    });
+    recordAudit({
+      action: "integration.canonical_run_preserved",
+      integration_run_id: canonicalActive.id,
+      project_id: project.id,
+      actor,
+      outcome: "preserved",
+      cancelled_duplicate_id: duplicateRunId,
+    });
 
     return NextResponse.json({
       ok: true,
       run,
       cancelled_run_id: duplicateRunId,
-      canonical_run_id: canonicalRunId,
-      note: "Non-canonical duplicate marked as cancelled.",
+      canonical_run_id: canonicalActive.id,
+      note: "Non-canonical duplicate marked as cancelled. Canonical run unchanged.",
     });
   }
   if (action === "recover" || action === "deterministic_recovery_test") {
