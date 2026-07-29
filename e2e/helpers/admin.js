@@ -74,8 +74,21 @@ export const SCREENSHOT_ROUTES = [
 ];
 
 const PROJECTS = [
-  { id: "proj-1", name: "MianX Core", status: "active" },
-  { id: "proj-2", name: "Demo Workspace", status: "active" },
+  {
+    id: "proj-proof-1",
+    name: "MianX Internal Production Proof",
+    slug: "mianx-internal-production-proof",
+    status: "active",
+  },
+  { id: "proj-1", name: "MianX Core", slug: "mianx-core", status: "active" },
+  { id: "proj-2", name: "Demo Workspace", slug: "demo-workspace", status: "active" },
+  {
+    id: "proj-archived",
+    name: "Archived Demo",
+    slug: "archived-demo",
+    status: "archived",
+    archived_at: "2026-01-01T00:00:00Z",
+  },
 ];
 
 function json(route, status, body) {
@@ -433,7 +446,9 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
     }
     if (path.startsWith("/api/core/")) {
       if (path === "/api/core/projects") {
-        return json(route, 200, { projects: PROJECTS });
+        return json(route, 200, {
+          projects: PROJECTS.filter((p) => !p.archived_at && p.status !== "archived"),
+        });
       }
       return json(route, 200, {
         items: [],
