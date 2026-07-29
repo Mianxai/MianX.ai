@@ -8,7 +8,7 @@ import EmptyState from "@/components/admin/EmptyState";
 import MianxLoader from "@/components/shared/MianxLoader";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import QueuePanel from "@/components/admin/runtime/QueuePanel";
-import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import { afterNextPaint } from "@/lib/after-paint";
 import { explainApproval } from "@/lib/core/approvals/explain";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
@@ -283,7 +283,7 @@ export default function RuntimeWorkspace({
         ))}
       </div>
 
-      <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+      <FounderActionBanner summary={opsSummary} projectId={projectId} />
 
       <div
         role="tabpanel"

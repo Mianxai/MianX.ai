@@ -12,7 +12,7 @@ import { useAdminProject } from "@/lib/admin-project";
 import { WORKFLOW_CHAINS } from "@/lib/core/command-center/workflows";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
-import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderActionBanner from "@/components/admin/FounderActionBanner";
 
 async function fetchJson(path, router) {
   const res = await fetch(path, { headers: { Accept: "application/json" } });
@@ -85,7 +85,7 @@ export default function WorkflowsClient() {
           Workflow definitions and live instances. Instances require a selected
           project with runtime tasks.
         </p>
-        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+        <FounderActionBanner summary={opsSummary} projectId={projectId} />
         {loading && !data ? (
           <DelayedLoader delayMs={150}>
             <MianxLoader variant="section" label="Loading workflows…" />

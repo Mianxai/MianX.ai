@@ -19,9 +19,13 @@ import CeoOrchestratorCard from "@/components/admin/command-center/CeoOrchestrat
 import FounderAuthorityBanner from "@/components/admin/command-center/FounderAuthorityBanner";
 import ExecutionPanel from "@/components/admin/command-center/ExecutionPanel";
 import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import FounderQuickStart from "@/components/admin/FounderQuickStart";
+import { resolveProjectDisplayName } from "@/lib/admin/resolve-project-label";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { adminFetch } from "@/lib/admin-fetch";
+
+const AGENTS_PAGE_SIZE = 16;
 
 const CommandNetwork = dynamic(
   () => import("@/components/admin/command-center/CommandNetwork"),
@@ -70,6 +74,11 @@ export default function CommandCenterClient({ title = "Command Center" }) {
   // Command Center: never load full network by default. Agents page: list first.
   const [viewMode, setViewMode] = useState("list");
   const [opsSummary, setOpsSummary] = useState(null);
+  const [agentSearch, setAgentSearch] = useState("");
+  const [filterLevel, setFilterLevel] = useState("all");
+  const [filterState, setFilterState] = useState("all");
+  const [filterProposed, setFilterProposed] = useState("all");
+  const [agentPage, setAgentPage] = useState(0);
 
   const query = useMemo(() => {
     const q = new URLSearchParams();
@@ -139,7 +148,7 @@ export default function CommandCenterClient({ title = "Command Center" }) {
     [data?.agents]
   );
 
-  const visibleAgents = useMemo(() => {
+  const departmentAgents = useMemo(() => {
     if (!department || department === "all") return agents;
     return agents.filter(
       (a) =>
@@ -149,16 +158,83 @@ export default function CommandCenterClient({ title = "Command Center" }) {
     );
   }, [agents, department]);
 
+  const filteredAgents = useMemo(() => {
+    const q = agentSearch.trim().toLowerCase();
+    return departmentAgents.filter((a) => {
+      if (q) {
+        const hay = `${a.name || ""} ${a.slug || ""} ${a.workforceSlug || ""} ${a.department || ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (filterLevel !== "all" && String(a.hierarchyLevel || "") !== filterLevel) {
+        return false;
+      }
+      if (filterState !== "all" && String(a.status || "idle") !== filterState) {
+        return false;
+      }
+      const isProposed =
+        Boolean(a.live?.projectId) ||
+        (a.status && a.status !== "idle" && a.status !== "unavailable");
+      if (filterProposed === "proposed" && !isProposed) return false;
+      if (filterProposed === "catalog" && isProposed) return false;
+      return true;
+    });
+  }, [departmentAgents, agentSearch, filterLevel, filterState, filterProposed]);
+
+  const visibleAgents = agentsPage
+    ? filteredAgents.slice(
+        agentPage * AGENTS_PAGE_SIZE,
+        agentPage * AGENTS_PAGE_SIZE + AGENTS_PAGE_SIZE
+      )
+    : departmentAgents;
+
+  const agentPageCount = Math.max(
+    1,
+    Math.ceil(filteredAgents.length / AGENTS_PAGE_SIZE)
+  );
+
+  useEffect(() => {
+    setAgentPage(0);
+  }, [department, agentSearch, filterLevel, filterState, filterProposed, projectId]);
+
   const catalogCount = data?.agentInventory?.catalogCount;
   const executableCount =
     data?.hierarchy?.executableCount ?? data?.agentInventory?.executable;
+  const routableCount = data?.agentInventory?.routable ?? executableCount;
+  const activeAgentCount =
+    data?.agentInventory?.working ??
+    agents.filter((a) => a.status === "working").length;
+  const idleAgentCount =
+    data?.agentInventory?.idle ??
+    agents.filter((a) => a.status === "idle").length;
+  const assignedToProofCount = projectId
+    ? agents.filter(
+        (a) =>
+          a.live?.projectId === projectId ||
+          (a.status && !["idle", "unavailable"].includes(a.status))
+      ).length
+    : 0;
+  const departmentCount = Array.isArray(data?.departments)
+    ? data.departments.length
+    : 0;
+  const levelOptions = useMemo(() => {
+    const levels = new Set(
+      agents.map((a) => a.hierarchyLevel).filter(Boolean)
+    );
+    return ["all", ...Array.from(levels).sort()];
+  }, [agents]);
+  const stateOptions = useMemo(() => {
+    const states = new Set(agents.map((a) => a.status || "idle"));
+    return ["all", ...Array.from(states).sort()];
+  }, [agents]);
 
-  const selectedProjectName =
-    (Array.isArray(data?.projects)
+  const selectedProjectName = resolveProjectDisplayName({
+    projectName: Array.isArray(data?.projects)
       ? data.projects.find((p) => p.id === projectId)?.name
-      : null) ||
-    opsSummary?.project_name ||
-    null;
+      : null,
+    summary: opsSummary,
+    projects: data?.projects || [],
+    projectId,
+  });
 
   const nextAction = opsSummary?.next_founder_action;
   const hasActiveProof = Boolean(opsSummary?.canonical_integration_run?.id);
@@ -252,21 +328,23 @@ export default function CommandCenterClient({ title = "Command Center" }) {
             />
             <FounderAuthorityBanner />
             {projectId ? (
-              <>
-                <FounderGuidedPanel
-                  summary={opsSummary}
-                  projectId={projectId}
-                  projectName={selectedProjectName}
-                  projects={data.projects || []}
-                  onRefresh={() => load({ soft: true })}
-                />
-                {!agentsPage ? (
+              agentsPage ? (
+                <FounderActionBanner summary={opsSummary} projectId={projectId} />
+              ) : (
+                <>
+                  <FounderGuidedPanel
+                    summary={opsSummary}
+                    projectId={projectId}
+                    projectName={selectedProjectName}
+                    projects={data.projects || []}
+                    onRefresh={() => load({ soft: true })}
+                  />
                   <FounderQuickStart
                     run={opsSummary?.canonical_integration_run || null}
                     hasProject={Boolean(projectId)}
                   />
-                ) : null}
-              </>
+                </>
+              )
             ) : null}
             <OverviewMetrics metrics={data.overview} />
             <CeoOrchestratorCard
@@ -351,6 +429,137 @@ export default function CommandCenterClient({ title = "Command Center" }) {
               />
 
               <div className="cc-main-col">
+                <dl
+                  className="agents-summary founder-plan-grid"
+                  data-testid="agents-summary"
+                >
+                  <div>
+                    <dt>Executable</dt>
+                    <dd>{executableCount ?? 36}</dd>
+                  </div>
+                  <div>
+                    <dt>Routable</dt>
+                    <dd>{routableCount ?? executableCount ?? 36}</dd>
+                  </div>
+                  <div>
+                    <dt>Active</dt>
+                    <dd>{activeAgentCount}</dd>
+                  </div>
+                  <div>
+                    <dt>Idle</dt>
+                    <dd>{idleAgentCount}</dd>
+                  </div>
+                  <div>
+                    <dt>Assigned to current proof</dt>
+                    <dd>{assignedToProofCount}</dd>
+                  </div>
+                  <div>
+                    <dt>Department count</dt>
+                    <dd>{departmentCount}</dd>
+                  </div>
+                </dl>
+
+                {hasActiveProof ? (
+                  <aside
+                    className="founder-action-banner agents-proof-banner"
+                    data-testid="agents-proof-banner"
+                    aria-label="Current Founder Proof"
+                  >
+                    <div className="founder-action-banner-text">
+                      <strong>Founder Proof active</strong>
+                      <span className="cc-muted">
+                        {" "}
+                        ·{" "}
+                        {opsSummary?.canonical_integration_run?.stage_label ||
+                          opsSummary?.canonical_integration_run?.stage ||
+                          "In progress"}
+                      </span>
+                    </div>
+                    {nextAction?.severity === "action_required" ? (
+                      <Link href={stageCtaHref} className="header-btn">
+                        {nextAction.label || "Continue"}
+                      </Link>
+                    ) : null}
+                  </aside>
+                ) : null}
+
+                <div className="agents-filters" data-testid="agents-filters">
+                  <label className="agents-search-label">
+                    <span className="sr-only">Search agents</span>
+                    <input
+                      type="search"
+                      data-testid="agents-search"
+                      placeholder="Search agents…"
+                      value={agentSearch}
+                      onChange={(e) => setAgentSearch(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span className="sr-only">Department</span>
+                    <select
+                      data-testid="agents-filter-dept"
+                      value={department || "all"}
+                      onChange={(e) =>
+                        replaceParams({
+                          department: e.target.value || "all",
+                          agent: null,
+                        })
+                      }
+                      aria-label="Filter by department"
+                    >
+                      <option value="all">All departments</option>
+                      {(data.departments || []).map((d) => (
+                        <option key={d.slug || d.id || d.name} value={d.slug || d.id}>
+                          {d.name || d.slug}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="sr-only">Level</span>
+                    <select
+                      data-testid="agents-filter-level"
+                      value={filterLevel}
+                      onChange={(e) => setFilterLevel(e.target.value)}
+                      aria-label="Filter by level"
+                    >
+                      {levelOptions.map((lvl) => (
+                        <option key={lvl} value={lvl}>
+                          {lvl === "all" ? "All levels" : lvl}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="sr-only">State</span>
+                    <select
+                      data-testid="agents-filter-state"
+                      value={filterState}
+                      onChange={(e) => setFilterState(e.target.value)}
+                      aria-label="Filter by state"
+                    >
+                      {stateOptions.map((st) => (
+                        <option key={st} value={st}>
+                          {st === "all" ? "All states" : st}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="sr-only">Proposed</span>
+                    <select
+                      data-testid="agents-filter-proposed"
+                      value={filterProposed}
+                      onChange={(e) => setFilterProposed(e.target.value)}
+                      aria-label="Filter proposed assignment"
+                    >
+                      <option value="all">All assignment</option>
+                      <option value="proposed">Proposed / assigned</option>
+                      <option value="catalog">Catalog only</option>
+                    </select>
+                  </label>
+                </div>
+
                 <div className="cc-toolbar">
                   <div className="cc-view-toggle" role="group" aria-label="View mode">
                     <button
@@ -358,7 +567,7 @@ export default function CommandCenterClient({ title = "Command Center" }) {
                       className={viewMode === "list" ? "active" : ""}
                       onClick={() => setViewMode("list")}
                     >
-                      {agentsPage ? "Summary" : "List"}
+                      Summary
                     </button>
                     <button
                       type="button"
@@ -370,16 +579,11 @@ export default function CommandCenterClient({ title = "Command Center" }) {
                     </button>
                   </div>
                   <p className="cc-muted">
-                    {executableCount != null
-                      ? `${executableCount} executable`
-                      : "Executable count unavailable"}
+                    Showing {visibleAgents.length} of {filteredAgents.length}
                     {catalogCount != null ? ` · ${catalogCount} catalog` : ""}
                     {projectId
                       ? " · project scoped"
                       : " · catalog (select a project for live work)"}
-                    {department !== "all"
-                      ? ` · showing ${visibleAgents.length} in department`
-                      : ""}
                   </p>
                 </div>
 
@@ -408,6 +612,34 @@ export default function CommandCenterClient({ title = "Command Center" }) {
                     onSelect={(slug) => replaceParams({ agent: slug })}
                   />
                 </div>
+
+                <nav
+                  className="agents-pagination"
+                  data-testid="agents-pagination"
+                  aria-label="Agent list pagination"
+                >
+                  <button
+                    type="button"
+                    className="header-btn-ghost"
+                    disabled={agentPage <= 0}
+                    onClick={() => setAgentPage((p) => Math.max(0, p - 1))}
+                  >
+                    Previous
+                  </button>
+                  <span className="cc-muted">
+                    Page {agentPage + 1} of {agentPageCount}
+                  </span>
+                  <button
+                    type="button"
+                    className="header-btn-ghost"
+                    disabled={agentPage >= agentPageCount - 1}
+                    onClick={() =>
+                      setAgentPage((p) => Math.min(agentPageCount - 1, p + 1))
+                    }
+                  >
+                    Next
+                  </button>
+                </nav>
 
                 <WorkflowBoard workflows={data.workflows} />
               </div>

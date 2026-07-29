@@ -168,14 +168,14 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
         providers: { anthropic: { status: "unconfigured" } },
         agentInventory: { executable: 36, executableCount: 36, catalogCount: 43 },
         hierarchy: { executableCount: 36 },
-        agents: [
-          {
-            slug: "executive-ceo",
-            name: "CEO",
-            department: "executive",
-            status: "idle",
-          },
-        ],
+        agents: Array.from({ length: 36 }, (_, i) => ({
+          slug: i === 0 ? "executive-ceo" : `agent-${i + 1}`,
+          name: i === 0 ? "Executive Orchestrator" : `Agent ${i + 1}`,
+          department: ["executive", "operations", "security", "hr", "qa"][i % 5],
+          hierarchyLevel: ["L1", "L2", "L3"][i % 3],
+          status: i < 3 ? "idle" : "idle",
+          proposed_for_proof: i < 5,
+        })),
         workflows: [],
         departments: [],
         ceoBrief: { available: true, items: [] },
@@ -183,7 +183,75 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
       });
     }
     if (path.startsWith("/api/admin/objectives")) {
-      return json(route, 200, { objectives: [], items: [], projects: PROJECTS });
+      return json(route, 200, {
+        objectives: [
+          {
+            id: "obj-proof-1",
+            title: "Secure Internal Employee Onboarding Workflow",
+            status: "awaiting_founder_action",
+            kind: "integration_proof",
+            project_id: "proj-proof-1",
+          },
+          {
+            id: "obj-cancelled-1",
+            title: "Cancelled duplicate objective",
+            status: "cancelled",
+            kind: "general",
+            project_id: "proj-proof-1",
+          },
+        ],
+        items: [],
+        projects: PROJECTS,
+      });
+    }
+    if (path.startsWith("/api/admin/operations/summary")) {
+      return json(route, 200, {
+        ok: true,
+        project_id: url.searchParams.get("project_id") || projectId,
+        project_name: "MianX Internal Production Proof",
+        next_founder_action: {
+          label: "Review Plan",
+          reason: "Waiting for Founder Plan Approval",
+          href: "/admin/integration?tab=plan",
+          severity: "action_required",
+        },
+        canonical_integration_run: {
+          id: "irun-e2e-1",
+          stage: "founder_approval_required",
+          proof_status: "awaiting_plan_approval",
+          stage_label: "Waiting for Founder Plan Approval",
+          current_stage: "founder_approval_required",
+        },
+        integration: { duplicate_warning: false, duplicate_count: 0, duplicate_runs: [] },
+      });
+    }
+    if (path.startsWith("/api/admin/inbox")) {
+      return json(route, 200, {
+        available: true,
+        attentionCount: 1,
+        items: [
+          {
+            id: "integration-founder-action",
+            kind: "integration_founder_action",
+            severity: "high",
+            title: "Review Plan",
+            detail: "Waiting for Founder Plan Approval",
+            href: "/admin/integration?project_id=proj-proof-1&tab=plan",
+            projectId: "proj-proof-1",
+            attention_class: "action_required",
+          },
+          {
+            id: "provider",
+            kind: "provider",
+            severity: "info",
+            title: "Live AI provider not configured",
+            detail: "Not required for deterministic Founder Proof.",
+            href: "/admin/settings",
+            projectId: null,
+            attention_class: "informational",
+          },
+        ],
+      });
     }
     if (path.startsWith("/api/admin/templates")) {
       const action = url.searchParams.get("action");
@@ -255,6 +323,8 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
         engine_version: "phase-g-test",
         executable_agents: 36,
         paused: false,
+        assigned_count: 0,
+        simulation_state: "not_started",
         counts: {
           idle: 36,
           busy: 0,
@@ -340,21 +410,130 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
       }
       const action = url.searchParams.get("action") || "dashboard";
       if (action === "run") {
+        const awaitingPlan = qsProject === "proj-proof-1";
         return json(route, 200, {
           ok: true,
           run: {
             id: "irun-e2e-1",
-            current_stage: "founder_final_review",
-            status: "awaiting_final_review",
+            current_stage: awaitingPlan
+              ? "founder_approval_required"
+              : "founder_final_review",
+            status: awaitingPlan ? "awaiting_plan_approval" : "awaiting_final_review",
             execution_mode: "deterministic_simulation",
             project_id: qsProject,
-            objective: { title: "E2E integration objective" },
+            objective: {
+              title: "Secure Internal Employee Onboarding Workflow",
+              business_purpose: "Secure internal employee onboarding with least privilege.",
+              protected_actions: ["production_deployment"],
+            },
             correlation_id: "corr-e2e",
             trace_id: "trace-e2e",
-            allocation: { count: 5, activated_all_36: false },
-            evidence: { count: 4 },
-            memory: { count: 3 },
-            learning: { count: 8, auto_applied: false },
+            allocation: {
+              count: 5,
+              activated_all_36: false,
+              selected_agents: [
+                {
+                  slug: "executive-ceo",
+                  role: "Executive Orchestrator",
+                  reason: "Hierarchical delegation anchor for the Founder Proof.",
+                },
+                {
+                  slug: "hr-workforce-planner",
+                  role: "HR Workforce Planner",
+                  reason: "Owns employee lifecycle and onboarding policy design.",
+                },
+                {
+                  slug: "platform-security",
+                  role: "Platform Security Reviewer",
+                  reason: "Reviews identity, least privilege and access revocation controls.",
+                },
+                {
+                  slug: "ops-coordinator",
+                  role: "Operations Coordinator",
+                  reason: "Coordinates onboarding operations and provisioning runbooks.",
+                },
+                {
+                  slug: "qa-review",
+                  role: "QA Review Agent",
+                  reason: "Verifies evidence completeness for the proof pack.",
+                },
+              ],
+            },
+            planning_plan: {
+              id: "plan-e2e-1",
+              wbs: {
+                tasks: [
+                  {
+                    id: "task-1",
+                    title: "Identity and access",
+                    purpose: "Define least-privilege identity controls.",
+                  },
+                  {
+                    id: "task-2",
+                    title: "Organisation management",
+                    purpose: "Map roles and onboarding ownership.",
+                  },
+                  {
+                    id: "task-3",
+                    title: "Onboarding operations",
+                    purpose: "Operationalise provisioning runbooks.",
+                  },
+                  {
+                    id: "task-4",
+                    title: "Verification and evidence",
+                    purpose: "Collect simulation evidence.",
+                  },
+                ],
+                edges: [
+                  { from: "program-1", to: "epic-1", kind: "contains" },
+                  { from: "task-1", to: "task-2", kind: "depends_on" },
+                  { from: "task-2", to: "task-3", kind: "depends_on" },
+                  { from: "task-3", to: "task-4", kind: "depends_on" },
+                ],
+              },
+              risks: [
+                {
+                  title: "Provider is not configured",
+                  severity: "medium",
+                  meaning: "Live provider execution is unavailable.",
+                  mitigation:
+                    "Continue with deterministic simulation and do not claim live AI completion.",
+                },
+              ],
+            },
+            approval_package: {
+              created_at: "2026-07-29T12:00:00.000Z",
+              dependencies: [
+                { from: "program-1", to: "epic-1", kind: "contains" },
+                { from: "task-1", to: "task-2", kind: "depends_on" },
+                { from: "task-2", to: "task-3", kind: "depends_on" },
+                { from: "task-3", to: "task-4", kind: "depends_on" },
+              ],
+              proposed_agents: [
+                {
+                  slug: "executive-ceo",
+                  role: "Executive Orchestrator",
+                  reason: "Hierarchical delegation anchor for the Founder Proof.",
+                },
+                {
+                  slug: "hr-workforce-planner",
+                  role: "HR Workforce Planner",
+                  reason: "Owns employee lifecycle and onboarding policy design.",
+                },
+              ],
+              risks: [
+                {
+                  title: "Provider is not configured",
+                  severity: "medium",
+                  meaning: "Live provider execution is unavailable.",
+                  mitigation:
+                    "Continue with deterministic simulation and do not claim live AI completion.",
+                },
+              ],
+            },
+            evidence: { count: awaitingPlan ? 0 : 4 },
+            memory: { count: awaitingPlan ? 0 : 3 },
+            learning: { count: awaitingPlan ? 0 : 8, auto_applied: false },
             proof_pack: { secrets_included: false },
           },
         });
@@ -373,7 +552,10 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
         engine_version: "phase-h-test",
         proof_level: "LEVEL_1_DETERMINISTIC_SIMULATION",
         live_execution_ready: false,
-        proof_status: "awaiting_final_review",
+        proof_status:
+          qsProject === "proj-proof-1"
+            ? "awaiting_plan_approval"
+            : "awaiting_final_review",
         proof_template: {
           title: "Secure Internal Employee Onboarding Workflow",
           execution_mode: "deterministic_simulation",
@@ -382,7 +564,10 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
         readiness: {
           simulationReady: true,
           integrationPersistenceReady: true,
-          integrationProofStatus: "awaiting_final_review",
+          integrationProofStatus:
+            qsProject === "proj-proof-1"
+              ? "awaiting_plan_approval"
+              : "awaiting_final_review",
           providerStatus: "unconfigured",
           routableAgentCount: 36,
           persistence: {
@@ -409,15 +594,23 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
           {
             id: "irun-e2e-1",
             project_id: qsProject,
-            stage: "founder_final_review",
-            status: "awaiting_final_review",
+            stage:
+              qsProject === "proj-proof-1"
+                ? "founder_approval_required"
+                : "founder_final_review",
+            status:
+              qsProject === "proj-proof-1"
+                ? "awaiting_plan_approval"
+                : "awaiting_final_review",
             mode: "deterministic_simulation",
-            objective_title: "E2E integration objective",
-            evidence_count: 4,
-            memory_count: 3,
-            learning_count: 8,
+            objective_title: "Secure Internal Employee Onboarding Workflow",
+            evidence_count: qsProject === "proj-proof-1" ? 0 : 4,
+            memory_count: qsProject === "proj-proof-1" ? 0 : 3,
+            learning_count: qsProject === "proj-proof-1" ? 0 : 8,
+            is_canonical_active: true,
           },
         ],
+        canonicalFounderProofRunId: "irun-e2e-1",
       });
     }
     if (path.startsWith("/api/admin/")) {

@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import EmptyState from "@/components/admin/EmptyState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import MianxLoader from "@/components/shared/MianxLoader";
-import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
+
+const TIP_KINDS = new Set(["provider", "scheduler"]);
 
 async function fetchJson(path, router, opts) {
   const res = await fetch(path, {
@@ -108,6 +110,47 @@ export default function InboxClient() {
     await load();
   }
 
+  const { actionItems, tipItems, hasReviewPlanCard } = useMemo(() => {
+    const items = data?.items || [];
+    const tips = items.filter((i) => TIP_KINDS.has(i.kind));
+    const actions = items.filter((i) => !TIP_KINDS.has(i.kind));
+    const reviewPlan = actions.some(
+      (i) =>
+        i.kind === "integration_founder_action" ||
+        /review\s*plan/i.test(String(i.title || "")) ||
+        /review\s*plan/i.test(String(i.required_action || ""))
+    );
+    return { actionItems: actions, tipItems: tips, hasReviewPlanCard: reviewPlan };
+  }, [data?.items]);
+
+  // Prefer server attentionCount (excludes provider/scheduler). Fall back to action items.
+  const attentionCount =
+    typeof data?.attentionCount === "number"
+      ? data.attentionCount
+      : actionItems.length;
+
+  // When inbox already surfaces Review Plan, hide banner CTA duplication by
+  // still showing status but relying on the inbox card for the action.
+  const bannerSummary = useMemo(() => {
+    if (!opsSummary || !hasReviewPlanCard) return opsSummary;
+    const next = opsSummary.next_founder_action;
+    if (!next) return opsSummary;
+    const looksLikeReviewPlan =
+      /review\s*plan/i.test(String(next.label || "")) ||
+      next.id === "approve_plan" ||
+      next.id === "review_plan";
+    if (!looksLikeReviewPlan) return opsSummary;
+    return {
+      ...opsSummary,
+      next_founder_action: {
+        ...next,
+        // Keep label/reason informational; strip action_required so banner
+        // does not render a competing CTA link.
+        severity: "informational",
+      },
+    };
+  }, [opsSummary, hasReviewPlanCard]);
+
   return (
     <AdminShell
       title="Founder Inbox"
@@ -134,7 +177,7 @@ export default function InboxClient() {
           Operational attention queue — not email. Approve, reject, pause, resume,
           and cancel from here when the item supports it.
         </p>
-        <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+        <FounderActionBanner summary={bannerSummary} projectId={projectId} />
         {loading && !data ? (
           <DelayedLoader delayMs={200}>
             <MianxLoader variant="section" label="Loading Founder Inbox…" />
@@ -152,10 +195,39 @@ export default function InboxClient() {
         ) : null}
         {data ? (
           <>
-            <p className="cc-metric-value" style={{ fontSize: "1.1rem" }}>
-              {data.attentionCount} requiring attention
+            <p
+              className="cc-metric-value"
+              style={{ fontSize: "1.1rem" }}
+              data-testid="inbox-attention-count"
+            >
+              {attentionCount} requiring attention
             </p>
-            {data.items.length === 0 ? (
+            {tipItems.length > 0 ? (
+              <ul className="inbox-tips" data-testid="inbox-tips">
+                {tipItems.map((item) => (
+                  <li
+                    key={item.id}
+                    className="inbox-tip"
+                    data-testid={`inbox-tip-${item.kind}`}
+                  >
+                    <strong>{item.title}</strong>
+                    <span className="cc-muted"> — {item.detail}</span>
+                    {item.kind === "provider" ? (
+                      <span className="cc-muted inbox-tip-note">
+                        {" "}
+                        Informational configuration status — does not block this proof.
+                      </span>
+                    ) : null}
+                    {item.href ? (
+                      <Link href={item.href} className="inbox-tip-link">
+                        Settings
+                      </Link>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {actionItems.length === 0 ? (
               <EmptyState
                 title="Inbox clear"
                 reason="No approvals, pause controls, or dead-letter items need attention."
@@ -169,7 +241,7 @@ export default function InboxClient() {
               />
             ) : (
               <ul className="inbox-list">
-                {data.items.map((item) => (
+                {actionItems.map((item) => (
                   <li key={item.id} className={`inbox-item severity-${item.severity}`}>
                     <div>
                       <span className="inbox-kind">{item.kind.replace(/_/g, " ")}</span>
