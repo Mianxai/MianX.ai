@@ -145,18 +145,24 @@ export default function CeoBriefClient() {
                 ) : (
                   <ul className="obj-list">
                     {data.objectives.map((o) => (
-                      <li key={o.id}>
+                      <li key={`${o.source_type || "obj"}:${o.id}`}>
                         <Link
                           className="obj-row"
-                          href={`/admin/objectives?project_id=${encodeURIComponent(
-                            o.projectId
-                          )}&id=${encodeURIComponent(o.id)}`}
+                          href={
+                            o.href ||
+                            `/admin/objectives?project_id=${encodeURIComponent(
+                              o.project_id || projectId
+                            )}&id=${encodeURIComponent(o.id)}`
+                          }
                         >
                           <span className="obj-row-top">
                             <strong>{o.title}</strong>
                             <StatusChip status={o.status} />
                           </span>
-                          <span className="cc-muted">{o.workflow}</span>
+                          <span className="cc-muted">
+                            {o.source_badge || o.workflow || "—"}
+                            {o.stage ? ` · ${o.stage}` : ""}
+                          </span>
                         </Link>
                       </li>
                     ))}

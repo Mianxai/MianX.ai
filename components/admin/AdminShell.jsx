@@ -16,6 +16,7 @@ import {
   formatNewSubmissionsBadge,
   newSubmissionsAriaLabel,
 } from "@/lib/admin-notifications";
+import { ADMIN_PROJECT_STORAGE_KEY } from "@/lib/admin-project";
 
 const MOBILE_MQ = "(max-width: 900px)";
 
@@ -72,6 +73,19 @@ function AdminShellInner({
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const drawerActive = isMobile && sidebarOpen;
   const sidebarHidden = isMobile && !sidebarOpen;
+
+  useEffect(() => {
+    if (projectId || typeof window === "undefined") return;
+    try {
+      const stored = window.localStorage.getItem(ADMIN_PROJECT_STORAGE_KEY);
+      if (!stored) return;
+      const next = new URLSearchParams(searchParams?.toString() || "");
+      next.set("project_id", stored);
+      router.replace(`${pathname}?${next.toString()}`);
+    } catch {
+      /* ignore */
+    }
+  }, [projectId, pathname, router, searchParams]);
 
   useEffect(() => {
     const el = sidebarRef.current;

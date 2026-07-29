@@ -135,8 +135,14 @@ export default function ProjectsPage() {
                 {p.description && <p className="projects-desc">{p.description}</p>}
               </div>
               <div className="projects-item-actions">
+                <Link
+                  className="header-btn"
+                  href={`/admin/command-center?project_id=${encodeURIComponent(p.id)}`}
+                >
+                  Open Command Center
+                </Link>
                 <Link className="header-btn-ghost" href={`/admin/projects/${p.id}`}>
-                  Open
+                  Details
                 </Link>
                 <button
                   type="button"

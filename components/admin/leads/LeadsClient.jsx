@@ -171,6 +171,10 @@ function LeadsContent() {
 
       {!notConfigured && (
         <>
+          <p className="cc-muted" role="note">
+            Organisation-wide leads — inbound submissions are not filtered by admin project
+            context.
+          </p>
           <StatsGrid stats={stats} />
           <FiltersBar active={filter} onChange={onFilterChange} />
           {loading && leads.length === 0 ? (

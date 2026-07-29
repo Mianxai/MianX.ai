@@ -64,7 +64,39 @@ export const GET = withErrorHandling(async (req) => {
     productionReadiness,
   });
 
-  const objectives = tasks
+  let operationalObjectives = [];
+  if (projectId) {
+    try {
+      const { buildProjectOperationalSummary } = await import(
+        "@/lib/core/founder-operations"
+      );
+      const summary = await buildProjectOperationalSummary({ projectId });
+      operationalObjectives = summary?.objectives || [];
+      if (operationalObjectives.length > 0) {
+        brief.activeObjectives = operationalObjectives.map((o) => ({
+          title: o.title,
+          workflow: o.source_badge,
+          status: o.status,
+          stage: o.stage,
+        }));
+        brief.blockedObjectives = operationalObjectives.filter((o) =>
+          ["awaiting_approval", "clarification_required", "failed"].includes(
+            o.proof_status || o.status
+          )
+        );
+      }
+      if (summary?.integration?.duplicate_warning) {
+        brief.duplicateProofWarning = {
+          count: summary.integration.duplicate_count,
+          canonical_run_id: summary.canonical_integration_run?.id,
+        };
+      }
+    } catch {
+      /* optional */
+    }
+  }
+
+  const legacyObjectives = tasks
     .filter(isObjectiveTask)
     .map((t) => toObjectiveSummary(t, { jobs, approvals }));
 
@@ -73,7 +105,8 @@ export const GET = withErrorHandling(async (req) => {
     projectId,
     available: true,
     brief,
-    objectives,
+    objectives: operationalObjectives.length ? operationalObjectives : legacyObjectives,
+    legacy_objectives: legacyObjectives,
     providerSynthesis: false,
     productionReadiness,
     schedule: config.scheduler,

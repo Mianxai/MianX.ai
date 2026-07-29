@@ -215,7 +215,9 @@ export default function ObjectivesClient() {
             <h2 id="obj-form-h">Issue objective</h2>
             <p className="cc-muted">
               Routes through Executive orchestration → workstreams → agents →
-              tasks/jobs. Protected actions stay Founder-gated.
+              tasks/jobs. Protected actions stay Founder-gated. Production Proof
+              objectives are created only from E2E Integration (Start or Continue
+              Founder Proof), not this form.
             </p>
             <form className="obj-form" onSubmit={onSubmit}>
               <label>
@@ -326,19 +328,32 @@ export default function ObjectivesClient() {
             ) : (
               <ul className="obj-list">
                 {objectives.map((o) => (
-                  <li key={o.id}>
+                  <li key={`${o.source_type || "task"}:${o.id}`}>
                     <button
                       type="button"
                       className={`obj-row${selectedId === o.id ? " selected" : ""}`}
-                      onClick={() => replaceParams({ id: o.id })}
+                      onClick={() => {
+                        if (o.source_type === "integration_proof" && o.href) {
+                          router.push(o.href);
+                          return;
+                        }
+                        replaceParams({ id: o.id });
+                      }}
                     >
                       <span className="obj-row-top">
                         <strong>{o.title}</strong>
                         <StatusChip status={o.status} />
                       </span>
                       <span className="cc-muted">
-                        {o.workflow || "—"} · {o.priority || "—"}
+                        {o.source_badge || o.workflow || "—"}
+                        {o.stage ? ` · ${o.stage}` : ""}
+                        {o.required_action ? ` · ${o.required_action}` : ""}
                       </span>
+                      {o.associated_run_id ? (
+                        <span className="cc-muted">
+                          Run …{String(o.associated_run_id).slice(-8)}
+                        </span>
+                      ) : null}
                     </button>
                   </li>
                 ))}

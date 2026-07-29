@@ -148,6 +148,27 @@ export default function ProjectDetailPage() {
             </section>
           )}
 
+          <section className="project-section" aria-labelledby="proj-founder-h">
+            <h2 id="proj-founder-h">Founder workspace</h2>
+            <ul className="project-runtime-links">
+              <li>
+                <Link href={`/admin/command-center${runtimeQs}`}>Command Center</Link>
+              </li>
+              <li>
+                <Link href={`/admin/integration${runtimeQs}`}>E2E Integration</Link>
+              </li>
+              <li>
+                <Link href={`/admin/objectives${runtimeQs}`}>Objectives</Link>
+              </li>
+              <li>
+                <Link href={`/admin/company-builder${runtimeQs}`}>Company Builder</Link>
+              </li>
+              <li>
+                <Link href={`/admin/workforce${runtimeQs}`}>Live Workforce</Link>
+              </li>
+            </ul>
+          </section>
+
           <section className="project-section" aria-labelledby="proj-runtime-h">
             <h2 id="proj-runtime-h">Runtime</h2>
             <ul className="project-runtime-links">

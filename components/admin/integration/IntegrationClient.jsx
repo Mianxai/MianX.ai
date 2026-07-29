@@ -19,6 +19,7 @@ import { FOUNDER_PRODUCTION_PROOF_OBJECTIVE } from "@/lib/core/integration/proof
 import {
   filterRunsForProject,
   deriveStepStates,
+  mapProofStatusFromRun,
   getPlanGuidance,
   getSimulationGuidance,
   getEvidenceGuidance,
@@ -33,6 +34,7 @@ import IntegrationContextBanner from "@/components/admin/integration/Integration
 import IntegrationFlowStepper from "@/components/admin/integration/IntegrationFlowStepper";
 import IntegrationRunSelector from "@/components/admin/integration/IntegrationRunSelector";
 import IntegrationObjectiveForm from "@/components/admin/integration/IntegrationObjectiveForm";
+import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 
 const TABS = [
   { id: "dashboard", label: "Control Room" },
@@ -108,6 +110,7 @@ export default function IntegrationClient() {
   const [executionMode, setExecutionMode] = useState("deterministic_simulation");
   const [providerGate, setProviderGate] = useState(null);
   const [proofConfirmOpen, setProofConfirmOpen] = useState(false);
+  const [opsSummary, setOpsSummary] = useState(null);
   const [proofStartInFlight, setProofStartInFlight] = useState(false);
   const [proofStatus, setProofStatus] = useState("not_started");
   const [projects, setProjects] = useState([]);
@@ -192,7 +195,7 @@ export default function IntegrationClient() {
     () => ({
       hasProject: Boolean(projectId && selectedProject),
       hasRun: Boolean(run?.id),
-      proofStatus,
+      proofStatus: run ? mapProofStatusFromRun(run) : proofStatus,
       runStage: run?.current_stage,
       runStatus: run?.status,
       evidenceAvailable: Boolean(
@@ -284,6 +287,11 @@ export default function IntegrationClient() {
   ]);
 
   useEffect(() => {
+    if (!projectId || runIdParam || !dash?.canonicalFounderProofRunId) return;
+    setTab(tab, { run_id: dash.canonicalFounderProofRunId });
+  }, [projectId, runIdParam, dash?.canonicalFounderProofRunId, tab, setTab]);
+
+  useEffect(() => {
     if (!projectId || !runIdParam || !dash?.runs?.length) return;
     const match = dash.runs.find((r) => r.id === runIdParam);
     if (match?.project_id && match.project_id !== projectId) {
@@ -317,7 +325,9 @@ export default function IntegrationClient() {
 
     const runsForProject = filterRunsForProject(dashRes.data?.runs, projectId);
     const activeRunId =
-      runIdParam || (runsForProject.length === 1 ? runsForProject[0].id : null);
+      runIdParam ||
+      dashRes.data?.canonicalFounderProofRunId ||
+      (runsForProject.length === 1 ? runsForProject[0].id : null);
     if (activeRunId) {
       const runRes = await getJson(
         `/api/admin/integration?action=run&run_id=${encodeURIComponent(activeRunId)}${q}`,
@@ -363,6 +373,15 @@ export default function IntegrationClient() {
         router
       );
       if (gate.ok) setProviderGate(gate.data?.gate || null);
+    }
+    if (projectId) {
+      const opsRes = await getJson(
+        `/api/admin/operations/summary?project_id=${encodeURIComponent(projectId)}`,
+        router
+      );
+      setOpsSummary(opsRes.ok ? opsRes.data : null);
+    } else {
+      setOpsSummary(null);
     }
     setLoading(false);
   }, [projectId, router, runIdParam, executionMode]);
@@ -486,6 +505,9 @@ export default function IntegrationClient() {
                 }
               />
             </div>
+          ) : null}
+          {projectId ? (
+            <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
           ) : null}
           <p>
             Routable agents:{" "}

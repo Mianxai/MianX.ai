@@ -43,6 +43,11 @@ import {
   deterministicFounderProofCorrelationTrace,
   deterministicFounderProofEngineRunId,
 } from "@/lib/core/integration/founder-proof-idempotency.js";
+import {
+  resolveCanonicalFounderProofRuns,
+  isFounderProductionProofRun,
+  isTerminalFounderProofRun,
+} from "@/lib/core/integration/founder-proof-canonical.js";
 
 export const dynamic = "force-dynamic";
 
@@ -269,39 +274,19 @@ export const POST = withErrorHandling(async (req) => {
       project_id: project.id,
       limit: 50,
     });
-
-    const isFounderProductionProof = (run) =>
-      Boolean(
-        run?.proof?.is_production_proof ||
-          run?.payload?.is_production_proof ||
-          run?.proof?.is_production_proof === true
-      ) && (run?.objective?.title || run?.objective_title || "") ===
-        FOUNDER_PRODUCTION_PROOF_OBJECTIVE.title;
-
-    const isTerminalProof = (run) => {
-      const ps = mapProofStatusFromRun(run);
-      return ["completed", "rejected", "failed"].includes(ps);
-    };
-
-    const proofScore = (run) =>
-      (run?.evidence?.count || 0) + (run?.memory?.count || 0) + (run?.learning?.count || 0);
-
-    const selectCanonicalActive = (runs) => {
-      const active = runs.filter((r) => !isTerminalProof(r));
-      if (!active.length) return null;
-      // Prefer earliest started run; tie-break by "completeness" score.
-      active.sort((a, b) => {
-        const at = String(a.started_at || a.updated_at || "");
-        const bt = String(b.started_at || b.updated_at || "");
-        const t = at.localeCompare(bt);
-        if (t !== 0) return t;
-        return proofScore(b) - proofScore(a);
-      });
-      return active[0] || null;
-    };
-
-    const proofCandidates = (persisted || []).filter(isFounderProductionProof);
-    const canonicalActive = selectCanonicalActive(proofCandidates);
+    for (const r of persisted || []) {
+      if (r?.id) saveRun(r);
+    }
+    const mergedMap = new Map();
+    for (const r of listRuns({ project_id: project.id })) {
+      if (r?.id) mergedMap.set(r.id, r);
+    }
+    for (const r of persisted || []) {
+      if (r?.id) mergedMap.set(r.id, r);
+    }
+    const mergedRuns = [...mergedMap.values()];
+    const resolution = resolveCanonicalFounderProofRuns(mergedRuns);
+    const canonicalActive = resolution.canonical_run;
     if (canonicalActive) {
       canonicalActive.proof_status = mapProofStatusFromRun(canonicalActive);
       saveRun(canonicalActive);
@@ -312,11 +297,13 @@ export const POST = withErrorHandling(async (req) => {
         resumed_existing_run: true,
         canonical_founder_proof_run_id: canonicalActive.id,
         idempotency_base: idempotencyBase,
+        duplicate_warning: resolution.duplicate_warning,
         note: "Returning existing active production Founder proof run (idempotent resume).",
       });
     }
 
-    const terminalRuns = proofCandidates.filter((r) => isTerminalProof(r));
+    const proofCandidates = mergedRuns.filter(isFounderProductionProofRun);
+    const terminalRuns = proofCandidates.filter(isTerminalFounderProofRun);
     terminalRuns.sort((a, b) => {
       const aa = String(a.updated_at || a.started_at || "");
       const bb = String(b.updated_at || b.started_at || "");
@@ -474,36 +461,18 @@ export const POST = withErrorHandling(async (req) => {
       project_id: project.id,
       limit: 50,
     });
-
-    const isFounderProductionProof = (run) =>
-      Boolean(run?.proof?.is_production_proof || run?.payload?.is_production_proof) &&
-      (run?.objective?.title || run?.objective_title || "") ===
-        FOUNDER_PRODUCTION_PROOF_OBJECTIVE.title;
-
-    const isTerminalProof = (run) => {
-      const ps = mapProofStatusFromRun(run);
-      return ["completed", "rejected", "failed"].includes(ps);
-    };
-
-    const proofScore = (run) =>
-      (run?.evidence?.count || 0) +
-      (run?.memory?.count || 0) +
-      (run?.learning?.count || 0);
-
-    const proofCandidates = (persisted || []).filter(isFounderProductionProof);
-    const activeProofRuns = proofCandidates.filter((r) => !isTerminalProof(r));
-
-    let canonicalActive = null;
-    if (activeProofRuns.length > 0) {
-      activeProofRuns.sort((a, b) => {
-        const at = String(a.started_at || a.updated_at || "");
-        const bt = String(b.started_at || b.updated_at || "");
-        const t = at.localeCompare(bt);
-        if (t !== 0) return t;
-        return proofScore(b) - proofScore(a);
-      });
-      canonicalActive = activeProofRuns[0] || null;
+    for (const r of persisted || []) {
+      if (r?.id) saveRun(r);
     }
+    const mergedMap = new Map();
+    for (const r of listRuns({ project_id: project.id })) {
+      if (r?.id) mergedMap.set(r.id, r);
+    }
+    for (const r of persisted || []) {
+      if (r?.id) mergedMap.set(r.id, r);
+    }
+    const resolution = resolveCanonicalFounderProofRuns([...mergedMap.values()]);
+    const canonicalActive = resolution.canonical_run;
 
     if (!canonicalActive) {
       throw badRequest("No active canonical production Founder proof run found.");
@@ -513,8 +482,8 @@ export const POST = withErrorHandling(async (req) => {
       throw badRequest("canonical_run_id does not match current canonical active run.");
     }
 
-    const duplicateOk = activeProofRuns.some(
-      (r) => String(r.id) === String(duplicateRunId) && String(r.id) !== String(canonicalRunId)
+    const duplicateOk = resolution.duplicate_runs.some(
+      (r) => String(r.id) === String(duplicateRunId)
     );
     if (!duplicateOk) {
       throw badRequest(
