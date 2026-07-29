@@ -107,7 +107,7 @@ describe("AdminShell", () => {
       "href",
       "/admin/runtime/agents"
     );
-    expect(screen.getByRole("link", { name: /^Runtime$/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Runtime Overview/i })).toHaveAttribute(
       "href",
       "/admin/runtime"
     );
@@ -119,7 +119,7 @@ describe("AdminShell", () => {
       "href",
       "/admin/runtime/runs"
     );
-    expect(screen.getByRole("link", { name: /^Audit$/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Audit/i })).toHaveAttribute(
       "href",
       "/admin/runtime/audit"
     );

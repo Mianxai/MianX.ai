@@ -46,6 +46,7 @@ import {
 } from "@/components/admin/integration/IntegrationArtifactCards";
 import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 import FounderQuickStart from "@/components/admin/FounderQuickStart";
+import { resolveIntegrationTab, tabForFounderProofStage } from "@/lib/core/integration/stage-tab";
 
 const TABS = [
   { id: "dashboard", label: "Control Room" },
@@ -86,7 +87,7 @@ export default function IntegrationClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { projectId, setProjectId, suggestStoredProjectId } = useAdminProject();
-  const tab = searchParams?.get("tab") || "dashboard";
+  const explicitTab = searchParams?.get("tab");
   const runIdParam = searchParams?.get("run_id") || "";
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -187,8 +188,7 @@ export default function IntegrationClient() {
   const setTab = useCallback(
     (next, extra = {}) => {
       const params = new URLSearchParams(searchParams?.toString() || "");
-      if (next === "dashboard") params.delete("tab");
-      else params.set("tab", next);
+      params.set("tab", next || "dashboard");
       if (extra.run_id !== undefined) {
         if (extra.run_id) params.set("run_id", extra.run_id);
         else params.delete("run_id");
@@ -199,6 +199,25 @@ export default function IntegrationClient() {
     },
     [router, searchParams, projectId, runIdParam]
   );
+
+  // Stage-aware default tab when Founder did not pick an explicit tab.
+  useEffect(() => {
+    if (explicitTab) return;
+    if (!run?.current_stage) return;
+    const preferred = tabForFounderProofStage(
+      run.current_stage,
+      mapProofStatusFromRun(run)
+    );
+    if (preferred && preferred !== "dashboard") {
+      setTab(preferred);
+    }
+  }, [explicitTab, run?.id, run?.current_stage, setTab, run]);
+
+  const tab = resolveIntegrationTab({
+    explicitTab,
+    stage: run?.current_stage,
+    proofStatus: run ? mapProofStatusFromRun(run) : proofStatus,
+  });
 
   const projectRuns = useMemo(
     () => filterRunsForProject(dash?.runs, projectId),
@@ -534,6 +553,7 @@ export default function IntegrationClient() {
                 summary={opsSummary}
                 projectId={projectId}
                 projectName={selectedProject?.name}
+                projects={selectableProjects}
                 onRefresh={load}
               />
               <FounderQuickStart run={run} hasProject={Boolean(projectId && selectedProject)} />

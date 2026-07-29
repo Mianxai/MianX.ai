@@ -80,9 +80,10 @@ export const ADMIN_NAV_GROUPS = [
     items: [
       {
         href: "/admin/runtime",
-        label: "Runtime",
+        label: "Runtime Overview",
         match: "prefix",
         icon: "runtime",
+        badge: "Advanced",
         children: [
           { href: "/admin/runtime/agents", label: "Agent Instances", match: "prefix" },
           { href: "/admin/runtime/tasks", label: "Tasks", match: "prefix" },
@@ -90,8 +91,8 @@ export const ADMIN_NAV_GROUPS = [
           { href: "/admin/runtime/runs", label: "Runs", match: "prefix" },
         ],
       },
-      { href: "/admin/runtime/audit", label: "Audit", match: "prefix", icon: "audit" },
-      { href: "/admin/settings", label: "Settings", match: "prefix", icon: "settings" },
+      { href: "/admin/runtime/audit", label: "Audit", match: "prefix", icon: "audit", badge: "Advanced" },
+      { href: "/admin/settings", label: "Settings", match: "prefix", icon: "settings", badge: "Advanced" },
     ],
   },
 ];

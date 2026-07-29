@@ -3,6 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import DuplicateResolutionPanel from "@/components/admin/integration/DuplicateResolutionPanel";
+import ScopeBadge from "@/components/admin/ScopeBadge";
+import StatusBadge from "@/components/admin/StatusBadge";
+import { resolveProjectDisplayName } from "@/lib/admin/resolve-project-label";
+import {
+  humanStageLabel,
+  humanStatusLabel,
+  statusTone,
+} from "@/lib/core/integration/founder-labels";
 
 /** Preserve project_id / run_id / hash on guided action hrefs. */
 export function withProjectAndRun(href, projectId, runId) {
@@ -22,16 +30,28 @@ export function withProjectAndRun(href, projectId, runId) {
 }
 
 /**
- * Compact guided operations panel for Founder project context.
- * When duplicates exist, embeds real cancel controls (not navigation-only).
+ * Premium Next Founder Action card — stage-aware, no duplicated labels.
  */
-export default function FounderGuidedPanel({ summary, projectId, projectName, onRefresh }) {
+export default function FounderGuidedPanel({
+  summary,
+  projectId,
+  projectName,
+  projects = [],
+  onRefresh,
+}) {
   const [dupBusy, setDupBusy] = useState(false);
   const [dupMessage, setDupMessage] = useState("");
   const [dupError, setDupError] = useState("");
 
   const duplicates = summary?.integration?.duplicate_runs || [];
   const hasDuplicates = Boolean(summary?.integration?.duplicate_warning && duplicates.length);
+
+  const displayName = resolveProjectDisplayName({
+    projectName,
+    summary,
+    projects,
+    projectId,
+  });
 
   useEffect(() => {
     if (!hasDuplicates || typeof window === "undefined") return;
@@ -64,8 +84,7 @@ export default function FounderGuidedPanel({ summary, projectId, projectName, on
           return;
         }
         setDupMessage(
-          data?.note ||
-            `Duplicate ${duplicateRunId} cancelled. Canonical run preserved.`
+          data?.note || `Duplicate ${duplicateRunId} cancelled. Canonical run preserved.`
         );
         await onRefresh?.();
       } catch (err) {
@@ -85,7 +104,6 @@ export default function FounderGuidedPanel({ summary, projectId, projectName, on
     let cancelled = 0;
     try {
       for (const duplicateRunId of ids) {
-        // Revalidated server-side on each call.
         // eslint-disable-next-line no-await-in-loop
         const res = await fetch("/api/admin/integration", {
           method: "POST",
@@ -102,18 +120,14 @@ export default function FounderGuidedPanel({ summary, projectId, projectName, on
         const data = await res.json().catch(() => null);
         if (!res.ok) {
           setDupError(
-            data?.error?.message ||
-              data?.message ||
-              `Cancel failed for ${duplicateRunId}`
+            data?.error?.message || data?.message || `Cancel failed for ${duplicateRunId}`
           );
           await onRefresh?.();
           return;
         }
         cancelled += 1;
       }
-      setDupMessage(
-        `Cancelled ${cancelled} non-canonical duplicate(s). Canonical run unchanged.`
-      );
+      setDupMessage(`Cancelled ${cancelled} non-canonical duplicate(s). Canonical run unchanged.`);
       await onRefresh?.();
     } catch (err) {
       setDupError(err?.message || "Cancel all failed");
@@ -125,12 +139,13 @@ export default function FounderGuidedPanel({ summary, projectId, projectName, on
   if (!projectId) {
     return (
       <section
-        className="founder-guided-panel admin-panel"
+        className="founder-next-action-card cc-card"
         data-testid="founder-guided-panel"
-        aria-label="Founder guided operations"
+        aria-labelledby="founder-next-action-h"
       >
-        <h2>Next Founder action</h2>
-        <p className="admin-muted">Select a project to see the canonical next action.</p>
+        <ScopeBadge scope="proof" />
+        <h2 id="founder-next-action-h">Next Founder Action</h2>
+        <p className="cc-muted">Select a project to see the canonical next action.</p>
       </section>
     );
   }
@@ -150,51 +165,84 @@ export default function FounderGuidedPanel({ summary, projectId, projectName, on
       ? withProjectAndRun(next.href, projectId, runId)
       : null;
 
+  const stageLabel =
+    canonical?.stage_label ||
+    humanStageLabel(canonical?.stage || canonical?.current_stage) ||
+    "Not started";
+  const statusLabel = humanStatusLabel(
+    canonical?.proof_status || canonical?.status,
+    canonical?.stage || canonical?.current_stage
+  );
+
+  const willHappen =
+    next?.will_happen ||
+    (next?.id === "review_plan"
+      ? "The proof moves to simulation approval."
+      : null);
+  const willNot =
+    next?.will_not_happen ||
+    "Simulation will not start. Provider will not be called. Production deployment remains blocked.";
+
   return (
     <>
       <section
-        className="founder-guided-panel admin-panel"
+        className="founder-next-action-card cc-card"
         data-testid="founder-guided-panel"
-        aria-label="Founder guided operations"
+        aria-labelledby="founder-next-action-h"
       >
-        <h2>Next Founder Action</h2>
-        <dl className="founder-guided-meta" data-testid="founder-guided-context">
+        <header className="founder-next-action-header">
           <div>
-            <dt>Selected project</dt>
-            <dd>{projectName || "Selected project"}</dd>
+            <ScopeBadge scope="proof" label="Founder Proof" />
+            <h2 id="founder-next-action-h">Next Founder Action</h2>
           </div>
-          {objective ? (
-            <div>
-              <dt>Current objective</dt>
-              <dd>{objective.title}</dd>
-            </div>
-          ) : null}
-          {canonical ? (
-            <>
-              <div>
-                <dt>Current stage</dt>
-                <dd>{canonical.stage_label || canonical.stage || "Not available"}</dd>
-              </div>
-              <div>
-                <dt>Proof status</dt>
-                <dd>{canonical.proof_status || "Not available"}</dd>
-              </div>
-            </>
-          ) : null}
+          <div className="founder-next-action-badges">
+            <StatusBadge tone={statusTone(canonical?.stage || canonical?.proof_status)}>
+              {stageLabel}
+            </StatusBadge>
+            <StatusBadge tone={statusTone(canonical?.proof_status || canonical?.status)}>
+              {statusLabel}
+            </StatusBadge>
+          </div>
+        </header>
+
+        <dl className="founder-next-action-grid" data-testid="founder-guided-context">
+          <div>
+            <dt>Project</dt>
+            <dd data-testid="founder-selected-project-name">{displayName}</dd>
+          </div>
+          <div>
+            <dt>Current objective</dt>
+            <dd data-testid="founder-current-objective">
+              {objective?.title || "No active objective"}
+            </dd>
+          </div>
+          <div>
+            <dt>Current stage</dt>
+            <dd data-testid="founder-current-stage">{stageLabel}</dd>
+          </div>
+          <div>
+            <dt>Current status</dt>
+            <dd data-testid="founder-current-status">{statusLabel}</dd>
+          </div>
         </dl>
+
         {next ? (
-          <>
-            <p className="founder-guided-reason">{next.reason}</p>
-            {next.will_happen ? (
-              <p className="cc-muted" data-testid="guided-will-happen">
-                After clicking: {next.will_happen}
-              </p>
+          <div className="founder-next-action-body">
+            <div>
+              <h3>What the Founder needs to do</h3>
+              <p data-testid="founder-next-need">{next.reason || next.label}</p>
+            </div>
+            {willHappen ? (
+              <div>
+                <h3>What happens after clicking</h3>
+                <p data-testid="guided-will-happen">{willHappen}</p>
+              </div>
             ) : null}
-            {next.will_not_happen ? (
-              <p className="cc-muted" data-testid="guided-will-not-happen">
-                Will not happen automatically: {next.will_not_happen}
-              </p>
-            ) : null}
+            <div>
+              <h3>What will not happen automatically</h3>
+              <p data-testid="guided-will-not-happen">{willNot}</p>
+            </div>
+
             {resolveDuplicates ? (
               <button
                 type="button"
@@ -220,21 +268,33 @@ export default function FounderGuidedPanel({ summary, projectId, projectName, on
                 {next.label}
               </p>
             )}
-            <details className="founder-guided-tech">
-              <summary>Technical details</summary>
-              <p>
-                Project ID: <code>{projectId}</code>
-              </p>
-              {runId ? (
-                <p>
-                  Run ID: <code>{runId}</code>
-                </p>
-              ) : null}
-            </details>
-          </>
+          </div>
         ) : (
           <p className="admin-muted">No action required for this project right now.</p>
         )}
+
+        <details className="founder-guided-tech">
+          <summary>Technical details</summary>
+          <p>
+            Project ID: <code>{projectId}</code>
+          </p>
+          {runId ? (
+            <p>
+              Run ID: <code>{runId}</code>
+            </p>
+          ) : null}
+          {canonical?.stage ? (
+            <p>
+              Machine stage: <code>{canonical.stage}</code>
+            </p>
+          ) : null}
+          {canonical?.proof_status ? (
+            <p>
+              Machine proof status: <code>{canonical.proof_status}</code>
+            </p>
+          ) : null}
+        </details>
+
         {hasDuplicates ? (
           <p className="admin-warning" role="status" data-testid="guided-duplicate-warning">
             Duplicate active production proof runs detected (
@@ -243,8 +303,8 @@ export default function FounderGuidedPanel({ summary, projectId, projectName, on
         ) : null}
         {canonical?.live_provider_blocked ? (
           <p className="admin-warning" role="status">
-            Live provider execution is blocked for this run (configuration_invalid). Deterministic
-            simulation remains available after Founder gates.
+            Live provider execution is blocked. Deterministic simulation remains available after
+            Founder gates.
           </p>
         ) : null}
       </section>

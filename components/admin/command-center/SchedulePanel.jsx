@@ -1,27 +1,23 @@
 "use client";
 
+import SchedulerStatus from "@/components/admin/SchedulerStatus";
+
 export default function SchedulePanel({ schedule, readiness, provider, rateLimit }) {
   if (!schedule) return null;
   const tick = schedule.recentWorkerProcessing;
-  const lastTickLabel = schedule.lastTick
-    ? schedule.lastTick
-    : "Data unavailable";
   return (
-    <section className="cc-card" aria-labelledby="cc-sched-h">
+    <section className="cc-card" aria-labelledby="cc-sched-h" data-testid="schedule-panel">
       <h2 id="cc-sched-h">Schedule</h2>
+      <SchedulerStatus
+        scheduler={{
+          ...schedule,
+          lastTickAt: schedule.lastTick || schedule.lastTickAt || null,
+          lastClaimed: tick?.claimed ?? schedule.lastClaimed,
+          lastSucceeded: tick?.succeeded ?? schedule.lastSucceeded,
+          lastFailed: tick?.failed ?? schedule.lastFailed,
+        }}
+      />
       <dl className="cc-detail-dl">
-        <div>
-          <dt>Mode</dt>
-          <dd>
-            <code>{schedule.mode}</code>
-          </dd>
-        </div>
-        <div>
-          <dt>Platform</dt>
-          <dd>
-            <code>{schedule.platform || "undeclared"}</code>
-          </dd>
-        </div>
         <div>
           <dt>Worker configured</dt>
           <dd>{schedule.workerSecretConfigured ? "Yes" : "No"}</dd>
@@ -31,60 +27,20 @@ export default function SchedulePanel({ schedule, readiness, provider, rateLimit
           <dd>{schedule.platformCronConfigured ? "Yes" : "No"}</dd>
         </div>
         <div>
-          <dt>Automatic processing</dt>
-          <dd>{schedule.automaticProcessing ? "Yes" : "No"}</dd>
-        </div>
-        <div>
           <dt>Tick endpoint</dt>
           <dd>
-            <code>{schedule.tickEndpoint}</code>
+            <code>{schedule.tickEndpoint || "/api/internal/runtime/tick"}</code>
           </dd>
         </div>
-        <div>
-          <dt>Last tick</dt>
-          <dd className={schedule.lastTick ? undefined : "cc-unavailable"}>
-            {lastTickLabel}
-          </dd>
-        </div>
-        {tick ? (
-          <div>
-            <dt>Last tick summary</dt>
-            <dd>
-              claimed {tick.claimed} · succeeded {tick.succeeded} · failed{" "}
-              {tick.failed} · dead-letter {tick.dead_lettered} ·{" "}
-              {tick.duration_ms}ms
-            </dd>
-          </div>
-        ) : null}
         <div>
           <dt>Provider</dt>
-          <dd>
-            <code>{provider?.status || readiness?.provider || "unconfigured"}</code>
-            {" · circuit "}
-            <code>{provider?.circuit || readiness?.provider_circuit || "closed"}</code>
-          </dd>
+          <dd>{provider?.status || readiness?.provider || "unconfigured"}</dd>
         </div>
         <div>
           <dt>Rate limit</dt>
-          <dd>
-            backend {rateLimit?.backend || "in-memory"} · durable{" "}
-            {rateLimit?.durable ? "yes" : "no"} · active{" "}
-            {rateLimit?.active || rateLimit?.adapterActive ? "yes" : "no"}
-          </dd>
-        </div>
-        <div>
-          <dt>Schema readiness</dt>
-          <dd>
-            jobs: {readiness?.runtime_jobs_schema || "unknown"} · mem:{" "}
-            {readiness?.memory_entries_schema || "unknown"} · learn:{" "}
-            {readiness?.learning_candidates_schema || "unknown"} · membership:{" "}
-            {readiness?.admin_membership_schema || "unknown"}
-          </dd>
+          <dd>{rateLimit?.backend || rateLimit?.mode || "in-memory"}</dd>
         </div>
       </dl>
-      {schedule.founderGuidance ? (
-        <p className="cc-muted cc-guidance">{schedule.founderGuidance}</p>
-      ) : null}
     </section>
   );
 }
