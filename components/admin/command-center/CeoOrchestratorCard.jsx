@@ -129,7 +129,7 @@ export default function CeoOrchestratorCard({ agent, brief, projectId, opsSummar
           }
           className="header-btn"
         >
-          E2E Integration
+          Founder Proof
         </Link>
       </div>
     </section>

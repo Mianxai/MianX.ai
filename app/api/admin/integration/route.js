@@ -15,6 +15,7 @@ import {
   submitClarification,
   generateIntegrationPlan,
   decideFounderApproval,
+  decideSimulationApproval,
   startIntegrationSimulation,
   decideFinalReview,
   pauseIntegrationRun,
@@ -555,35 +556,82 @@ export const POST = withErrorHandling(async (req) => {
     await finish(run);
     return NextResponse.json({ ok: true, run });
   }
-  if (action === "approve_simulation") {
+  if (action === "approve_simulation" || action === "approve_plan") {
     const run = decideFounderApproval(body.run_id, "approve_simulation", {
       actor,
       note: body.note || "",
       auto_approve: false,
     });
     await finish(run);
-    return NextResponse.json({ ok: true, run });
+    return NextResponse.json({
+      ok: true,
+      run,
+      simulation_started: false,
+      provider_called: false,
+      note: "Plan approved. Simulation was not started.",
+    });
   }
-  if (action === "reject") {
-    const run = decideFounderApproval(body.run_id, "reject", {
+  if (
+    action === "approve_deterministic_simulation" ||
+    action === "confirm_simulation"
+  ) {
+    const run = decideSimulationApproval(body.run_id, body.decision || "approve", {
       actor,
       note: body.note || "",
+      auto_approve: false,
     });
+    await finish(run);
+    return NextResponse.json({
+      ok: true,
+      run,
+      simulation_started: false,
+      provider_called: false,
+      note: "Deterministic simulation approved. Start remains a separate Founder action.",
+    });
+  }
+  if (action === "reject") {
+    const stage = (await hydrateRun(body.run_id))?.current_stage;
+    let run;
+    if (stage === "simulation_approval_required") {
+      run = decideSimulationApproval(body.run_id, "reject", {
+        actor,
+        note: body.note || "",
+      });
+    } else {
+      run = decideFounderApproval(body.run_id, "reject", {
+        actor,
+        note: body.note || "",
+      });
+    }
     await finish(run);
     return NextResponse.json({ ok: true, run });
   }
   if (action === "return_for_changes") {
-    const run = decideFounderApproval(body.run_id, "return_for_changes", {
-      actor,
-      note: body.note || "",
-    });
+    const stage = (await hydrateRun(body.run_id))?.current_stage;
+    let run;
+    if (stage === "simulation_approval_required") {
+      run = decideSimulationApproval(body.run_id, "return_for_changes", {
+        actor,
+        note: body.note || "",
+      });
+    } else {
+      run = decideFounderApproval(body.run_id, "return_for_changes", {
+        actor,
+        note: body.note || "",
+      });
+    }
     await finish(run);
     return NextResponse.json({ ok: true, run });
   }
   if (action === "start_simulation") {
     const run = startIntegrationSimulation(body.run_id, { actor });
     await finish(run);
-    return NextResponse.json({ ok: true, run });
+    return NextResponse.json({
+      ok: true,
+      run,
+      provider_called: false,
+      note: "Deterministic simulation started.",
+    });
   }
   if (action === "pause") {
     const run = pauseIntegrationRun(body.run_id, { actor });

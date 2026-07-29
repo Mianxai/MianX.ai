@@ -1094,3 +1094,33 @@ no fabricated live AI completion, no auto Founder approval.
 4. Merge / promote only with explicit Founder approval
 
 ---
+
+## 17. Phase H — Founder Proof + Admin Experience closeout (draft PR)
+
+Branch: `cursor/phase-h-final-proof-admin-experience-closeout`  
+Base: `origin/main` @ `7bd26457a94c3c702391b56fc14f5df17d98f9b2` (includes PR #55 duplicate resolution).
+
+### Delivered (code)
+
+- Founder Mode: Next Founder Action, Quick Start (9 steps), Help/glossary drawer
+- Sidebar regrouped (Founder Control / Workforce / Business / Intelligence / Advanced Operations collapsed)
+- Plan review premium summary; never-blank stage/status/agents; JSON under Technical details
+- Simulation gate split: plan approve → simulation approval → explicit start (no auto-start)
+- Evidence / Memory / Learning / Proof Pack readable cards
+- Scope badges + page ledes; E2E Integration renamed Founder Proof in Founder-facing copy
+- Closeout tests in `lib/core/integration/admin-experience.closeout.test.js`
+
+### Explicit non-goals (confirmed)
+
+No merge to main, no production deploy, no production DB mutation, no Anthropic config,
+no advancing the live production Founder Proof from agents, no Phase I, no migrations
+unless additive and required (none in this closeout).
+
+### Founder actions remaining (after preview merge/deploy — Founder only)
+
+1. Review Draft PR and preview
+2. On production: continue from awaiting plan approval → simulation approval → start simulation → evidence/memory/learning → final review
+3. Do not configure Anthropic for deterministic Level-1 proof
+4. Merge / promote only with explicit Founder approval
+
+---

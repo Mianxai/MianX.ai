@@ -141,7 +141,7 @@ export default function OutputsClient() {
           data.items.length === 0 ? (
             <EmptyState
               title="No outputs yet"
-              reason="Aggregated from existing agent runs — not a separate output store. Integration evidence and Proof Pack live under E2E Integration."
+              reason="Aggregated from existing agent runs — not a separate output store. Integration evidence and Proof Pack live under Founder Proof."
               nextAction={
                 opsSummary?.next_founder_action?.reason ||
                 "Follow the next Founder action, or enqueue agent runs."

@@ -89,7 +89,7 @@ test.describe("Phase H Founder acceptance journey", () => {
 
     await page.getByRole("tab", { name: "Simulation" }).click();
     await expect(page.getByTestId("agent-allocation")).toBeVisible();
-    await expect(page.getByText(/activated_all_36/i)).toBeVisible();
+    await expect(page.getByTestId("allocation-activated-all-36")).toHaveText(/false/i);
     await expect(page.getByTestId("deterministic-recovery-test")).toBeVisible();
     await expect(page.getByText(/Deterministic recovery test/i).first()).toBeVisible();
     await expect(page.getByTestId("simulation-progress")).toBeVisible();
@@ -99,7 +99,8 @@ test.describe("Phase H Founder acceptance journey", () => {
     await page.getByRole("tab", { name: "Learning" }).click();
     await page.getByRole("tab", { name: "Proof Pack" }).click();
     await expect(page.getByTestId("integration-proof")).toBeVisible();
-    await expect(page.getByText(/Lineage/i)).toBeVisible();
+    await expect(page.getByTestId("proof-pack-lineage")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Audit lineage/i })).toBeVisible();
 
     // Persisted refresh (mocked API) — Control Room hosts the proof panel
     await page.goto("/admin/integration?project_id=proj-1");

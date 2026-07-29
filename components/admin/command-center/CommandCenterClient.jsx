@@ -19,6 +19,7 @@ import CeoOrchestratorCard from "@/components/admin/command-center/CeoOrchestrat
 import FounderAuthorityBanner from "@/components/admin/command-center/FounderAuthorityBanner";
 import ExecutionPanel from "@/components/admin/command-center/ExecutionPanel";
 import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
+import FounderQuickStart from "@/components/admin/FounderQuickStart";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { adminFetch } from "@/lib/admin-fetch";
 
@@ -216,11 +217,17 @@ export default function CommandCenterClient({ title = "Command Center" }) {
             />
             <FounderAuthorityBanner />
             {projectId ? (
-              <FounderGuidedPanel
-                summary={opsSummary}
-                projectId={projectId}
-                onRefresh={() => load({ soft: true })}
-              />
+              <>
+                <FounderGuidedPanel
+                  summary={opsSummary}
+                  projectId={projectId}
+                  onRefresh={() => load({ soft: true })}
+                />
+                <FounderQuickStart
+                  run={opsSummary?.canonical_integration_run || null}
+                  hasProject={Boolean(projectId)}
+                />
+              </>
             ) : null}
             <OverviewMetrics metrics={data.overview} />
             <CeoOrchestratorCard

@@ -234,13 +234,13 @@ export default function ObjectivesClient() {
             <p className="cc-muted">
               Routes through Executive orchestration → workstreams → agents →
               tasks/jobs. Protected actions stay Founder-gated. Production Proof
-              objectives are created only from E2E Integration (Start or Continue
+              objectives are created only from Founder Proof (Start or Continue
               Founder Proof), not this form.
             </p>
             {activeProof ? (
               <p className="admin-warning" role="note">
                 This form does not create Production Proof. Continue the canonical
-                proof in E2E Integration; a general objective is separate analysis
+                proof in Founder Proof; a general objective is separate analysis
                 work only.
               </p>
             ) : null}

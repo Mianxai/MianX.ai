@@ -52,11 +52,12 @@ describe("admin navigation uniqueness", () => {
     expect(primaryNavHrefs().filter((h) => h === "/admin/workforce")).toHaveLength(1);
   });
 
-  it("uses Control IA without Overview or Execution in the primary sidebar", () => {
+  it("uses Founder Control IA without Overview or Execution in the primary sidebar", () => {
     const control = ADMIN_NAV_GROUPS.find((g) => g.id === "control");
+    expect(control.label).toBe("Founder Control");
     expect(control.items.map((i) => i.label)).toEqual([
       "Command Center",
-      "E2E Integration",
+      "Founder Proof",
       "CEO Brief",
       "Objectives",
       "Company Builder",
@@ -65,6 +66,9 @@ describe("admin navigation uniqueness", () => {
     expect(primaryNavHrefs().filter((h) => h === "/admin/integration")).toHaveLength(1);
     expect(ADMIN_NAV.some((i) => i.href === "/admin")).toBe(false);
     expect(ADMIN_NAV.some((i) => i.href === "/admin/execution")).toBe(false);
+    const ops = ADMIN_NAV_GROUPS.find((g) => g.id === "operations");
+    expect(ops.label).toBe("Advanced Operations");
+    expect(ops.collapsedByDefault).toBe(true);
   });
 
   it("marks Leads active for legacy submissions/lead-pipeline paths", () => {
