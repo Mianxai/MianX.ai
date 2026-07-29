@@ -47,7 +47,13 @@ export const GET = withErrorHandling(async (req) => {
   const jobs = jobsPage.rows || [];
   const approvals = await repo.listApprovals({ projectId });
 
-  const objectives = tasks
+  const { buildProjectOperationalSummary } = await import(
+    "@/lib/core/founder-operations"
+  );
+  const summary = await buildProjectOperationalSummary({ projectId });
+  const objectives = summary?.objectives || [];
+
+  const legacyObjectives = tasks
     .filter(isObjectiveTask)
     .map((t) => toObjectiveSummary(t, { jobs, approvals }));
 
@@ -56,6 +62,8 @@ export const GET = withErrorHandling(async (req) => {
     projectId,
     available: true,
     objectives,
+    legacy_objectives: legacyObjectives,
+    operational_summary: summary,
   });
 });
 

@@ -22,6 +22,15 @@ export default function CeoBriefPanel({ brief }) {
         empty="None"
       />
       <BriefList title="Recent completed" items={brief.recentCompleted} empty="None" />
+      {(brief.duplicateProofWarning?.count > 0) ? (
+        <div className="cc-warnings" role="status">
+          <h3>Duplicate production proof runs</h3>
+          <p>
+            {brief.duplicateProofWarning.count} duplicate active run(s) detected. Resolve via
+            E2E Integration before continuing.
+          </p>
+        </div>
+      ) : null}
       {(brief.operationalWarnings || []).length > 0 ? (
         <div className="cc-warnings" role="status">
           <h3>Operational warnings</h3>

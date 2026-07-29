@@ -18,6 +18,7 @@ import OpsStatusBar from "@/components/admin/command-center/OpsStatusBar";
 import CeoOrchestratorCard from "@/components/admin/command-center/CeoOrchestratorCard";
 import FounderAuthorityBanner from "@/components/admin/command-center/FounderAuthorityBanner";
 import ExecutionPanel from "@/components/admin/command-center/ExecutionPanel";
+import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { adminFetch } from "@/lib/admin-fetch";
 
@@ -67,6 +68,7 @@ export default function CommandCenterClient({ title = "Command Center" }) {
   const [refreshing, setRefreshing] = useState(false);
   // Agents page: list/department summary first; network graph is opt-in (lazy).
   const [viewMode, setViewMode] = useState(agentsPage ? "list" : "network");
+  const [opsSummary, setOpsSummary] = useState(null);
 
   const query = useMemo(() => {
     const q = new URLSearchParams();
@@ -93,8 +95,18 @@ export default function CommandCenterClient({ title = "Command Center" }) {
         return;
       }
       setData(res.data);
+      if (projectId) {
+        const ops = await fetchJson(
+          `/api/admin/operations/summary?project_id=${encodeURIComponent(projectId)}`,
+          router,
+          loginFallback
+        );
+        setOpsSummary(ops.ok ? ops.data : null);
+      } else {
+        setOpsSummary(null);
+      }
     },
-    [query, router, loginFallback]
+    [query, router, loginFallback, projectId]
   );
 
   useEffect(() => {
@@ -203,6 +215,9 @@ export default function CommandCenterClient({ title = "Command Center" }) {
               agentInventory={data.agentInventory}
             />
             <FounderAuthorityBanner />
+            {projectId ? (
+              <FounderGuidedPanel summary={opsSummary} projectId={projectId} />
+            ) : null}
             <OverviewMetrics metrics={data.overview} />
             <CeoOrchestratorCard
               agent={ceoAgent}

@@ -29,6 +29,7 @@ import {
   assertExplicitFounderConfirmation,
   integrationPersistenceStatus,
   persistIntegrationRun,
+  persistIntegrationRunInsertOnly,
   loadIntegrationRun,
   listPersistedIntegrationRuns,
   mapProofStatusFromRun,
@@ -36,6 +37,17 @@ import {
   FOUNDER_PRODUCTION_PROOF_OBJECTIVE,
   requireActiveProjectForProof,
 } from "@/lib/core/integration";
+
+import {
+  expectedFounderProofIdempotencyBase,
+  deterministicFounderProofCorrelationTrace,
+  deterministicFounderProofEngineRunId,
+} from "@/lib/core/integration/founder-proof-idempotency.js";
+import {
+  resolveCanonicalFounderProofRuns,
+  isFounderProductionProofRun,
+  isTerminalFounderProofRun,
+} from "@/lib/core/integration/founder-proof-canonical.js";
 
 export const dynamic = "force-dynamic";
 
@@ -247,14 +259,82 @@ export const POST = withErrorHandling(async (req) => {
   if (action === "start_founder_proof") {
     assertExplicitFounderConfirmation(body.confirmation);
     const project = await requireActiveProjectForProof(body.project_id);
+
+    const idempotencyBase = expectedFounderProofIdempotencyBase({
+      organizationId: project.organization_id,
+      projectId: project.id,
+    });
+    if (body.idempotency_key && body.idempotency_key !== idempotencyBase) {
+      throw badRequest("Invalid idempotency_key for this project and proof template.");
+    }
+
+    // Fetch existing durable runs for project, then canonicalize an active proof run.
+    // This also prevents the "duplicate Active run" production defect.
+    const persisted = await listPersistedIntegrationRuns({
+      project_id: project.id,
+      limit: 50,
+    });
+    for (const r of persisted || []) {
+      if (r?.id) saveRun(r);
+    }
+    const mergedMap = new Map();
+    for (const r of listRuns({ project_id: project.id })) {
+      if (r?.id) mergedMap.set(r.id, r);
+    }
+    for (const r of persisted || []) {
+      if (r?.id) mergedMap.set(r.id, r);
+    }
+    const mergedRuns = [...mergedMap.values()];
+    const resolution = resolveCanonicalFounderProofRuns(mergedRuns);
+    const canonicalActive = resolution.canonical_run;
+    if (canonicalActive) {
+      canonicalActive.proof_status = mapProofStatusFromRun(canonicalActive);
+      saveRun(canonicalActive);
+      return NextResponse.json({
+        ok: true,
+        run: canonicalActive,
+        proof_status: canonicalActive.proof_status,
+        resumed_existing_run: true,
+        canonical_founder_proof_run_id: canonicalActive.id,
+        idempotency_base: idempotencyBase,
+        duplicate_warning: resolution.duplicate_warning,
+        note: "Returning existing active production Founder proof run (idempotent resume).",
+      });
+    }
+
+    const proofCandidates = mergedRuns.filter(isFounderProductionProofRun);
+    const terminalRuns = proofCandidates.filter(isTerminalFounderProofRun);
+    terminalRuns.sort((a, b) => {
+      const aa = String(a.updated_at || a.started_at || "");
+      const bb = String(b.updated_at || b.started_at || "");
+      // Newest first
+      return bb.localeCompare(aa);
+    });
+    const latestTerminalRunId = terminalRuns[0]?.id || "none";
+
+    const engineRunId = deterministicFounderProofEngineRunId({
+      idempotencyBase,
+      latestTerminalRunId,
+    });
+    const { correlation_id, trace_id } = deterministicFounderProofCorrelationTrace({
+      idempotencyBase,
+    });
+
     const objective = buildProductionProofObjective({
       project_id: project.id,
       organization_id: body.organization_id || project.organization_id || null,
     });
+
     const result = createIntegrationRun(objective, {
       actor,
-      idempotency_key: body.idempotency_key || `prod-proof:${project.id}`,
+      // In-memory idempotency should be keyed by the deterministic engine run id,
+      // not by the base proof idempotency (which must allow future proofs after terminal).
+      idempotency_key: engineRunId,
+      integration_run_id: engineRunId,
+      correlation_id,
+      trace_id,
     });
+
     result.run.proof = {
       is_production_proof: true,
       started_by: actor,
@@ -264,12 +344,35 @@ export const POST = withErrorHandling(async (req) => {
       ...(result.run.payload || {}),
       is_production_proof: true,
     };
-    await finish(result.run);
+
+    // Insert-only to prevent overwriting timestamps on concurrency conflicts.
+    const insertResult = await persistIntegrationRunInsertOnly(result.run);
+    if (insertResult?.failClosed && !insertResult.ok) {
+      const err = new Error(
+        insertResult.message || "Failed to persist production Founder proof run."
+      );
+      err.status = 503;
+      err.code = "INTEGRATION_PERSIST_FAILED";
+      throw err;
+    }
+
+    const finalRun = insertResult?.inserted === false && insertResult.run
+      ? insertResult.run
+      : result.run;
+    if (finalRun?.id) {
+      finalRun.proof_status = mapProofStatusFromRun(finalRun);
+      saveRun(finalRun);
+    }
+
     return NextResponse.json({
       ok: true,
-      ...result,
-      proof_status: mapProofStatusFromRun(result.run),
-      note: "Production proof objective created. Clarification / plan / simulation still require Founder actions.",
+      run: finalRun,
+      idempotent_hit: Boolean(result.idempotent_hit),
+      resumed_existing_run: insertResult?.inserted === false,
+      proof_status: finalRun ? mapProofStatusFromRun(finalRun) : "not_started",
+      canonical_founder_proof_run_id: finalRun?.id || null,
+      idempotency_base: idempotencyBase,
+      note: "Production Founder proof start is idempotent and concurrency-safe.",
     });
   }
 
@@ -343,6 +446,61 @@ export const POST = withErrorHandling(async (req) => {
     const run = cancelIntegrationRun(body.run_id, { actor });
     await finish(run);
     return NextResponse.json({ ok: true, run });
+  }
+  if (action === "cancel_founder_proof_duplicate") {
+    const project = await requireActiveProjectForProof(body.project_id);
+    const canonicalRunId = body.canonical_run_id;
+    const duplicateRunId = body.duplicate_run_id;
+    const reason = body.reason || "cancelled_duplicate";
+
+    if (!canonicalRunId || !duplicateRunId) {
+      throw badRequest("canonical_run_id and duplicate_run_id are required");
+    }
+
+    const persisted = await listPersistedIntegrationRuns({
+      project_id: project.id,
+      limit: 50,
+    });
+    for (const r of persisted || []) {
+      if (r?.id) saveRun(r);
+    }
+    const mergedMap = new Map();
+    for (const r of listRuns({ project_id: project.id })) {
+      if (r?.id) mergedMap.set(r.id, r);
+    }
+    for (const r of persisted || []) {
+      if (r?.id) mergedMap.set(r.id, r);
+    }
+    const resolution = resolveCanonicalFounderProofRuns([...mergedMap.values()]);
+    const canonicalActive = resolution.canonical_run;
+
+    if (!canonicalActive) {
+      throw badRequest("No active canonical production Founder proof run found.");
+    }
+
+    if (String(canonicalActive.id) !== String(canonicalRunId)) {
+      throw badRequest("canonical_run_id does not match current canonical active run.");
+    }
+
+    const duplicateOk = resolution.duplicate_runs.some(
+      (r) => String(r.id) === String(duplicateRunId)
+    );
+    if (!duplicateOk) {
+      throw badRequest(
+        "duplicate_run_id must be a non-canonical active production Founder proof run."
+      );
+    }
+
+    const run = cancelIntegrationRun(duplicateRunId, { actor, failure_reason: reason });
+    await finish(run);
+
+    return NextResponse.json({
+      ok: true,
+      run,
+      cancelled_run_id: duplicateRunId,
+      canonical_run_id: canonicalRunId,
+      note: "Non-canonical duplicate marked as cancelled.",
+    });
   }
   if (action === "recover" || action === "deterministic_recovery_test") {
     const run = recoverIntegrationRun(body.run_id, { actor });

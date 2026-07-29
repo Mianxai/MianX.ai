@@ -33,7 +33,8 @@ async function getJson(path, router) {
 export default function WorkforceClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { projectId, setProjectId } = useAdminProject();
+  const { projectId, setProjectId, suggestStoredProjectId } = useAdminProject();
+  const [projects, setProjects] = useState([]);
   const tab = searchParams?.get("tab") || "dashboard";
   const agentSlug = searchParams?.get("agent") || "";
   const [loading, setLoading] = useState(true);
@@ -112,6 +113,20 @@ export default function WorkforceClient() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    (async () => {
+      const res = await getJson("/api/core/projects", router);
+      if (res.ok && Array.isArray(res.data?.projects)) {
+        setProjects(res.data.projects.filter((p) => p.status === "active" || !p.archived_at));
+      }
+    })();
+  }, [router]);
+
+  useEffect(() => {
+    if (projectId) return;
+    if (suggestStoredProjectId) setProjectId(suggestStoredProjectId);
+  }, [projectId, suggestStoredProjectId, setProjectId]);
+
   async function post(body) {
     setBusy(true);
     setError("");
@@ -142,7 +157,12 @@ export default function WorkforceClient() {
         { label: "Live Workforce" },
       ]}
       actions={
-        <ProjectPicker value={projectId} onChange={(id) => setProjectId(id)} allowAll />
+        <ProjectPicker
+          value={projectId}
+          onChange={(id) => setProjectId(id)}
+          projects={projects}
+          allowAll
+        />
       }
     >
       <PageHeader

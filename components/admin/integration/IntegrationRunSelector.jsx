@@ -26,7 +26,10 @@ export default function IntegrationRunSelector({
           {runs.map((r) => (
             <option key={r.id} value={r.id}>
               {(r.objective_title || r.objective?.title || "Untitled objective") +
-                ` · …${runIdSuffix(r.id)} · ${r.stage || r.current_stage || "—"} · ${r.status || "—"}`}
+                (r.is_duplicate_active ? " · duplicate" : "") +
+                (r.is_canonical_active ? " · canonical" : "") +
+                ` · …${runIdSuffix(r.id)} · ${r.stage_label || r.stage || r.current_stage || "—"} · ${r.status || "—"}` +
+                (r.live_provider_blocked ? " · live blocked" : "")}
             </option>
           ))}
         </select>

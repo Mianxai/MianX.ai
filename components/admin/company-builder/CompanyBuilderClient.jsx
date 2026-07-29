@@ -61,6 +61,12 @@ export default function CompanyBuilderClient() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!projectId) {
+      setSelected(null);
+    }
+  }, [projectId]);
+
   function onProject(id) {
     const next = new URLSearchParams();
     if (id) next.set("project_id", id);
