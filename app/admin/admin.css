@@ -645,6 +645,208 @@
   align-items: center;
   min-height: 2.25rem;
 }
+.integration-context-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-card);
+}
+.integration-context-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 0;
+}
+.integration-context-name {
+  margin: 0.15rem 0 0;
+  font-size: 1.05rem;
+}
+.integration-context-meta {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+}
+.integration-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.integration-flow-stepper ol {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.integration-flow-stepper li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  max-width: 100%;
+}
+.integration-flow-stepper li.completed {
+  border-color: rgba(34, 197, 94, 0.35);
+  color: var(--text-secondary);
+}
+.integration-flow-stepper li.current {
+  border-color: rgba(79, 124, 255, 0.45);
+  background: rgba(79, 124, 255, 0.12);
+  color: var(--primary-light);
+}
+.integration-flow-stepper li.blocked {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.integration-flow-stepper li.pending {
+  color: var(--text-muted);
+}
+.integration-step-icon {
+  font-weight: 700;
+  width: 1rem;
+  text-align: center;
+}
+.integration-run-selector {
+  margin-bottom: 1rem;
+}
+.integration-run-selector select {
+  width: 100%;
+  max-width: min(100%, 36rem);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+  color: var(--text-primary);
+}
+.integration-objective-form {
+  max-width: 52rem;
+}
+.integration-form-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.integration-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(79, 124, 255, 0.35);
+  background: rgba(79, 124, 255, 0.1);
+}
+.integration-badge-warn {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.12);
+}
+.integration-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  margin-top: 0.75rem;
+}
+.integration-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.integration-form-field-full {
+  grid-column: 1 / -1;
+}
+.integration-form-field label,
+.integration-field-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.integration-form-field input,
+.integration-form-field textarea,
+.integration-form-field select {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+.integration-form-field textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+  line-height: 1.45;
+}
+.integration-required {
+  color: #fbbf24;
+}
+.integration-field-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.integration-form-actions,
+.integration-form-actions-top {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.integration-disabled-reason {
+  margin-top: 0.5rem;
+  color: var(--text-secondary);
+}
+.integration-protected-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+.integration-clarification-panel {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(251, 191, 36, 0.06);
+}
+.integration-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.65rem;
+  margin: 0.75rem 0;
+}
+.integration-metric-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+.integration-metric-card dt {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.integration-metric-card dd {
+  margin: 0.25rem 0 0;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+@media (max-width: 768px) {
+  .integration-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .integration-flow-stepper li {
+    font-size: 0.68rem;
+  }
+}
 .admin-muted {
   color: var(--text-muted);
   font-size: 0.85rem;

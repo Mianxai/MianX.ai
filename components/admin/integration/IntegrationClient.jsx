@@ -15,6 +15,24 @@ import {
   filterProofSelectableProjects,
   isActiveProofProject,
 } from "@/lib/core/integration/project-access-shared";
+import { FOUNDER_PRODUCTION_PROOF_OBJECTIVE } from "@/lib/core/integration/proof";
+import {
+  filterRunsForProject,
+  deriveStepStates,
+  getPlanGuidance,
+  getSimulationGuidance,
+  getEvidenceGuidance,
+  getMemoryGuidance,
+  getLearningGuidance,
+  getProofPackGuidance,
+  getCreateObjectiveDisabledReason,
+  normalizeListField,
+  parseListField,
+} from "@/lib/core/integration/founder-flow";
+import IntegrationContextBanner from "@/components/admin/integration/IntegrationContextBanner";
+import IntegrationFlowStepper from "@/components/admin/integration/IntegrationFlowStepper";
+import IntegrationRunSelector from "@/components/admin/integration/IntegrationRunSelector";
+import IntegrationObjectiveForm from "@/components/admin/integration/IntegrationObjectiveForm";
 
 const TABS = [
   { id: "dashboard", label: "Control Room" },
@@ -74,11 +92,19 @@ export default function IntegrationClient() {
     "onboarding workflow blueprint, access provisioning checklist, evidence pack"
   );
   const [criteria, setCriteria] = useState(
-    "clarification answered before planning, simulation reaches founder final review"
+    normalizeListField(FOUNDER_PRODUCTION_PROOF_OBJECTIVE.success_criteria)
+  );
+  const [constraints, setConstraints] = useState(
+    normalizeListField(FOUNDER_PRODUCTION_PROOF_OBJECTIVE.constraints)
   );
   const [questions, setQuestions] = useState(
-    "Which identity provider pattern should the onboarding workflow assume?"
+    FOUNDER_PRODUCTION_PROOF_OBJECTIVE.unresolved_questions[0] || ""
   );
+  const [priority, setPriority] = useState(FOUNDER_PRODUCTION_PROOF_OBJECTIVE.priority);
+  const [riskTolerance, setRiskTolerance] = useState(
+    FOUNDER_PRODUCTION_PROOF_OBJECTIVE.risk_tolerance
+  );
+  const protectedActions = FOUNDER_PRODUCTION_PROOF_OBJECTIVE.protected_actions;
   const [executionMode, setExecutionMode] = useState("deterministic_simulation");
   const [providerGate, setProviderGate] = useState(null);
   const [proofConfirmOpen, setProofConfirmOpen] = useState(false);
@@ -103,6 +129,7 @@ export default function IntegrationClient() {
   );
   const canStartProof = Boolean(
     !busy &&
+      !loading &&
       !projectsLoading &&
       projectsLoaded &&
       !projectsError &&
@@ -113,6 +140,8 @@ export default function IntegrationClient() {
 
   const proofDisabledReason = !projectsLoaded || projectsLoading
     ? "Loading projects…"
+    : loading
+      ? "Loading integration dashboard…"
     : projectsError
       ? "Project catalogue failed to load."
       : !projectId
@@ -132,14 +161,73 @@ export default function IntegrationClient() {
       const params = new URLSearchParams(searchParams?.toString() || "");
       if (next === "dashboard") params.delete("tab");
       else params.set("tab", next);
-      if (extra.run_id) params.set("run_id", extra.run_id);
-      else if (runIdParam) params.set("run_id", runIdParam);
+      if (extra.run_id !== undefined) {
+        if (extra.run_id) params.set("run_id", extra.run_id);
+        else params.delete("run_id");
+      } else if (runIdParam) params.set("run_id", runIdParam);
       if (projectId) params.set("project_id", projectId);
       const qs = params.toString();
       router.replace(qs ? `/admin/integration?${qs}` : "/admin/integration");
     },
     [router, searchParams, projectId, runIdParam]
   );
+
+  const projectRuns = useMemo(
+    () => filterRunsForProject(dash?.runs, projectId),
+    [dash?.runs, projectId]
+  );
+
+  const flowCtx = useMemo(
+    () => ({
+      hasProject: Boolean(projectId && selectedProject),
+      hasRun: Boolean(run?.id),
+      proofStatus,
+      runStage: run?.current_stage,
+      runStatus: run?.status,
+      evidenceAvailable: Boolean(
+        evidence?.items?.length ||
+          evidence?.entries?.length ||
+          run?.evidence?.count > 0
+      ),
+      memoryCount: Array.isArray(memory) ? memory.length : run?.memory?.count || 0,
+      learningCount: Array.isArray(learning) ? learning.length : run?.learning?.count || 0,
+    }),
+    [projectId, selectedProject, run, proofStatus, evidence, memory, learning]
+  );
+
+  const stepStates = useMemo(() => deriveStepStates(flowCtx), [flowCtx]);
+
+  const createObjectiveDisabledReason = getCreateObjectiveDisabledReason({
+    projectsLoading,
+    projectsLoaded,
+    projectId,
+    selectedProject,
+    persistenceReady,
+    title,
+    purpose,
+    deliverables,
+    criteria,
+    executionMode,
+    busy,
+  });
+
+  function applyProofTemplate() {
+    const t = FOUNDER_PRODUCTION_PROOF_OBJECTIVE;
+    setTitle(t.title);
+    setPurpose(t.business_purpose);
+    setDeliverables(normalizeListField(t.expected_deliverables));
+    setCriteria(normalizeListField(t.success_criteria));
+    setConstraints(normalizeListField(t.constraints));
+    setQuestions(t.unresolved_questions[0] || "");
+    setExecutionMode(t.execution_mode);
+    setPriority(t.priority);
+    setRiskTolerance(t.risk_tolerance);
+  }
+
+  function focusProjectPicker() {
+    const el = document.getElementById("integration-project-picker");
+    if (el) el.focus();
+  }
 
   const loadProjects = useCallback(async () => {
     setProjectsLoading(true);
@@ -184,6 +272,21 @@ export default function IntegrationClient() {
     setProjectId,
   ]);
 
+  useEffect(() => {
+    if (!projectId || !runIdParam || !dash?.runs?.length) return;
+    const match = dash.runs.find((r) => r.id === runIdParam);
+    if (match?.project_id && match.project_id !== projectId) {
+      setTab(tab, { run_id: "" });
+    }
+  }, [projectId, runIdParam, dash?.runs, tab, setTab]);
+
+  useEffect(() => {
+    if (!projectId || runIdParam || !projectRuns.length) return;
+    if (projectRuns.length === 1) {
+      setTab(tab, { run_id: projectRuns[0].id });
+    }
+  }, [projectId, runIdParam, projectRuns, tab, setTab]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -201,7 +304,9 @@ export default function IntegrationClient() {
         "not_started"
     );
 
-    const activeRunId = runIdParam || dashRes.data?.runs?.[0]?.id;
+    const runsForProject = filterRunsForProject(dashRes.data?.runs, projectId);
+    const activeRunId =
+      runIdParam || (runsForProject.length === 1 ? runsForProject[0].id : null);
     if (activeRunId) {
       const runRes = await getJson(
         `/api/admin/integration?action=run&run_id=${encodeURIComponent(activeRunId)}${q}`,
@@ -211,34 +316,26 @@ export default function IntegrationClient() {
         setRun(runRes.data?.run || null);
         if (runRes.data?.proof_status) setProofStatus(runRes.data.proof_status);
       }
-      if (tab === "evidence") {
-        const ev = await getJson(
-          `/api/admin/integration?action=evidence&run_id=${encodeURIComponent(activeRunId)}`,
-          router
-        );
-        setEvidence(ev.data?.manifest || null);
-      }
-      if (tab === "memory") {
-        const mem = await getJson(
-          `/api/admin/integration?action=memory&run_id=${encodeURIComponent(activeRunId)}${q}`,
-          router
-        );
-        setMemory(mem.data?.entries || []);
-      }
-      if (tab === "learning") {
-        const learn = await getJson(
-          `/api/admin/integration?action=learning&run_id=${encodeURIComponent(activeRunId)}${q}`,
-          router
-        );
-        setLearning(learn.data?.proposals || []);
-      }
-      if (tab === "proof") {
-        const pr = await getJson(
-          `/api/admin/integration?action=proof&run_id=${encodeURIComponent(activeRunId)}`,
-          router
-        );
-        setProof(pr.data?.proof_pack || null);
-      }
+      const ev = await getJson(
+        `/api/admin/integration?action=evidence&run_id=${encodeURIComponent(activeRunId)}${q}`,
+        router
+      );
+      if (ev.ok) setEvidence(ev.data?.manifest ?? null);
+      const mem = await getJson(
+        `/api/admin/integration?action=memory&run_id=${encodeURIComponent(activeRunId)}${q}`,
+        router
+      );
+      if (mem.ok) setMemory(mem.data?.entries ?? []);
+      const learn = await getJson(
+        `/api/admin/integration?action=learning&run_id=${encodeURIComponent(activeRunId)}${q}`,
+        router
+      );
+      if (learn.ok) setLearning(learn.data?.proposals ?? []);
+      const pr = await getJson(
+        `/api/admin/integration?action=proof&run_id=${encodeURIComponent(activeRunId)}${q}`,
+        router
+      );
+      if (pr.ok) setProof(pr.data?.proof_pack ?? null);
       const gate = await getJson(
         `/api/admin/integration?action=provider&mode=${encodeURIComponent(executionMode)}`,
         router
@@ -246,9 +343,18 @@ export default function IntegrationClient() {
       if (gate.ok) setProviderGate(gate.data?.gate || null);
     } else {
       setRun(null);
+      setEvidence(null);
+      setMemory([]);
+      setLearning([]);
+      setProof(null);
+      const gate = await getJson(
+        `/api/admin/integration?action=provider&mode=${encodeURIComponent(executionMode)}`,
+        router
+      );
+      if (gate.ok) setProviderGate(gate.data?.gate || null);
     }
     setLoading(false);
-  }, [projectId, router, runIdParam, tab, executionMode]);
+  }, [projectId, router, runIdParam, executionMode]);
 
   useEffect(() => {
     load();
@@ -319,6 +425,7 @@ export default function IntegrationClient() {
             key={t.id}
             type="button"
             role="tab"
+            data-testid={`integration-tab-${t.id}`}
             aria-selected={tab === t.id}
             className={tab === t.id ? "active" : ""}
             onClick={() => setTab(t.id)}
@@ -331,9 +438,44 @@ export default function IntegrationClient() {
       {error ? <div className="admin-error">{error}</div> : null}
       {loading ? <MianxLoader variant="section" label="Loading…" /> : null}
 
-      {!loading && tab === "dashboard" ? (
+      {!loading ? (
+        <>
+          <IntegrationContextBanner
+            projectId={projectId}
+            selectedProject={selectedProject}
+            onFocusProjectPicker={focusProjectPicker}
+          />
+          <IntegrationFlowStepper stepStates={stepStates} />
+          {projectId && projectRuns.length > 0 ? (
+            <IntegrationRunSelector
+              runs={projectRuns}
+              value={runIdParam || run?.id || ""}
+              onChange={(id) => setTab(tab, { run_id: id })}
+            />
+          ) : null}
+        </>
+      ) : null}
+
+      {tab === "dashboard" ? (
         <section className="admin-panel" data-testid="integration-dashboard">
           <h2>Control Room — Integration</h2>
+          {loading ? <MianxLoader variant="section" label="Loading integration…" /> : null}
+          {!loading ? (
+          <>
+          {!projectId ? (
+            <div data-testid="control-room-no-project">
+              <EmptyState
+                title="Select an active project to begin the Founder production proof"
+                reason="All projects is read-only here. Choose MianX Internal Production Proof (or another active project) to start."
+                nextAction="Use the project selector in the page header or the Select project action above."
+                cta={
+                  <button type="button" className="header-btn" onClick={focusProjectPicker}>
+                    Focus project selector
+                  </button>
+                }
+              />
+            </div>
+          ) : null}
           <p>
             Routable agents:{" "}
             <strong>{dash?.routable_agent_audit?.actual_routable ?? "—"}</strong> / 36 expected.
@@ -341,12 +483,40 @@ export default function IntegrationClient() {
             <StatusBadge status={dash?.live_execution_ready ? "ready" : "blocked"} />
           </p>
 
+          {!projectRuns.length && projectId ? (
+            <EmptyState
+              title="No integration runs for this project"
+              description="Create a Founder objective or start the production proof below."
+            />
+          ) : null}
+          {projectRuns.length > 0 ? (
+            <ul className="admin-list">
+              {projectRuns.map((r) => (
+                <li key={r.id}>
+                  <button type="button" onClick={() => setTab("plan", { run_id: r.id })}>
+                    {r.objective_title || r.id}
+                  </button>{" "}
+                  <StatusBadge status={r.status} /> stage={r.stage || r.current_stage} mode={r.mode}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          </>
+          ) : null}
+
           <section
             className="admin-panel admin-proof-panel"
             data-testid="production-proof-panel"
             aria-labelledby="production-proof-heading"
           >
             <h2 id="production-proof-heading">Production Founder Proof</h2>
+            {!projectId ? (
+              <EmptyState
+                title="Select an active project to begin the Founder production proof"
+                reason="All projects is read-only here. Choose an active project from the selector."
+                nextAction="Use the project selector in the page header."
+              />
+            ) : null}
             <p role="status" data-testid="selected-project-label">
               Selected project:{" "}
               <strong>
@@ -521,25 +691,6 @@ export default function IntegrationClient() {
               </div>
             ) : null}
           </section>
-
-          {!dash?.runs?.length ? (
-            <EmptyState
-              title="No integration runs"
-              description="Create a Founder objective or start the production proof above."
-            />
-          ) : (
-            <ul className="admin-list">
-              {dash.runs.map((r) => (
-                <li key={r.id}>
-                  <button type="button" onClick={() => setTab("plan", { run_id: r.id })}>
-                    {r.objective_title || r.id}
-                  </button>{" "}
-                  <StatusBadge status={r.status} /> stage={r.stage} mode={r.mode} evidence=
-                  {r.evidence_count} memory={r.memory_count} learning={r.learning_count}
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
       ) : null}
 
@@ -547,126 +698,99 @@ export default function IntegrationClient() {
         <section className="admin-panel" data-testid="integration-objective">
           <h2>Founder Objective Intake</h2>
           <p>
-            <a href="/admin/company-builder">Company Builder</a> can attach an integration
-            pipeline after blueprint approval. Simulation does not equal a completed real
-            company.
+            <Link href="/admin/company-builder">Company Builder</Link> can attach an integration
+            pipeline after blueprint approval. Simulation does not equal a completed real company.
           </p>
-          <label>
-            Title
-            <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Objective title" />
-          </label>
-          <label>
-            Business purpose
-            <textarea
-              value={purpose}
-              onChange={(e) => setPurpose(e.target.value)}
-              rows={4}
-              aria-label="Business purpose"
-            />
-          </label>
-          <label>
-            Deliverables
-            <input
-              value={deliverables}
-              onChange={(e) => setDeliverables(e.target.value)}
-              aria-label="Deliverables"
-            />
-          </label>
-          <label>
-            Success criteria
-            <input
-              value={criteria}
-              onChange={(e) => setCriteria(e.target.value)}
-              aria-label="Success criteria"
-            />
-          </label>
-          <label>
-            Unresolved clarification
-            <input
-              value={questions}
-              onChange={(e) => setQuestions(e.target.value)}
-              aria-label="Unresolved clarification"
-            />
-          </label>
-          <label>
-            Execution mode
-            <select
-              value={executionMode}
-              onChange={(e) => setExecutionMode(e.target.value)}
-              aria-label="Execution mode"
-            >
-              <option value="deterministic_simulation">Deterministic simulation</option>
-              <option value="live_provider">Live provider (gated)</option>
-            </select>
-          </label>
-          {providerGate ? (
-            <p data-testid="provider-gate" role="status">
-              Live ready: {String(providerGate.live_execution_ready)} —{" "}
-              {providerGate.block_reason || "simulation available"}
-            </p>
-          ) : null}
-          <button
-            type="button"
-            disabled={busy || !projectId}
-            onClick={() =>
+          <IntegrationObjectiveForm
+            title={title}
+            setTitle={setTitle}
+            purpose={purpose}
+            setPurpose={setPurpose}
+            deliverables={deliverables}
+            setDeliverables={setDeliverables}
+            criteria={criteria}
+            setCriteria={setCriteria}
+            constraints={constraints}
+            setConstraints={setConstraints}
+            questions={questions}
+            setQuestions={setQuestions}
+            executionMode={executionMode}
+            setExecutionMode={setExecutionMode}
+            priority={priority}
+            setPriority={setPriority}
+            riskTolerance={riskTolerance}
+            setRiskTolerance={setRiskTolerance}
+            protectedActions={protectedActions}
+            providerGate={providerGate}
+            selectedProjectName={selectedProject?.name}
+            createDisabledReason={createObjectiveDisabledReason}
+            busy={busy}
+            clarificationRequired={run?.current_stage === "clarification_required"}
+            run={run}
+            onPrefillTemplate={applyProofTemplate}
+            onCreate={() =>
               act({
                 action: "create",
                 objective: {
                   title,
                   business_purpose: purpose,
-                  expected_deliverables: deliverables,
-                  success_criteria: criteria,
+                  expected_deliverables: parseListField(deliverables),
+                  success_criteria: parseListField(criteria),
+                  constraints: parseListField(constraints),
                   unresolved_questions: questions ? [questions] : [],
-                  protected_actions: ["production_deployment"],
+                  protected_actions: protectedActions,
                   project_id: projectId,
-                  industry: "technology",
-                  business_model: "subscription",
-                  priority: "P1",
-                  risk_tolerance: "moderate",
+                  industry: FOUNDER_PRODUCTION_PROOF_OBJECTIVE.industry,
+                  business_model: FOUNDER_PRODUCTION_PROOF_OBJECTIVE.business_model,
+                  priority,
+                  risk_tolerance: riskTolerance,
                   execution_mode: executionMode,
-                  required_approvals: ["founder_simulation", "founder_final_review"],
+                  required_approvals: FOUNDER_PRODUCTION_PROOF_OBJECTIVE.required_approvals,
+                  known_assumptions: FOUNDER_PRODUCTION_PROOF_OBJECTIVE.known_assumptions,
                 },
               })
             }
-          >
-            Create objective
-          </button>
-          {run?.current_stage === "clarification_required" ? (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                act({
-                  action: "clarify",
-                  run_id: run.id,
-                  answers: {
-                    title,
-                    business_purpose: purpose,
-                    expected_deliverables: deliverables,
-                    success_criteria: criteria,
-                    clear_questions: true,
-                  },
-                })
-              }
-            >
-              Submit clarification
-            </button>
-          ) : null}
-          {run ? (
-            <p>
-              Run <code>{run.id}</code> · Objective <code>{run.objective?.id}</code> · Stage{" "}
-              <StatusBadge status={run.current_stage} />
-            </p>
-          ) : null}
+            onSubmitClarification={() =>
+              act({
+                action: "clarify",
+                run_id: run.id,
+                answers: {
+                  title,
+                  business_purpose: purpose,
+                  expected_deliverables: deliverables,
+                  success_criteria: criteria,
+                  clear_questions: true,
+                },
+              })
+            }
+          />
         </section>
       ) : null}
 
       {!loading && tab === "plan" ? (
         <section className="admin-panel" data-testid="integration-plan">
           <h2>Plan & Approval</h2>
-          {!run ? (
-            <EmptyState title="No run selected" description="Create an objective first." />
-          ) : (
+          {getPlanGuidance(flowCtx) ? (
+            <EmptyState
+              title={getPlanGuidance(flowCtx).title}
+              reason={getPlanGuidance(flowCtx).reason}
+              nextAction={getPlanGuidance(flowCtx).nextAction}
+              cta={
+                getPlanGuidance(flowCtx).actionTab
+                  ? (
+                      <button
+                        type="button"
+                        className="header-btn"
+                        onClick={() => setTab(getPlanGuidance(flowCtx).actionTab)}
+                      >
+                        Go to {getPlanGuidance(flowCtx).actionTab === "objective" ? "Objective" : "Control Room"}
+                      </button>
+                    )
+                  : null
+              }
+            />
+          ) : null}
+          {!run ? null : (
             <>
               <p>
                 Stage: <StatusBadge status={run.current_stage} /> Status:{" "}
@@ -769,6 +893,27 @@ export default function IntegrationClient() {
         <section className="admin-panel" data-testid="integration-simulation">
           <h2>Workforce Simulation</h2>
           <p>Simulation does not equal a completed real company or live AI execution.</p>
+          {getSimulationGuidance(flowCtx) ? (
+            <EmptyState
+              title={getSimulationGuidance(flowCtx).title}
+              reason={getSimulationGuidance(flowCtx).reason}
+              nextAction={getSimulationGuidance(flowCtx).nextAction}
+              cta={
+                getSimulationGuidance(flowCtx).actionTab
+                  ? (
+                      <button
+                        type="button"
+                        className="header-btn"
+                        onClick={() => setTab(getSimulationGuidance(flowCtx).actionTab)}
+                      >
+                        Open {getSimulationGuidance(flowCtx).actionTab === "plan" ? "Plan" : "Objective"}
+                      </button>
+                    )
+                  : null
+              }
+              data-testid="simulation-guided-empty"
+            />
+          ) : null}
           {run?.current_stage === "approved_for_simulation" ? (
             <button
               type="button"
@@ -876,52 +1021,139 @@ export default function IntegrationClient() {
             </div>
           ) : null}
           <div data-testid="simulation-progress">
-            <h3>Persisted simulation progress</h3>
-            <pre className="admin-pre">
-              {JSON.stringify(
-                {
-                  active_stage: run?.current_stage,
-                  status: run?.status,
-                  ready_tasks: run?.progress?.ready || 0,
-                  running_tasks: run?.progress?.running || 0,
-                  blocked_tasks: run?.progress?.blocked || 0,
-                  completed_tasks:
-                    run?.progress?.completed ?? (run?.verification?.ok ? 1 : 0),
-                  failed_verification: run?.verification?.ok === false,
-                  delegations: run?.delegation?.chain || [],
-                  reviewer_decisions: run?.approval_package?.decision || run?.final_review?.decision,
-                  evidence_count: run?.evidence?.count || 0,
-                  memory_writes: run?.memory?.count || 0,
-                  learning_proposals: run?.learning?.count || 0,
-                  recovery_count: run?.recovery_count || 0,
-                  note: "No fabricated live agent prose.",
-                },
-                null,
-                2
-              )}
-            </pre>
+            <h3>Simulation progress</h3>
+            {run ? (
+              <dl className="integration-metrics-grid">
+                <div className="integration-metric-card">
+                  <dt>Ready tasks</dt>
+                  <dd>{run?.progress?.ready || 0}</dd>
+                </div>
+                <div className="integration-metric-card">
+                  <dt>Running</dt>
+                  <dd>{run?.progress?.running || 0}</dd>
+                </div>
+                <div className="integration-metric-card">
+                  <dt>Blocked</dt>
+                  <dd>{run?.progress?.blocked || 0}</dd>
+                </div>
+                <div className="integration-metric-card">
+                  <dt>Completed</dt>
+                  <dd>{run?.progress?.completed ?? (run?.verification?.ok ? 1 : 0)}</dd>
+                </div>
+                <div className="integration-metric-card">
+                  <dt>Evidence</dt>
+                  <dd>{run?.evidence?.count || 0}</dd>
+                </div>
+                <div className="integration-metric-card">
+                  <dt>Memory</dt>
+                  <dd>{run?.memory?.count || 0}</dd>
+                </div>
+                <div className="integration-metric-card">
+                  <dt>Learning</dt>
+                  <dd>{run?.learning?.count || 0}</dd>
+                </div>
+                <div className="integration-metric-card">
+                  <dt>Recovery</dt>
+                  <dd>{run?.recovery_count || 0}</dd>
+                </div>
+              </dl>
+            ) : null}
+            <details>
+              <summary>Technical JSON</summary>
+              <pre className="admin-pre">
+                {JSON.stringify(
+                  run
+                    ? {
+                        active_stage: run.current_stage,
+                        status: run.status,
+                        verification: run.verification,
+                        delegations: run.delegation?.chain || [],
+                        note: "No fabricated live agent prose.",
+                      }
+                    : { note: "No run loaded" },
+                  null,
+                  2
+                )}
+              </pre>
+            </details>
           </div>
         </section>
       ) : null}
 
       {!loading && tab === "evidence" ? (
-        <section className="admin-panel">
+        <section className="admin-panel" data-testid="integration-evidence">
           <h2>Evidence Manifest</h2>
-          <pre className="admin-pre">{JSON.stringify(evidence || run?.evidence, null, 2)}</pre>
+          {getEvidenceGuidance(flowCtx) ? (
+            <EmptyState
+              title={getEvidenceGuidance(flowCtx).title}
+              reason={getEvidenceGuidance(flowCtx).reason}
+              nextAction={getEvidenceGuidance(flowCtx).nextAction}
+            />
+          ) : (
+            <ul className="admin-list" data-testid="evidence-list">
+              {(evidence?.items || evidence?.entries || []).map((item, i) => (
+                <li key={item.id || i}>
+                  <strong>{item.kind || item.type || "evidence"}</strong>
+                  {item.task_id ? ` · task ${item.task_id}` : ""}
+                  {item.agent ? ` · ${item.agent}` : ""}
+                  {item.verified != null ? ` · verified: ${item.verified}` : ""}
+                  {item.created_at ? ` · ${item.created_at}` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
+          <details>
+            <summary>Technical JSON</summary>
+            <pre className="admin-pre">{JSON.stringify(evidence || run?.evidence, null, 2)}</pre>
+          </details>
         </section>
       ) : null}
 
       {!loading && tab === "memory" ? (
-        <section className="admin-panel">
+        <section className="admin-panel" data-testid="integration-memory">
           <h2>Memory (project-scoped)</h2>
-          <pre className="admin-pre">{JSON.stringify(memory, null, 2)}</pre>
+          {getMemoryGuidance(flowCtx) ? (
+            <div data-testid="memory-empty-state">
+              <EmptyState
+                title={getMemoryGuidance(flowCtx).title}
+                reason={getMemoryGuidance(flowCtx).reason}
+              />
+            </div>
+          ) : (
+            <ul className="admin-list" data-testid="memory-list">
+              {memory.map((entry, i) => (
+                <li key={entry.id || i}>
+                  <strong>{entry.scope || entry.kind || "memory"}</strong>
+                  {entry.summary ? ` — ${entry.summary}` : ""}
+                  {entry.created_at ? ` · ${entry.created_at}` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       ) : null}
 
       {!loading && tab === "learning" ? (
-        <section className="admin-panel">
+        <section className="admin-panel" data-testid="integration-learning">
           <h2>Learning Proposals (never auto-applied)</h2>
-          <pre className="admin-pre">{JSON.stringify(learning, null, 2)}</pre>
+          {getLearningGuidance(flowCtx) ? (
+            <div data-testid="learning-empty-state">
+              <EmptyState
+                title={getLearningGuidance(flowCtx).title}
+                reason={getLearningGuidance(flowCtx).reason}
+              />
+            </div>
+          ) : (
+            <ul className="admin-list" data-testid="learning-list">
+              {learning.map((p, i) => (
+                <li key={p.id || i}>
+                  <strong>{p.status || "proposal"}</strong>
+                  {p.scope ? ` · ${p.scope}` : ""}
+                  {p.summary ? ` — ${p.summary}` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       ) : null}
 
@@ -929,30 +1161,39 @@ export default function IntegrationClient() {
         <section className="admin-panel" data-testid="integration-proof">
           <h2>Founder Proof Pack</h2>
           <p role="status">
-            Proof status: <span data-testid="proof-pack-status">{proofStatus}</span>
+            Proof status: <StatusBadge status={proofStatus} />{" "}
+            <span data-testid="proof-pack-status">{proofStatus}</span>
           </p>
-          <details open>
-            <summary>Lineage (objective → final review)</summary>
+          {getProofPackGuidance(flowCtx) ? (
+            <EmptyState
+              title={getProofPackGuidance(flowCtx).title}
+              reason={getProofPackGuidance(flowCtx).reason}
+              nextAction={getProofPackGuidance(flowCtx).nextAction}
+              data-testid="proof-pack-guided-empty"
+            >
+              {getProofPackGuidance(flowCtx).prerequisites ? (
+                <ul>
+                  {getProofPackGuidance(flowCtx).prerequisites.map((p) => (
+                    <li key={p}>{p}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <p className="admin-muted">
+                Live execution: false · Fabricated execution: false · Provider: unconfigured
+              </p>
+            </EmptyState>
+          ) : null}
+          <details>
+            <summary>Lineage (technical details)</summary>
             <pre className="admin-pre">
               {JSON.stringify(
                 {
                   objective: run?.objective,
-                  clarification: run?.clarification || run?.objective?.unresolved_questions,
-                  templates: run?.template_plan,
-                  plan: run?.planning_plan,
-                  capabilities: run?.planning_plan?.capability_plan,
-                  roadmap: run?.planning_plan?.roadmap,
-                  wbs: run?.planning_plan?.wbs,
                   approval: run?.approval_package,
-                  execution_run: run?.simulation_id,
-                  tasks: run?.payload?.tasks || run?.tasks,
-                  agents: run?.allocation,
-                  delegation: run?.delegation,
                   evidence: run?.evidence,
                   memory: run?.memory,
                   learning: run?.learning,
                   final_review: run?.final_review,
-                  protected_actions: run?.protected_actions || run?.proof_pack?.protected_actions,
                   live_provider_limitations: {
                     provider_called: run?.provider_called === true,
                     fabricated_execution: run?.fabricated_execution === true,
@@ -964,7 +1205,12 @@ export default function IntegrationClient() {
               )}
             </pre>
           </details>
-          <pre className="admin-pre">{JSON.stringify(proof || run?.proof_pack, null, 2)}</pre>
+          {proof || run?.proof_pack ? (
+            <details>
+              <summary>Raw proof pack JSON</summary>
+              <pre className="admin-pre">{JSON.stringify(proof || run?.proof_pack, null, 2)}</pre>
+            </details>
+          ) : null}
         </section>
       ) : null}
     </AdminShell>

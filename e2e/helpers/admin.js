@@ -279,6 +279,7 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
       });
     }
     if (path.startsWith("/api/admin/integration")) {
+      const qsProject = url.searchParams.get("project_id") || projectId;
       if (method === "POST") {
         let body = {};
         try {
@@ -302,7 +303,7 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
                 : "founder_approval_required",
             status: "awaiting_approval",
             execution_mode: "deterministic_simulation",
-            project_id: projectId,
+            project_id: qsProject,
             objective: {
               title: "Secure Internal Employee Onboarding Workflow",
             },
@@ -346,7 +347,7 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
             current_stage: "founder_final_review",
             status: "awaiting_final_review",
             execution_mode: "deterministic_simulation",
-            project_id: projectId,
+            project_id: qsProject,
             objective: { title: "E2E integration objective" },
             correlation_id: "corr-e2e",
             trace_id: "trace-e2e",
@@ -357,6 +358,15 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
             proof_pack: { secrets_included: false },
           },
         });
+      }
+      if (action === "memory") {
+        return json(route, 200, { ok: true, entries: [] });
+      }
+      if (action === "learning") {
+        return json(route, 200, { ok: true, proposals: [] });
+      }
+      if (action === "evidence") {
+        return json(route, 200, { ok: true, manifest: { items: [] } });
       }
       return json(route, 200, {
         ok: true,
@@ -398,7 +408,7 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
         runs: [
           {
             id: "irun-e2e-1",
-            project_id: projectId,
+            project_id: qsProject,
             stage: "founder_final_review",
             status: "awaiting_final_review",
             mode: "deterministic_simulation",
