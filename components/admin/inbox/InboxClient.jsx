@@ -175,6 +175,19 @@ export default function InboxClient() {
                       <span className="inbox-kind">{item.kind.replace(/_/g, " ")}</span>
                       <h2 className="inbox-title">{item.title}</h2>
                       <p className="cc-muted">{item.detail}</p>
+                      {item.objectiveTitle ? (
+                        <p className="cc-muted">Objective: {item.objectiveTitle}</p>
+                      ) : null}
+                      {item.runId ? (
+                        <p className="cc-muted">
+                          Canonical run: <code>{item.runId}</code>
+                        </p>
+                      ) : null}
+                      {item.clarificationQuestion ? (
+                        <p data-testid="inbox-clarification-question">
+                          <strong>Question:</strong> {item.clarificationQuestion}
+                        </p>
+                      ) : null}
                       {item.riskLabel ? (
                         <p className="inbox-risk">{item.riskLabel}</p>
                       ) : null}
@@ -234,9 +247,17 @@ export default function InboxClient() {
                         >
                           Open execution
                         </Link>
+                      ) : item.kind === "integration_clarification_required" ? (
+                        <Link
+                          href={item.href}
+                          className="header-btn"
+                          data-testid="inbox-answer-clarification"
+                        >
+                          Answer clarification
+                        </Link>
                       ) : (
                         <Link href={item.href} className="header-btn">
-                          Open
+                          {item.kind?.startsWith("integration_") ? item.title : "Open"}
                         </Link>
                       )}
                     </div>

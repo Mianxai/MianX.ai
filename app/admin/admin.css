@@ -731,6 +731,72 @@
 .integration-objective-form {
   max-width: 52rem;
 }
+.integration-clarification-view {
+  display: grid;
+  gap: 1rem;
+  max-width: 52rem;
+}
+.integration-clarification-question-card {
+  border-left: 4px solid var(--accent, #4f7cff);
+  background: rgba(79, 124, 255, 0.06);
+}
+.integration-clarification-question {
+  font-size: 1.05rem;
+  line-height: 1.45;
+  margin: 0.35rem 0 0;
+}
+.founder-workflow-guide {
+  margin: 0.75rem 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+}
+.founder-workflow-guide-title {
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+}
+.founder-workflow-steps {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+}
+.founder-workflow-step {
+  display: flex;
+  flex-direction: column;
+  min-width: 6.5rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.03);
+  font-size: 0.78rem;
+}
+.founder-workflow-step--waiting_for_founder,
+.founder-workflow-step--current {
+  outline: 2px solid var(--accent, #4f7cff);
+  background: rgba(79, 124, 255, 0.08);
+}
+.founder-workflow-step--blocked {
+  outline: 2px solid #a33;
+}
+.founder-workflow-step-state {
+  color: var(--text-muted, rgba(0, 0, 0, 0.6));
+}
+.founder-workflow-advanced-note {
+  margin: 0.65rem 0 0;
+  font-size: 0.85rem;
+}
+@media (max-width: 480px) {
+  .founder-workflow-step {
+    min-width: calc(50% - 0.5rem);
+  }
+  #founder-clarification-answer {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
 .integration-form-badges {
   display: flex;
   flex-wrap: wrap;
