@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withErrorHandling } from "@/lib/core/errors";
+import { withErrorHandling, badRequest } from "@/lib/core/errors";
 import { requireAdmin } from "@/lib/core/auth";
 import {
   ENGINE_VERSION,
@@ -34,6 +34,7 @@ import {
   mapProofStatusFromRun,
   buildIntegrationReadinessAsync,
   FOUNDER_PRODUCTION_PROOF_OBJECTIVE,
+  requireActiveProjectForProof,
 } from "@/lib/core/integration";
 
 export const dynamic = "force-dynamic";
@@ -245,19 +246,14 @@ export const POST = withErrorHandling(async (req) => {
 
   if (action === "start_founder_proof") {
     assertExplicitFounderConfirmation(body.confirmation);
-    if (!body.project_id) {
-      return NextResponse.json(
-        { ok: false, error: { message: "project_id required" } },
-        { status: 400 }
-      );
-    }
+    const project = await requireActiveProjectForProof(body.project_id);
     const objective = buildProductionProofObjective({
-      project_id: body.project_id,
-      organization_id: body.organization_id || null,
+      project_id: project.id,
+      organization_id: body.organization_id || project.organization_id || null,
     });
     const result = createIntegrationRun(objective, {
       actor,
-      idempotency_key: body.idempotency_key || `prod-proof:${body.project_id}`,
+      idempotency_key: body.idempotency_key || `prod-proof:${project.id}`,
     });
     result.run.proof = {
       is_production_proof: true,
@@ -278,7 +274,14 @@ export const POST = withErrorHandling(async (req) => {
   }
 
   if (action === "create" || action === "create_objective") {
-    const result = createIntegrationRun(body.objective || body, {
+    const rawObjective = body.objective || body;
+    const projectId = rawObjective.project_id || body.project_id;
+    if (projectId) {
+      await requireActiveProjectForProof(projectId);
+    } else {
+      throw badRequest("project_id required");
+    }
+    const result = createIntegrationRun(rawObjective, {
       actor,
       idempotency_key: body.idempotency_key || null,
       force_cycle: Boolean(body.force_cycle),

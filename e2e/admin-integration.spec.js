@@ -107,6 +107,57 @@ test.describe("Phase H Founder acceptance journey", () => {
     await expect(page.getByTestId("production-proof-panel")).toBeVisible();
   });
 
+  test("project selector lists canonical active projects and gates proof start", async ({
+    page,
+  }) => {
+    await page.goto("/admin/integration");
+    await page.waitForLoadState("domcontentloaded");
+
+    const picker = page.getByTestId("integration-project-picker").locator("select");
+    await expect(picker).toBeVisible();
+    await expect(picker.locator("option")).toContainText([
+      "All projects",
+      "MianX Internal Production Proof",
+      "MianX Core",
+    ]);
+    await expect(picker.locator("option", { hasText: "Archived Demo" })).toHaveCount(0);
+
+    // All projects keeps Start Founder Proof disabled
+    await picker.selectOption("");
+    await expect(page.getByTestId("start-founder-proof")).toBeDisabled();
+    await expect(page.getByTestId("proof-disabled-reason")).toBeVisible();
+
+    await picker.selectOption("proj-proof-1");
+    await expect(page).toHaveURL(/project_id=proj-proof-1/);
+    await expect(page.getByTestId("selected-project-label")).toContainText(
+      "MianX Internal Production Proof"
+    );
+    await expect(page.getByTestId("start-founder-proof")).toBeEnabled();
+
+    // Refresh retains selection
+    await page.reload();
+    await page.waitForLoadState("domcontentloaded");
+    await expect(page.getByTestId("integration-project-picker").locator("select")).toHaveValue(
+      "proj-proof-1"
+    );
+    await expect(page.getByTestId("start-founder-proof")).toBeEnabled();
+
+    // Navigate away and back
+    await page.goto("/admin/projects");
+    await page.waitForLoadState("domcontentloaded");
+    await page.goto("/admin/integration");
+    await page.waitForLoadState("domcontentloaded");
+    await expect(page.getByTestId("integration-project-picker").locator("select")).toHaveValue(
+      "proj-proof-1"
+    );
+
+    // Confirmation still required (dialog, no auto-start)
+    await page.getByTestId("start-founder-proof").click();
+    await expect(page.getByTestId("proof-confirm-dialog")).toBeVisible();
+    await page.getByTestId("proof-confirm-no").click();
+    await expect(page.getByTestId("proof-confirm-dialog")).toHaveCount(0);
+  });
+
   for (const vp of VIEWPORTS) {
     test(`responsive ${vp.name} Founder integration shell`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });

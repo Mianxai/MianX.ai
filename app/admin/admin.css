@@ -600,6 +600,54 @@
 .cc-project-select select {
   background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary);
   border-radius: 10px; padding: 0.55rem 0.9rem; font-size: 0.85rem;
+  max-width: min(100%, 22rem);
+}
+
+/* Integration / shared admin tabs */
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.75rem 0 1rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-card, #111) 80%, transparent);
+}
+.admin-tabs[role="tablist"] button,
+.admin-tabs button[role="tab"] {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.admin-tabs button[role="tab"]:hover {
+  background: rgba(79, 124, 255, 0.1);
+  color: var(--primary-light);
+}
+.admin-tabs button[role="tab"].active,
+.admin-tabs button[role="tab"][aria-selected="true"] {
+  background: rgba(79, 124, 255, 0.18);
+  border-color: rgba(79, 124, 255, 0.35);
+  color: var(--primary-light);
+}
+.admin-tabs button[role="tab"]:focus-visible {
+  outline: 2px solid var(--accent, #4f7cff);
+  outline-offset: 2px;
+}
+.integration-project-picker {
+  display: flex;
+  align-items: center;
+  min-height: 2.25rem;
+}
+.admin-muted {
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 .cc-metrics {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem;

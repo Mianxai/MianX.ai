@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import EmptyState from "@/components/admin/EmptyState";
 import PageHeader from "@/components/admin/PageHeader";
@@ -10,6 +11,10 @@ import ProjectPicker from "@/components/admin/ProjectPicker";
 import MianxLoader from "@/components/shared/MianxLoader";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { useAdminProject } from "@/lib/admin-project";
+import {
+  filterProofSelectableProjects,
+  isActiveProofProject,
+} from "@/lib/core/integration/project-access-shared";
 
 const TABS = [
   { id: "dashboard", label: "Control Room" },
@@ -49,7 +54,7 @@ async function postJson(path, body, router) {
 export default function IntegrationClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { projectId, setProjectId } = useAdminProject();
+  const { projectId, setProjectId, suggestStoredProjectId } = useAdminProject();
   const tab = searchParams?.get("tab") || "dashboard";
   const runIdParam = searchParams?.get("run_id") || "";
   const [loading, setLoading] = useState(true);
@@ -78,6 +83,49 @@ export default function IntegrationClient() {
   const [providerGate, setProviderGate] = useState(null);
   const [proofConfirmOpen, setProofConfirmOpen] = useState(false);
   const [proofStatus, setProofStatus] = useState("not_started");
+  const [projects, setProjects] = useState([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [projectsError, setProjectsError] = useState("");
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
+
+  const selectableProjects = useMemo(
+    () => filterProofSelectableProjects(projects),
+    [projects]
+  );
+  const selectedProject = useMemo(
+    () => selectableProjects.find((p) => p.id === projectId) || null,
+    [selectableProjects, projectId]
+  );
+
+  const persistenceReady = Boolean(dash?.readiness?.persistence?.durable);
+  const simulationReady = Boolean(
+    dash?.readiness?.simulationReady ?? dash?.simulation_ready
+  );
+  const canStartProof = Boolean(
+    !busy &&
+      !projectsLoading &&
+      projectsLoaded &&
+      !projectsError &&
+      isActiveProofProject(selectedProject) &&
+      persistenceReady &&
+      simulationReady
+  );
+
+  const proofDisabledReason = !projectsLoaded || projectsLoading
+    ? "Loading projects…"
+    : projectsError
+      ? "Project catalogue failed to load."
+      : !projectId
+        ? "Select a project before starting the production proof."
+        : !selectedProject
+          ? "Selected project is inaccessible. Choose another project."
+          : !isActiveProofProject(selectedProject)
+            ? "Selected project must be active (not archived or paused)."
+            : !persistenceReady
+              ? "Durable integration persistence is not ready."
+              : !simulationReady
+                ? "Simulation readiness is false."
+                : null;
 
   const setTab = useCallback(
     (next, extra = {}) => {
@@ -92,6 +140,49 @@ export default function IntegrationClient() {
     },
     [router, searchParams, projectId, runIdParam]
   );
+
+  const loadProjects = useCallback(async () => {
+    setProjectsLoading(true);
+    setProjectsError("");
+    const res = await getJson("/api/core/projects", router);
+    setProjectsLoading(false);
+    setProjectsLoaded(true);
+    if (!res.ok) {
+      setProjects([]);
+      setProjectsError(res.data?.error?.message || "Failed to load projects");
+      return;
+    }
+    const list = Array.isArray(res.data?.projects) ? res.data.projects : [];
+    setProjects(filterProofSelectableProjects(list));
+  }, [router]);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
+
+  // Restore stored project or clear inaccessible URL project_id.
+  useEffect(() => {
+    if (!projectsLoaded || projectsLoading) return;
+    if (projectId) {
+      if (!selectableProjects.some((p) => p.id === projectId)) {
+        setProjectId("");
+      }
+      return;
+    }
+    if (
+      suggestStoredProjectId &&
+      selectableProjects.some((p) => p.id === suggestStoredProjectId)
+    ) {
+      setProjectId(suggestStoredProjectId);
+    }
+  }, [
+    projectsLoaded,
+    projectsLoading,
+    projectId,
+    selectableProjects,
+    suggestStoredProjectId,
+    setProjectId,
+  ]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -186,22 +277,50 @@ export default function IntegrationClient() {
       <PageHeader
         title="End-to-End Integration"
         description="LEVEL 1 — Deterministic simulation proof. Not live AI execution."
-        actions={<ProjectPicker value={projectId} onChange={setProjectId} />}
+        actions={
+          <div className="integration-project-picker" data-testid="integration-project-picker">
+            {projectsLoading ? (
+              <MianxLoader variant="inline" label="Loading projects…" />
+            ) : (
+              <ProjectPicker
+                id="integration-project-picker"
+                value={projectId}
+                onChange={setProjectId}
+                projects={selectableProjects}
+                allowAll
+                label="Project"
+              />
+            )}
+          </div>
+        }
       />
+
+      {projectsError ? (
+        <div className="admin-error" role="alert" data-testid="projects-load-error">
+          {projectsError}{" "}
+          <Link href="/admin/projects">Open Projects</Link>
+        </div>
+      ) : null}
+      {projectsLoaded && !projectsLoading && !projectsError && selectableProjects.length === 0 ? (
+        <div className="admin-error" role="status" data-testid="projects-empty">
+          No active projects available.{" "}
+          <Link href="/admin/projects">Create or open a project</Link>
+        </div>
+      ) : null}
 
       <div className="admin-truth-banner" data-testid="integration-truth-banner">
         <strong>Proof level:</strong> DETERMINISTIC SIMULATION. Live provider execution stays
         blocked unless a provider is configured and Founder enables live mode separately.
       </div>
 
-      <div className="admin-tabs" role="tablist">
+      <div className="admin-tabs" role="tablist" aria-label="Integration views">
         {TABS.map((t) => (
           <button
             key={t.id}
             type="button"
             role="tab"
             aria-selected={tab === t.id}
-            className={tab === t.id ? "is-active" : ""}
+            className={tab === t.id ? "active" : ""}
             onClick={() => setTab(t.id)}
           >
             {t.label}
@@ -228,6 +347,18 @@ export default function IntegrationClient() {
             aria-labelledby="production-proof-heading"
           >
             <h2 id="production-proof-heading">Production Founder Proof</h2>
+            <p role="status" data-testid="selected-project-label">
+              Selected project:{" "}
+              <strong>
+                {selectedProject?.name || (projectId ? projectId : "All projects")}
+              </strong>
+              {selectedProject?.slug ? (
+                <>
+                  {" "}
+                  <span className="admin-muted">({selectedProject.slug})</span>
+                </>
+              ) : null}
+            </p>
             <p role="status">
               Proof status: <StatusBadge status={proofStatus} />{" "}
               <span data-testid="proof-status-text">{proofStatus}</span>
@@ -324,16 +455,27 @@ export default function IntegrationClient() {
               <button
                 type="button"
                 data-testid="start-founder-proof"
-                disabled={busy || !projectId}
+                disabled={!canStartProof}
                 aria-haspopup="dialog"
-                onClick={() => setProofConfirmOpen(true)}
+                aria-disabled={!canStartProof}
+                title={proofDisabledReason || "Start Founder Proof"}
+                onClick={() => {
+                  if (!canStartProof) return;
+                  setProofConfirmOpen(true);
+                }}
               >
                 Start Founder Proof
               </button>
             </div>
-            {!projectId ? (
-              <p role="status">Select a project before starting the production proof.</p>
-            ) : null}
+            {proofDisabledReason ? (
+              <p role="status" data-testid="proof-disabled-reason">
+                {proofDisabledReason}
+              </p>
+            ) : (
+              <p role="status" data-testid="proof-ready-hint">
+                Ready — press Start Founder Proof, then confirm. Nothing starts automatically.
+              </p>
+            )}
 
             {proofConfirmOpen ? (
               <div
