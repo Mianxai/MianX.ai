@@ -1095,7 +1095,30 @@ no fabricated live AI completion, no auto Founder approval.
 
 ---
 
-## 17. Phase H — Founder Proof + Admin Experience closeout (draft PR)
+## 18. Phase H.1 — Founder Control Plane UX hardening (draft PR)
+
+Branch: `cursor/phase-h1-founder-control-plane-premium-ux`  
+Base: `origin/main` @ `1cb99bf92c48fa945b83bc153f6cbae2440d2286` (PR #56 merged).
+
+### Delivered (code)
+
+- Selected project display fix (never “Selected project” as value)
+- Premium Next Founder Action card + compact Quick Start
+- Stage-aware Founder Proof tab routing
+- Command Center hierarchy: action-first, workforce preview (no default Agent Network)
+- Sticky Plan approval bar with explicit confirm boundaries
+- CEO Brief cancelled/archived toggle (hidden by default)
+- Canonical SchedulerStatus mapping + Schedule panel
+- Advanced Operations accordion labels (Runtime Overview + Advanced badges)
+
+### Explicit non-goals (confirmed)
+
+No merge, no production deploy, no production proof mutation, no Anthropic,
+no Phase I, no migration.
+
+---
+
+## 17. Phase H — Founder Proof + Admin Experience closeout (merged via PR #56)
 
 Branch: `cursor/phase-h-final-proof-admin-experience-closeout`  
 Base: `origin/main` @ `7bd26457a94c3c702391b56fc14f5df17d98f9b2` (includes PR #55 duplicate resolution).

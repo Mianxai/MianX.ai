@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import StickyFounderApprovalBar from "@/components/admin/StickyFounderApprovalBar";
 import StatusBadge from "@/components/admin/StatusBadge";
 import {
   humanStageLabel,
@@ -45,7 +46,7 @@ export default function IntegrationPlanReview({
   onReturn,
   onReject,
 }) {
-  const [confirm, setConfirm] = useState(null); // reject | return
+  const [confirm, setConfirm] = useState(null); // reject | return | approve
   const [reason, setReason] = useState("");
 
   if (!run) return null;
@@ -136,7 +137,7 @@ export default function IntegrationPlanReview({
           </div>
           <div>
             <dt>Project</dt>
-            <dd>{projectName || "Selected project"}</dd>
+            <dd>{projectName || "No project selected"}</dd>
           </div>
           <div>
             <dt>Canonical run</dt>
@@ -298,77 +299,56 @@ export default function IntegrationPlanReview({
       </section>
 
       {awaitingPlan ? (
-        <div className="admin-actions founder-plan-actions">
-          <button
-            type="button"
-            className="header-btn"
-            data-testid="approve-plan-for-simulation"
-            disabled={busy}
-            onClick={() => onApprove?.()}
-          >
-            Approve plan for deterministic simulation
-          </button>
-          <button
-            type="button"
-            className="header-btn-ghost"
-            data-testid="return-plan-for-changes"
-            disabled={busy}
-            onClick={() => setConfirm("return")}
-          >
-            Return for changes
-          </button>
-          <button
-            type="button"
-            className="header-btn-ghost"
-            data-testid="reject-plan"
-            disabled={busy}
-            onClick={() => setConfirm("reject")}
-          >
-            Reject plan
-          </button>
-        </div>
-      ) : null}
-
-      {confirm ? (
-        <div
-          className="integration-confirm-dialog"
-          role="dialog"
-          aria-modal="true"
-          data-testid="plan-destructive-confirm"
-        >
-          <h3>{confirm === "reject" ? "Reject plan?" : "Return for changes?"}</h3>
-          <p>Provide a short reason. The canonical run is not deleted.</p>
-          <label htmlFor="plan-destructive-reason">Reason</label>
-          <textarea
-            id="plan-destructive-reason"
-            data-testid="plan-destructive-reason"
-            rows={3}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            style={{ width: "100%" }}
-          />
-          <div className="admin-actions">
-            <button
-              type="button"
-              className="header-btn"
-              disabled={busy || !reason.trim()}
-              data-testid="plan-destructive-confirm-yes"
-              onClick={submitDestructive}
-            >
-              Confirm
-            </button>
-            <button
-              type="button"
-              className="header-btn-ghost"
-              onClick={() => {
-                setConfirm(null);
-                setReason("");
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <StickyFounderApprovalBar
+          testId="sticky-plan-approval-bar"
+          primaryLabel="Approve plan for deterministic simulation"
+          primaryTestId="approve-plan-for-simulation"
+          secondaryTestId="return-plan-for-changes"
+          dangerTestId="reject-plan"
+          onPrimary={() => setConfirm("approve")}
+          secondaryLabel="Return for changes"
+          onSecondary={() => setConfirm("return")}
+          dangerLabel="Reject plan"
+          onDanger={() => setConfirm("reject")}
+          busy={busy}
+          note="Approving the plan does not start simulation."
+          confirmOpen={Boolean(confirm)}
+          confirmTitle={
+            confirm === "approve"
+              ? "Approve plan for deterministic simulation?"
+              : confirm === "reject"
+                ? "Reject plan?"
+                : "Return for changes?"
+          }
+          confirmBody={
+            confirm === "approve" ? (
+              <ul className="sticky-confirm-list">
+                <li>This approves only the plan.</li>
+                <li>Simulation will not start.</li>
+                <li>Provider will not be called.</li>
+                <li>Production deployment remains blocked.</li>
+                <li>The next stage will be simulation approval.</li>
+              </ul>
+            ) : (
+              <p>Provide a short reason. The canonical run is not deleted.</p>
+            )
+          }
+          requireReason={confirm === "reject" || confirm === "return"}
+          confirmReason={reason}
+          onConfirmReasonChange={setReason}
+          onConfirmYes={async () => {
+            if (confirm === "approve") {
+              await onApprove?.();
+              setConfirm(null);
+              return;
+            }
+            await submitDestructive();
+          }}
+          onConfirmNo={() => {
+            setConfirm(null);
+            setReason("");
+          }}
+        />
       ) : null}
 
       <details className="cc-card" data-testid="plan-technical-details">

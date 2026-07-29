@@ -20,7 +20,7 @@ test.describe("Phase H Founder acceptance journey", () => {
     await page.goto("/admin/login?returnTo=/admin/integration");
     await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
 
-    await page.goto("/admin/integration?project_id=proj-1");
+    await page.goto("/admin/integration?project_id=proj-1&tab=dashboard");
     await page.waitForLoadState("domcontentloaded");
     await expect(page).not.toHaveURL(/\/admin\/login/);
     await expect(page.getByTestId("integration-truth-banner")).toBeVisible();
@@ -70,7 +70,7 @@ test.describe("Phase H Founder acceptance journey", () => {
   test("production proof panel: preview, confirm dialog, allocation, recovery labels", async ({
     page,
   }) => {
-    await page.goto("/admin/integration?project_id=proj-1");
+    await page.goto("/admin/integration?project_id=proj-1&tab=dashboard");
     await page.waitForLoadState("domcontentloaded");
 
     await expect(page.getByTestId("production-proof-panel")).toBeVisible();
@@ -103,7 +103,7 @@ test.describe("Phase H Founder acceptance journey", () => {
     await expect(page.getByRole("heading", { name: /Audit lineage/i })).toBeVisible();
 
     // Persisted refresh (mocked API) — Control Room hosts the proof panel
-    await page.goto("/admin/integration?project_id=proj-1");
+    await page.goto("/admin/integration?project_id=proj-1&tab=dashboard");
     await page.waitForLoadState("domcontentloaded");
     await expect(page.getByTestId("production-proof-panel")).toBeVisible();
   });
@@ -111,7 +111,7 @@ test.describe("Phase H Founder acceptance journey", () => {
   test("project selector lists canonical active projects and gates proof start", async ({
     page,
   }) => {
-    await page.goto("/admin/integration");
+    await page.goto("/admin/integration?tab=dashboard");
     await page.waitForLoadState("domcontentloaded");
     await expect(page.getByTestId("production-proof-panel")).toBeVisible();
 
@@ -147,7 +147,7 @@ test.describe("Phase H Founder acceptance journey", () => {
     // Navigate away and back
     await page.goto("/admin/projects");
     await page.waitForLoadState("domcontentloaded");
-    await page.goto("/admin/integration");
+    await page.goto("/admin/integration?tab=dashboard");
     await page.waitForLoadState("domcontentloaded");
     await expect(page.getByTestId("integration-project-picker").locator("select")).toHaveValue(
       "proj-proof-1"
@@ -163,7 +163,7 @@ test.describe("Phase H Founder acceptance journey", () => {
   for (const vp of VIEWPORTS) {
     test(`responsive ${vp.name} Founder integration shell`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
-      await page.goto("/admin/integration?project_id=proj-1");
+      await page.goto("/admin/integration?project_id=proj-1&tab=dashboard");
       await page.waitForLoadState("domcontentloaded");
       await expect(page.locator("#main-content, main, .admin-main").first()).toBeVisible();
       await expect(page.getByTestId("integration-truth-banner")).toBeVisible();

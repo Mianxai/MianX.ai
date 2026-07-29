@@ -67,8 +67,8 @@ export default function CommandCenterClient({ title = "Command Center" }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  // Agents page: list/department summary first; network graph is opt-in (lazy).
-  const [viewMode, setViewMode] = useState(agentsPage ? "list" : "network");
+  // Command Center: never load full network by default. Agents page: list first.
+  const [viewMode, setViewMode] = useState("list");
   const [opsSummary, setOpsSummary] = useState(null);
 
   const query = useMemo(() => {
@@ -153,6 +153,23 @@ export default function CommandCenterClient({ title = "Command Center" }) {
   const executableCount =
     data?.hierarchy?.executableCount ?? data?.agentInventory?.executable;
 
+  const selectedProjectName =
+    (Array.isArray(data?.projects)
+      ? data.projects.find((p) => p.id === projectId)?.name
+      : null) ||
+    opsSummary?.project_name ||
+    null;
+
+  const nextAction = opsSummary?.next_founder_action;
+  const hasActiveProof = Boolean(opsSummary?.canonical_integration_run?.id);
+  const stageCtaHref = nextAction?.href
+    ? nextAction.href.includes("project_id=") || !projectId
+      ? nextAction.href
+      : `${nextAction.href}${nextAction.href.includes("?") ? "&" : "?"}project_id=${encodeURIComponent(projectId)}`
+    : projectId
+      ? `/admin/integration?project_id=${encodeURIComponent(projectId)}`
+      : "/admin/integration";
+
   const actions = (
     <div className="cc-header-actions">
       <label className="cc-project-select">
@@ -172,9 +189,27 @@ export default function CommandCenterClient({ title = "Command Center" }) {
           ))}
         </select>
       </label>
-      <Link href="/admin/objectives" className="header-btn">
-        New objective
-      </Link>
+      {hasActiveProof && nextAction?.severity === "action_required" ? (
+        <Link
+          href={stageCtaHref}
+          className="header-btn"
+          data-testid="cc-stage-primary-action"
+        >
+          {nextAction.label || "Continue Founder Proof"}
+        </Link>
+      ) : (
+        <Link
+          href={
+            projectId
+              ? `/admin/objectives?project_id=${encodeURIComponent(projectId)}`
+              : "/admin/objectives"
+          }
+          className="header-btn"
+          data-testid="cc-new-objective"
+        >
+          New objective
+        </Link>
+      )}
       <button
         type="button"
         className="header-btn-ghost"
@@ -183,8 +218,8 @@ export default function CommandCenterClient({ title = "Command Center" }) {
       >
         {refreshing ? "Refreshing…" : "Refresh"}
       </button>
-      <Link href="/admin/runtime" className="header-btn-ghost">
-        Runtime
+      <Link href="/admin/runtime" className="header-btn-ghost" data-testid="cc-advanced-ops-link">
+        Advanced Operations
       </Link>
     </div>
   );
@@ -221,12 +256,16 @@ export default function CommandCenterClient({ title = "Command Center" }) {
                 <FounderGuidedPanel
                   summary={opsSummary}
                   projectId={projectId}
+                  projectName={selectedProjectName}
+                  projects={data.projects || []}
                   onRefresh={() => load({ soft: true })}
                 />
-                <FounderQuickStart
-                  run={opsSummary?.canonical_integration_run || null}
-                  hasProject={Boolean(projectId)}
-                />
+                {!agentsPage ? (
+                  <FounderQuickStart
+                    run={opsSummary?.canonical_integration_run || null}
+                    hasProject={Boolean(projectId)}
+                  />
+                ) : null}
               </>
             ) : null}
             <OverviewMetrics metrics={data.overview} />
@@ -234,10 +273,72 @@ export default function CommandCenterClient({ title = "Command Center" }) {
               agent={ceoAgent}
               brief={data.ceoBrief}
               projectId={projectId || null}
+              projectName={selectedProjectName}
               opsSummary={opsSummary}
             />
 
-            <div className="cc-layout">
+            {!agentsPage ? (
+              <section className="cc-card cc-workforce-preview" data-testid="cc-workforce-preview">
+                <h2>Workforce preview</h2>
+                <p className="cc-muted">
+                  Compact snapshot only. Full Agent Network is available under Agents.
+                </p>
+                <dl className="cc-detail-dl founder-plan-grid">
+                  <div>
+                    <dt>Executable</dt>
+                    <dd>{executableCount ?? 36}</dd>
+                  </div>
+                  <div>
+                    <dt>Routable</dt>
+                    <dd>{data?.agentInventory?.routable ?? executableCount ?? 36}</dd>
+                  </div>
+                  <div>
+                    <dt>Departments</dt>
+                    <dd>{Array.isArray(data?.departments) ? data.departments.length : "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Active workflows</dt>
+                    <dd>{Array.isArray(data?.workflows) ? data.workflows.length : 0}</dd>
+                  </div>
+                </dl>
+                <div className="cc-link-row">
+                  <Link
+                    href={
+                      projectId
+                        ? `/admin/agents?project_id=${encodeURIComponent(projectId)}`
+                        : "/admin/agents"
+                    }
+                    className="header-btn"
+                    data-testid="cc-view-agent-network"
+                  >
+                    View Agent Network
+                  </Link>
+                  <Link
+                    href={
+                      projectId
+                        ? `/admin/workforce?project_id=${encodeURIComponent(projectId)}`
+                        : "/admin/workforce"
+                    }
+                    className="header-btn-ghost"
+                  >
+                    Open Live Workforce
+                  </Link>
+                  <Link
+                    href={
+                      projectId
+                        ? `/admin/departments?project_id=${encodeURIComponent(projectId)}`
+                        : "/admin/departments"
+                    }
+                    className="header-btn-ghost"
+                  >
+                    View Departments
+                  </Link>
+                </div>
+              </section>
+            ) : null}
+
+            {agentsPage ? (
+            <div className="cc-layout" data-testid="cc-agents-full-layout">
               <DepartmentRail
                 departments={data.departments}
                 agents={agents}
@@ -263,6 +364,7 @@ export default function CommandCenterClient({ title = "Command Center" }) {
                       type="button"
                       className={viewMode === "network" ? "active" : ""}
                       onClick={() => setViewMode("network")}
+                      data-testid="cc-load-agent-network"
                     >
                       Network
                     </button>
@@ -362,6 +464,17 @@ export default function CommandCenterClient({ title = "Command Center" }) {
                 </section>
               </aside>
             </div>
+            ) : (
+              <div className="cc-cc-side-compact">
+                <CeoBriefPanel brief={data.ceoBrief} showCancelled={false} />
+                <SchedulePanel
+                  schedule={data.schedule}
+                  readiness={data.productionReadiness}
+                  provider={data.provider}
+                  rateLimit={data.rateLimit}
+                />
+              </div>
+            )}
 
             <AgentDetailDrawer
               open={Boolean(agentSlug)}

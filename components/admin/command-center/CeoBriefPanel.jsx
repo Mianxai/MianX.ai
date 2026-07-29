@@ -1,15 +1,71 @@
 "use client";
 
-export default function CeoBriefPanel({ brief }) {
-  if (!brief) return null;
+import { useMemo, useState } from "react";
+import ScopeBadge from "@/components/admin/ScopeBadge";
+import SchedulerStatus from "@/components/admin/SchedulerStatus";
+
+function isCancelledOrArchived(item) {
+  const s = String(item?.status || item?.stage || item?.proof_status || "").toLowerCase();
   return (
-    <section className="cc-card" aria-labelledby="cc-ceo-h">
-      <h2 id="cc-ceo-h">CEO Brief</h2>
+    s.includes("cancel") ||
+    s.includes("archiv") ||
+    Boolean(item?.cancelled_as_duplicate) ||
+    Boolean(item?.is_duplicate_cancelled)
+  );
+}
+
+export default function CeoBriefPanel({
+  brief,
+  showCancelledDefault = false,
+  scheduler = null,
+}) {
+  const [showCancelled, setShowCancelled] = useState(showCancelledDefault);
+
+  const activeObjectives = useMemo(() => {
+    const items = brief?.activeObjectives || [];
+    if (showCancelled) return items;
+    return items.filter((i) => !isCancelledOrArchived(i));
+  }, [brief?.activeObjectives, showCancelled]);
+
+  const hiddenCancelledCount = useMemo(
+    () => (brief?.activeObjectives || []).filter(isCancelledOrArchived).length,
+    [brief?.activeObjectives]
+  );
+
+  if (!brief) return null;
+
+  return (
+    <section className="cc-card" aria-labelledby="cc-ceo-h" data-testid="ceo-brief-panel">
+      <div className="ceo-brief-header-row">
+        <h2 id="cc-ceo-h">CEO Brief</h2>
+        <ScopeBadge scope="project" />
+      </div>
       <p className="cc-muted">
-        Built from stored runtime state
+        Founder-focused snapshot from stored runtime state
         {brief.providerSynthesis ? " + provider synthesis" : " (no generative call)"}.
       </p>
-      <BriefList title="Active objectives" items={brief.activeObjectives} empty="None" />
+
+      <BriefList
+        title="Active objectives"
+        items={activeObjectives}
+        empty="None active"
+        testId="ceo-brief-active-objectives"
+      />
+      {hiddenCancelledCount > 0 && !showCancelled ? (
+        <p className="cc-muted" data-testid="ceo-brief-hidden-cancelled">
+          {hiddenCancelledCount} cancelled/archived objective(s) hidden.
+        </p>
+      ) : null}
+      <label className="ceo-brief-toggle">
+        <input
+          type="checkbox"
+          checked={showCancelled}
+          data-testid="ceo-brief-show-cancelled"
+          onChange={(e) => setShowCancelled(e.target.checked)}
+        />
+        Show cancelled / archived
+      </label>
+
       <BriefList title="Blocked objectives" items={brief.blockedObjectives} empty="None" />
       <BriefList title="Failed work" items={brief.failedWork} empty="None" />
       <BriefList
@@ -22,7 +78,10 @@ export default function CeoBriefPanel({ brief }) {
         empty="None"
       />
       <BriefList title="Recent completed" items={brief.recentCompleted} empty="None" />
-      {(brief.duplicateProofWarning?.count > 0) ? (
+
+      {scheduler ? <SchedulerStatus scheduler={scheduler} compact /> : null}
+
+      {brief.duplicateProofWarning?.count > 0 ? (
         <div className="cc-warnings" role="status">
           <h3>Duplicate production proof runs</h3>
           <p>
@@ -45,9 +104,9 @@ export default function CeoBriefPanel({ brief }) {
   );
 }
 
-function BriefList({ title, items, empty }) {
+function BriefList({ title, items, empty, testId }) {
   return (
-    <div className="cc-brief-block">
+    <div className="cc-brief-block" data-testid={testId}>
       <h3>{title}</h3>
       {!items?.length ? (
         <p className="cc-muted">{empty}</p>

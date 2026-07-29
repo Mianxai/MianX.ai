@@ -7,7 +7,13 @@ import StatusChip from "./StatusChip";
  * Prominent CEO / Executive Orchestrator command node.
  * Real data only — Data unavailable when missing.
  */
-export default function CeoOrchestratorCard({ agent, brief, projectId, opsSummary = null }) {
+export default function CeoOrchestratorCard({
+  agent,
+  brief,
+  projectId,
+  projectName = null,
+  opsSummary = null,
+}) {
   const status = agent?.status || "idle";
   const live = agent?.live || {};
 
@@ -27,7 +33,10 @@ export default function CeoOrchestratorCard({ agent, brief, projectId, opsSummar
     null;
 
   const projectLabel = projectId
-    ? live.projectId || projectId
+    ? projectName ||
+      opsSummary?.project_name ||
+      (live.projectName && live.projectName !== "Selected project" ? live.projectName : null) ||
+      `Project ${String(projectId).slice(0, 8)}…`
     : "All projects — select a project for live scope";
 
   let waitingLabel = null;
@@ -35,10 +44,10 @@ export default function CeoOrchestratorCard({ agent, brief, projectId, opsSummar
     const stage = String(proof.stage || proof.proof_status || "");
     if (stage.includes("clarification")) {
       waitingLabel = "Waiting for Founder clarification";
-    } else if (stage.includes("simulation") || stage.includes("founder_approval_required")) {
-      waitingLabel = "Waiting for simulation approval";
-    } else if (stage.includes("approval") || stage.includes("plan")) {
-      waitingLabel = "Waiting for plan approval";
+    } else if (stage === "founder_approval_required" || stage.includes("awaiting_plan")) {
+      waitingLabel = "Waiting for Founder Plan Approval";
+    } else if (stage.includes("simulation_approval") || stage.includes("awaiting_simulation")) {
+      waitingLabel = "Waiting for Simulation Approval";
     } else if (opsSummary?.next_founder_action?.severity === "action_required") {
       waitingLabel = opsSummary.next_founder_action.label;
     }

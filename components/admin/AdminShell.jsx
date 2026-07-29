@@ -201,6 +201,11 @@ function AdminShellInner({
         >
           <NavIcon name={item.icon} />
           {item.label}
+          {item.badge ? (
+            <span className="sidebar-advanced-badge" aria-label={item.badge}>
+              {item.badge}
+            </span>
+          ) : null}
           {showBadge && (
             <span
               className="sidebar-badge"

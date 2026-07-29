@@ -7,7 +7,7 @@ test.describe("Integration Founder UX closeout", () => {
   });
 
   test("project persists across all Integration tabs in URL", async ({ page }) => {
-    await page.goto("/admin/integration?project_id=proj-proof-1");
+    await page.goto("/admin/integration?project_id=proj-proof-1&tab=dashboard");
     await page.waitForLoadState("domcontentloaded");
     await expect(page.getByTestId("production-proof-panel")).toBeVisible();
     await expect(page.getByTestId("integration-dashboard")).toBeVisible();
@@ -64,5 +64,26 @@ test.describe("Integration Founder UX closeout", () => {
       .locator("select")
       .selectOption("proj-proof-1");
     await expect(page.getByTestId("create-objective")).toBeEnabled();
+  });
+
+  test("stage-aware Review Plan CTA opens Plan tab", async ({ page }) => {
+    await page.goto("/admin/integration?project_id=proj-1&tab=plan");
+    await page.waitForLoadState("domcontentloaded");
+    await expect(page.getByTestId("integration-tab-plan")).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    await expect(page).toHaveURL(/tab=plan/);
+  });
+
+  test("Founder guided panel does not duplicate Selected project label as value", async ({
+    page,
+  }) => {
+    await page.goto("/admin/command-center?project_id=proj-1");
+    await page.waitForLoadState("domcontentloaded");
+    const name = page.getByTestId("founder-selected-project-name");
+    if ((await name.count()) > 0) {
+      await expect(name).not.toHaveText(/^Selected project$/i);
+    }
   });
 });
