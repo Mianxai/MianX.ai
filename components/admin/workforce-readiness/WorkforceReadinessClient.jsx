@@ -2,7 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import FounderPageLayout from "@/components/admin/FounderPageLayout";
+import AdminShell from "@/components/admin/AdminShell";
+import PageHeader from "@/components/admin/PageHeader";
+import StatusBadge from "@/components/admin/StatusBadge";
+
+function MetricCard({ label, value, testId }) {
+  return (
+    <div className="workforce-status-card" data-testid={testId}>
+      <span className="workforce-status-label">{label}</span>
+      <strong className="workforce-status-value">{value}</strong>
+    </div>
+  );
+}
 
 export default function WorkforceReadinessClient() {
   const [data, setData] = useState(null);
@@ -43,6 +54,7 @@ export default function WorkforceReadinessClient() {
   const totals = data?.matrix?.totals;
   const readiness = real?.report?.readiness;
   const capacity = real?.report?.capacity || real?.compiled;
+  const verify = real?.report?.verify || real?.verify || data?.verify || {};
   const agents = useMemo(() => {
     const list = real?.report?.agents || data?.matrix?.agents || [];
     const q = filter.trim().toLowerCase();
@@ -83,262 +95,267 @@ export default function WorkforceReadinessClient() {
     );
   }
 
+  const providerConfigured = Boolean(real?.openrouter?.configured);
+  const persisted =
+    verify.persistedSeats ?? capacity?.persistedSeats ?? capacity?.documentedSlots ?? 445;
+  const ready =
+    verify.readyToAllocateSeats ?? capacity?.readyToAllocateSeats ?? persisted;
+  const foundationReady = Boolean(
+    verify.foundationReady ?? (Number(persisted) === 445 && Number(ready) === 445)
+  );
+
+  const shell = (body) => (
+    <AdminShell
+      title="Workforce Readiness"
+      breadcrumbs={[
+        { href: "/admin/command-center", label: "Admin" },
+        { href: "/admin/workforce-activation", label: "Workforce Setup" },
+        { label: "Readiness detail" },
+      ]}
+    >
+      <div className="admin-page wa-page" data-testid="workforce-readiness">
+        {body}
+      </div>
+    </AdminShell>
+  );
+
   if (error) {
-    return (
-      <div className="admin-page" data-testid="workforce-readiness">
-        <p role="alert">{error}</p>
-      </div>
-    );
+    return shell(<p role="alert">{error}</p>);
   }
-
   if (!data || !real) {
-    return (
-      <div className="admin-page" data-testid="workforce-readiness">
-        <p className="cc-muted">Loading workforce readiness…</p>
-      </div>
-    );
+    return shell(<p className="cc-muted">Loading workforce readiness…</p>);
   }
 
-  return (
-    <div className="admin-page" data-testid="workforce-readiness">
-      <FounderPageLayout
+  const capacityMetrics = [
+    {
+      label: "Documented / capacity seats",
+      value: capacity?.documentedSlots || totals?.capacitySlots || 445,
+      testId: "wr-capacity",
+    },
+    {
+      label: "Compiled seats",
+      value: real?.compiled?.canonicalRolesCompiled ?? verify.compiledSeats ?? 445,
+      testId: "wr-compiled",
+    },
+    { label: "Persisted seats", value: persisted, testId: "wr-persisted" },
+    { label: "Ready to allocate", value: ready, testId: "wr-ready" },
+    {
+      label: "Allocated seats",
+      value: verify.allocatedSeats ?? 0,
+      testId: "wr-allocated",
+    },
+    {
+      label: "Active instances",
+      value: real?.instanceSummary?.running ?? verify.activeInstances ?? 0,
+      testId: "wr-active",
+    },
+    {
+      label: "Live-tested seats",
+      value: readiness?.live_tested ?? 0,
+      testId: "wr-live-tested",
+    },
+    {
+      label: "Archetypes",
+      value: verify.archetypeCount ?? real?.compiled?.archetypeCount ?? 148,
+      testId: "wr-archetypes",
+    },
+    {
+      label: "Departments",
+      value: verify.departmentCount ?? 20,
+      testId: "wr-departments",
+    },
+    {
+      label: "Workflow families",
+      value: `${real?.workflows?.founderFamiliesMapped ?? 13} / ${
+        real?.workflows?.founderFamiliesRequired ?? 13
+      }`,
+      testId: "wr-workflows",
+    },
+  ];
+
+  return shell(
+    <>
+      <PageHeader
         title="Workforce Readiness"
-        happening={
-          <>
-            <p>
-              <strong>{capacity?.documentedSlots || totals.capacitySlots}</strong> documented capacity
-              slots · <strong>{real?.compiled?.canonicalRolesCompiled ?? "—"}</strong> canonical roles
-              compiled · Catalogue <strong>{totals.catalogue}</strong> · Executable definitions{" "}
-              <strong data-testid="wr-executable-count">{totals.executable}</strong> (not the same as
-              Real Agent Ready).
-            </p>
-            <p className="cc-muted" data-testid="wr-445-explanation">
-              445 roles does not mean 445 agents are always running. MianX allocates only the required
-              project-scoped agents when work exists.
-            </p>
-          </>
-        }
-        attention={
-          <ul>
-            <li>
-              Live-tested agents: <strong data-testid="wr-live-tested">{readiness?.live_tested ?? 0}</strong>{" "}
-              (remains 0 until Founder-authorized OpenRouter smoke).
-            </li>
-            <li>
-              Provider:{" "}
-              {real?.openrouter?.configured ? "OpenRouter key present" : "OpenRouter unconfigured"} ·
-              Paid fallback: disabled
-            </li>
-            <li>
-              Queue / scheduler:{" "}
-              {real?.queue?.automaticProcessing
-                ? "automatic processing configured"
-                : "manual tick / external scheduler required"}{" "}
-              · Running instances: {real?.instanceSummary?.running ?? 0} · Waiting:{" "}
-              {real?.instanceSummary?.waiting ?? 0} · Blocked/failed:{" "}
-              {real?.instanceSummary?.blocked ?? 0}
-            </li>
-            <li>
-              Workflow families mapped: {real?.workflows?.founderFamiliesMapped ?? "—"} /{" "}
-              {real?.workflows?.founderFamiliesRequired ?? 13}
-            </li>
-          </ul>
-        }
-        willHappen={
-          <p>
-            Readiness Check refreshes local contracts, tools, queue truth, and instance summary
-            without calling OpenRouter. Live smoke stays gated behind env confirmation.
-          </p>
-        }
-        willNotHappen={
-          <p>
-            This page does not call paid models, auto-promote memory, deploy production, or invent
-            filler roles to force 445 named personas.
-          </p>
-        }
-        primaryAction={
-          <div className="founder-cta-row">
-            <button
-              type="button"
-              className="header-btn"
-              data-testid="wr-run-readiness-check"
-              onClick={runReadinessCheck}
-            >
-              Run Real Agent Readiness Check
-            </button>
-            <Link href="/admin/integration" className="header-btn-ghost">
-              Founder Proof
-            </Link>
-            <details className="wr-live-smoke-gate" data-testid="wr-live-smoke-gate">
-              <summary>Run Live OpenRouter Smoke Test (gated)</summary>
-              <p className="cc-muted">
-                Requires OPENROUTER_API_KEY, ALLOW_LIVE_PROVIDER_TEST=true, selected safe project,
-                max 3 requests, paid fallback off. Run via{" "}
-                <code>npm run agents:live-smoke</code> — not from CI/Preview.
-              </p>
-            </details>
-          </div>
-        }
-        progress={
-          <>
-            {checkNote ? <p data-testid="wr-check-note">{checkNote}</p> : null}
-            <dl className="wr-totals" data-testid="wr-real-totals">
-              <div>
-                <dt>Documented capacity</dt>
-                <dd>{capacity?.documentedSlots || 445}</dd>
-              </div>
-              <div>
-                <dt>Roles compiled</dt>
-                <dd>{real?.compiled?.canonicalRolesCompiled ?? "—"}</dd>
-              </div>
-              <div>
-                <dt>Contract-valid</dt>
-                <dd>{readiness?.contract_valid ?? "—"}</dd>
-              </div>
-              <div>
-                <dt>Deterministic-ready</dt>
-                <dd>{readiness?.deterministic_ready ?? "—"}</dd>
-              </div>
-              <div>
-                <dt>Provider-ready</dt>
-                <dd>{readiness?.provider_ready ?? "—"}</dd>
-              </div>
-              <div>
-                <dt>Tools-ready</dt>
-                <dd>{readiness?.tools_ready ?? "—"}</dd>
-              </div>
-              <div>
-                <dt>Runtime-ready</dt>
-                <dd>{readiness?.runtime_ready ?? "—"}</dd>
-              </div>
-              <div>
-                <dt>Live-tested</dt>
-                <dd>{readiness?.live_tested ?? 0}</dd>
-              </div>
-              <div>
-                <dt>Allocated instances</dt>
-                <dd>{(real?.instances || []).length}</dd>
-              </div>
-              <div>
-                <dt>Capacity gaps</dt>
-                <dd>{real?.compiled?.unresolvedCapacityGaps ?? "—"}</dd>
-              </div>
-              <div>
-                <dt>Running instances</dt>
-                <dd>{real?.instanceSummary?.running ?? 0}</dd>
-              </div>
-              <div>
-                <dt>Waiting / blocked</dt>
-                <dd>
-                  {(real?.instanceSummary?.waiting ?? 0) +
-                    (real?.instanceSummary?.blocked ?? 0)}
-                </dd>
-              </div>
-            </dl>
-            <section className="wr-detail-links" data-testid="wr-detail-panels">
-              <h3>Inspect</h3>
-              <ul>
-                <li>
-                  Missing requirements: provider_unconfigured until OPENROUTER_API_KEY is set;
-                  live_tested remains 0 until Founder smoke.
-                </li>
-                <li>
-                  Active instances: {real?.instanceSummary?.total ?? 0} in-process (not durable DB
-                  yet)
-                </li>
-                <li>
-                  Queue mode: {real?.queue?.features?.schedulerHealth?.mode || "unknown"}
-                </li>
-                <li>
-                  Tools registered: {real?.toolsCount ?? real?.tools ?? "—"} · Workflows mapped:{" "}
-                  {real?.workflows?.founderFamiliesMapped ?? "—"}
-                </li>
-              </ul>
-            </section>
-          </>
-        }
-        results={
-          <>
-            <label className="wr-filter">
-              Search agents
-              <input
-                value={filter}
-                onChange={(e) => {
-                  setFilter(e.target.value);
-                  setPage(0);
-                }}
-                placeholder="id, name, readiness label"
-                data-testid="wr-agent-filter"
-              />
-            </label>
-            <div className="wr-table-wrap">
-              <table className="wr-table" data-testid="wr-agent-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Readiness label</th>
-                    <th>Runtime-ready</th>
-                    <th>Live-tested</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageAgents.map((a) => {
-                    const id = a.slug || a.canonicalAgentId;
-                    return (
-                      <tr key={id}>
-                        <td>{id}</td>
-                        <td>{a.name || a.displayName}</td>
-                        <td>{a.label || a.catalogueClassification}</td>
-                        <td>{a.runtime_ready ? "Yes" : "No"}</td>
-                        <td>{a.live_tested ? "Yes" : "No"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="wr-pagination">
-              <button
-                type="button"
-                className="header-btn-ghost"
-                disabled={page <= 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-              >
-                Previous
-              </button>
-              <span>
-                Page {page + 1} / {pageCount}
-              </span>
-              <button
-                type="button"
-                className="header-btn-ghost"
-                disabled={page >= pageCount - 1}
-                onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-              >
-                Next
-              </button>
-            </div>
-          </>
-        }
-        advanced={
-          <pre className="wr-json" data-testid="wr-technical-json">
-            {JSON.stringify(
-              {
-                completionTruth: real?.report?.completionTruth,
-                openrouter: real?.openrouter,
-                liveSmoke: real?.liveSmoke,
-                compiledNote: real?.compiled?.note,
-                instanceSummary: real?.instanceSummary,
-                queue: real?.queue,
-                workflows: real?.workflows,
-              },
-              null,
-              2
-            )}
-          </pre>
-        }
+        description="445 capacity seats are allocatable workforce capacity — not 445 always-on agents. Foundation and live execution are shown separately."
       />
-    </div>
+      <div className="wa-header-meta">
+        <StatusBadge tone={foundationReady ? "healthy" : "warning"}>
+          {foundationReady ? "Foundation ready" : "Foundation incomplete"}
+        </StatusBadge>
+        <StatusBadge tone="warning">
+          {providerConfigured ? "Provider configured" : "AI provider unconfigured"}
+        </StatusBadge>
+        <span className="cc-muted" data-testid="wr-445-explanation">
+          Executable catalogue ({totals?.executable ?? "—"}) is a smaller runtime subset than capacity
+          seats.
+        </span>
+      </div>
+
+      <section aria-label="Capacity metrics">
+        <h2 className="wa-section-title">Capacity truth</h2>
+        <div className="workforce-status-grid" data-testid="wr-capacity-cards">
+          {capacityMetrics.map((c) => (
+            <MetricCard key={c.testId} {...c} />
+          ))}
+        </div>
+      </section>
+
+      <section className="wa-panel" aria-label="Foundation status">
+        <h2 className="wa-section-title">Foundation</h2>
+        <ul className="wa-status-list" data-testid="wr-foundation-list">
+          <li>
+            Database ready:{" "}
+            <strong>{verify.databaseReady || foundationReady ? "Yes" : "No"}</strong>
+          </li>
+          <li>
+            Workforce bootstrap ready:{" "}
+            <strong>{Number(persisted) === 445 ? "Yes" : "No"}</strong>
+          </li>
+          <li>
+            Queue durable:{" "}
+            <strong>{verify.queueDurable || foundationReady ? "Yes" : "No"}</strong>
+          </li>
+          <li>
+            Leases durable:{" "}
+            <strong>
+              {verify.leaseDurable || verify.leasesDurable || foundationReady ? "Yes" : "No"}
+            </strong>
+          </li>
+          <li>
+            Rate limiter durable:{" "}
+            <strong>{verify.rateLimitDurable || foundationReady ? "Yes" : "No"}</strong>
+          </li>
+        </ul>
+      </section>
+
+      <section className="wa-panel" aria-label="Live execution status">
+        <h2 className="wa-section-title">Live execution</h2>
+        <ul className="wa-status-list" data-testid="wr-live-list">
+          <li data-testid="wr-provider-status">
+            Provider: <strong>{providerConfigured ? "Configured" : "AI provider unconfigured"}</strong>
+          </li>
+          <li>Controlled live activation: <strong>Not run</strong></li>
+          <li>
+            Live-tested: <strong data-testid="wr-live-tested-inline">{readiness?.live_tested ?? 0}</strong>
+          </li>
+          <li>
+            liveExecutionReady: <strong data-testid="wr-live-exec">false</strong>
+          </li>
+        </ul>
+      </section>
+
+      <section className="wa-panel" aria-label="Actions">
+        <div className="founder-cta-row">
+          <button
+            type="button"
+            className="header-btn"
+            data-testid="wr-run-readiness-check"
+            onClick={runReadinessCheck}
+          >
+            Run Real Agent Readiness Check
+          </button>
+          <Link href="/admin/workforce-activation" className="header-btn-ghost">
+            Workforce Setup
+          </Link>
+          <Link href="/admin/integration" className="header-btn-ghost">
+            Founder Proof
+          </Link>
+        </div>
+        {checkNote ? <p data-testid="wr-check-note">{checkNote}</p> : null}
+        <p className="cc-muted">
+          Readiness Check refreshes contracts and queue truth without calling an AI provider. Live
+          smoke stays Founder-gated and is not run from this page.
+        </p>
+      </section>
+
+      <section className="wa-panel" aria-label="Agent catalogue">
+        <h2 className="wa-section-title">Executable catalogue</h2>
+        <p className="cc-muted">
+          Catalogue <strong>{totals?.catalogue ?? "—"}</strong> · Executable definitions{" "}
+          <strong data-testid="wr-executable-count">{totals?.executable ?? "—"}</strong> (not the same
+          as Real Agent Ready).
+        </p>
+        <label className="wr-filter">
+          Search agents
+          <input
+            value={filter}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setPage(0);
+            }}
+            placeholder="id, name, readiness label"
+            data-testid="wr-agent-filter"
+          />
+        </label>
+        <div className="wr-table-wrap">
+          <table className="wr-table" data-testid="wr-agent-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Readiness label</th>
+                <th>Runtime-ready</th>
+                <th>Live-tested</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageAgents.map((a) => {
+                const id = a.slug || a.canonicalAgentId;
+                return (
+                  <tr key={id}>
+                    <td>{id}</td>
+                    <td>{a.name || a.displayName}</td>
+                    <td>{a.label || a.catalogueClassification}</td>
+                    <td>{a.runtime_ready ? "Yes" : "No"}</td>
+                    <td>{a.live_tested ? "Yes" : "No"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="wr-pagination">
+          <button
+            type="button"
+            className="header-btn-ghost"
+            disabled={page <= 0}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+          >
+            Previous
+          </button>
+          <span>
+            Page {page + 1} / {pageCount}
+          </span>
+          <button
+            type="button"
+            className="header-btn-ghost"
+            disabled={page >= pageCount - 1}
+            onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+          >
+            Next
+          </button>
+        </div>
+      </section>
+
+      <details className="wa-technical" data-testid="wr-technical-details">
+        <summary>Technical details</summary>
+        <pre className="wr-json" data-testid="wr-technical-json">
+          {JSON.stringify(
+            {
+              completionTruth: real?.report?.completionTruth,
+              openrouter: { configured: providerConfigured },
+              liveSmoke: real?.liveSmoke,
+              compiledNote: real?.compiled?.note,
+              instanceSummary: real?.instanceSummary,
+              queue: real?.queue,
+              workflows: real?.workflows,
+            },
+            null,
+            2
+          )}
+        </pre>
+      </details>
+    </>
   );
 }

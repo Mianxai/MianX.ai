@@ -3052,3 +3052,184 @@
   margin: 0.45rem 0 0;
   padding-left: 1.1rem;
 }
+
+/* Workforce Setup / Readiness foundation UI */
+.wa-page {
+  display: grid;
+  gap: 1rem;
+}
+.wa-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.85rem;
+  margin: -0.25rem 0 0.25rem;
+}
+.wa-section-title {
+  margin: 0 0 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+.wa-panel {
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.wa-checklist {
+  margin: 0;
+  padding-left: 1.35rem;
+  display: grid;
+  gap: 0.35rem;
+}
+.wa-checklist li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+  padding: 0.15rem 0;
+}
+.wa-checklist-label {
+  flex: 1 1 auto;
+}
+.wa-status-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.wa-status-pill--ready {
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.35);
+}
+.wa-status-pill--blocked {
+  color: #fda4af;
+  border-color: rgba(244, 63, 94, 0.35);
+}
+.wa-status-pill--optional-until-foundation,
+.wa-status-pill--optional {
+  color: #fde68a;
+  border-color: rgba(234, 179, 8, 0.35);
+}
+.wa-status-pill--action-required,
+.wa-status-pill--warning {
+  color: #fde68a;
+  border-color: rgba(234, 179, 8, 0.35);
+}
+.wa-actions {
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.wa-action-hint {
+  margin: 0.55rem 0 0;
+}
+.wa-results {
+  display: grid;
+  gap: 0.65rem;
+}
+.wa-result-card {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.wa-result-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+}
+.wa-result-card p {
+  margin: 0;
+  line-height: 1.4;
+}
+.wa-confirm-modal {
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  max-width: 32rem;
+}
+.wa-confirm-modal input {
+  display: block;
+  width: 100%;
+  margin: 0.45rem 0 0.75rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+}
+.wa-technical {
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.wa-technical summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.wa-metric-hint {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+.wa-status-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.3rem;
+}
+.wr-filter {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.65rem 0;
+  font-size: 0.85rem;
+}
+.wr-filter input {
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+}
+.wr-table-wrap {
+  overflow-x: auto;
+}
+.wr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.wr-table th,
+.wr-table td {
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.wr-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.65rem;
+}
+.wr-json {
+  margin: 0.55rem 0 0;
+  padding: 0.65rem;
+  overflow: auto;
+  max-height: 18rem;
+  font-size: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.25);
+}
+@media (max-width: 900px) {
+  .wa-checklist li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
