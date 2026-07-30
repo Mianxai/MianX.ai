@@ -193,6 +193,20 @@ export default function WorkflowsClient() {
   const selectedInstanceCount =
     definitions.find((d) => d.id === selected)?.currentInstances || 0;
 
+  const hasReviewPlan =
+    opsSummary?.next_founder_action?.id === "review_plan" ||
+    opsSummary?.next_founder_action?.label === "Review Plan" ||
+    opsSummary?.canonical_integration_run?.proof_status === "awaiting_plan_approval" ||
+    opsSummary?.canonical_integration_run?.stage === "founder_approval_required";
+
+  const reviewPlanHref = projectId
+    ? `/admin/integration?project_id=${encodeURIComponent(projectId)}${
+        opsSummary?.canonical_integration_run?.id
+          ? `&run_id=${encodeURIComponent(opsSummary.canonical_integration_run.id)}`
+          : ""
+      }&tab=plan`
+    : "/admin/integration";
+
   return (
     <AdminShell
       title="Workflows"
@@ -211,8 +225,8 @@ export default function WorkflowsClient() {
     >
       <div className="cc-page admin-page-compact">
         <p className="cc-muted">
-          Workflow definitions and live instances. Instances require a selected
-          project with runtime tasks.
+          Workflow definitions (catalog) and live instances. Instances require a selected
+          project with runtime tasks — definitions alone are not active work.
         </p>
         <FounderActionBanner summary={opsSummary} projectId={projectId} />
         {loading && !data ? (
@@ -226,9 +240,18 @@ export default function WorkflowsClient() {
           </div>
         ) : null}
 
-        <section className="cc-card admin-card-compact" aria-labelledby="wf-defs-heading">
-          <h2 id="wf-defs-heading">Definitions</h2>
-          <div className="admin-toolbar" role="search">
+        <section
+          className="cc-card admin-card-compact admin-workflow-definitions"
+          aria-labelledby="wf-defs-heading"
+        >
+          <div className="cc-card-head">
+            <h2 id="wf-defs-heading">Definitions</h2>
+            <span className="scope-badge scope-badge--org">Catalog only</span>
+          </div>
+          <p className="cc-muted" style={{ marginTop: 0 }}>
+            Platform workflow chains. Catalog status is not a live instance.
+          </p>
+          <div className="admin-toolbar admin-toolbar--wrap" role="search">
             <label className="admin-toolbar-field">
               <span className="sr-only">Search workflows</span>
               <input
@@ -260,7 +283,7 @@ export default function WorkflowsClient() {
                 checked={activeOnly}
                 onChange={(e) => setActiveOnly(e.target.checked)}
               />
-              Active instances only
+              With instances only
             </label>
           </div>
           <div className="admin-table-wrap admin-table-wrap--sticky">
@@ -271,13 +294,16 @@ export default function WorkflowsClient() {
                   <th scope="col">Category</th>
                   <th scope="col">Stages</th>
                   <th scope="col">Current instances</th>
-                  <th scope="col">Status</th>
+                  <th scope="col">Catalog status</th>
                   <th scope="col">Open</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredDefs.map((d) => (
-                  <tr key={d.id} className="admin-workflow-row">
+                  <tr
+                    key={d.id}
+                    className={`admin-workflow-row admin-workflow-row--${d.status}`}
+                  >
                     <td>
                       <strong>{d.label}</strong>
                       <div className="cc-muted">
@@ -288,7 +314,17 @@ export default function WorkflowsClient() {
                     <td>{d.stageCount}</td>
                     <td>{d.currentInstances}</td>
                     <td>
-                      <code>{d.status}</code>
+                      <span
+                        className={`admin-status-badge ${
+                          d.status === "active"
+                            ? "healthy"
+                            : d.status === "idle"
+                              ? "warning"
+                              : "unconfigured"
+                        }`}
+                      >
+                        {d.status === "catalog" ? "definition" : d.status}
+                      </span>
                     </td>
                     <td>
                       <button
@@ -313,26 +349,50 @@ export default function WorkflowsClient() {
           </div>
         </section>
 
-        <section className="cc-card admin-card-compact" aria-labelledby="wf-inst-heading">
-          <h2 id="wf-inst-heading">Instances</h2>
+        <section
+          className="cc-card admin-card-compact admin-workflow-instances"
+          aria-labelledby="wf-inst-heading"
+        >
+          <div className="cc-card-head">
+            <h2 id="wf-inst-heading">Instances</h2>
+            <span className="scope-badge scope-badge--project">Live project work</span>
+          </div>
           {!projectId ? (
             <EmptyState
+              compact
               title="Select a project"
               reason="Workflow instances are project-scoped tasks with workflow metadata — not a separate sample store."
               configuration="Definitions above are catalog-only until a project has live instances."
-              nextAction="Choose a project to see live workflow progress, or open Objectives to start work."
+              nextAction="Choose a project to see live workflow progress."
               projectLabel="none"
               cta={
-                <Link className="header-btn" href="/admin/projects">
+                <Link className="header-btn-ghost" href="/admin/projects">
                   Open projects
                 </Link>
               }
             />
           ) : !instances.length ? (
-            <p className="cc-muted" data-testid="workflows-empty-instances">
-              No workflow instances yet. Prerequisite: Founder Plan Approval,
-              Simulation Approval and explicit Simulation Start.
-            </p>
+            <div data-testid="workflows-empty-instances">
+              <EmptyState
+                compact
+                title="No workflow instances yet"
+                reason="No live instances for this project. Definitions above are not sample instances."
+                configuration="Prerequisite: Founder Plan Approval, Simulation Approval, and explicit Simulation Start."
+                nextAction={hasReviewPlan ? null : "Review the Founder Proof plan to continue."}
+                projectLabel={projectId}
+                cta={
+                  hasReviewPlan ? (
+                    <Link className="admin-empty-link" href={reviewPlanHref}>
+                      Review Plan
+                    </Link>
+                  ) : (
+                    <Link className="header-btn-ghost" href={reviewPlanHref}>
+                      Review Plan
+                    </Link>
+                  )
+                }
+              />
+            </div>
           ) : (
             <div className="admin-table-wrap">
               <table className="admin-data-table admin-data-table--dense">

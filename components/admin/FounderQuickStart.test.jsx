@@ -72,6 +72,8 @@ describe("FounderActionBanner", () => {
       /Simulation will not start automatically/i
     );
     expect(screen.getByTestId("founder-action-banner-cta").textContent).toMatch(/Review Plan/);
+    expect(screen.getByTestId("founder-action-banner-tech")).toBeTruthy();
+    expect(screen.getByText(/Technical Details/i)).toBeTruthy();
     expect(screen.queryByTestId("founder-quick-start")).toBeNull();
     expect(screen.queryByText(/What will not happen/i)).toBeNull();
     expect(screen.queryByText(/Current objective/i)).toBeNull();

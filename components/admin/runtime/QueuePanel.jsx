@@ -263,10 +263,8 @@ export default function QueuePanel({
               health.config.rateLimit.durable ? "durable adapter" : "in-memory"
             } · `
           : null}
-        {scheduler.summary}
-        {scheduler.automaticProcessing
-          ? " Manual Run tick remains available for diagnostics."
-          : ""}
+        Scheduler state is summarised under Advanced Diagnostics. Manual Run tick
+        is not the primary Founder workflow.
       </p>
 
       <div className="runtime-queue-toolbar">
@@ -293,19 +291,6 @@ export default function QueuePanel({
         <button
           type="button"
           className="header-btn-ghost"
-          data-testid="queue-run-tick"
-          onClick={() => void runManualTick()}
-          disabled={ticking || refreshing}
-        >
-          {ticking ? (
-            <MianxLoader variant="inline" label="Running tick…" />
-          ) : (
-            "Run tick"
-          )}
-        </button>
-        <button
-          type="button"
-          className="header-btn-ghost"
           data-testid="queue-refresh"
           onClick={() => void load({ background: true })}
           disabled={refreshing || ticking}
@@ -317,6 +302,32 @@ export default function QueuePanel({
           )}
         </button>
       </div>
+
+      <details
+        className="runtime-advanced"
+        data-testid="queue-advanced-diagnostics"
+      >
+        <summary>Advanced Diagnostics</summary>
+        <p className="runtime-muted" data-testid="queue-scheduler-state">
+          {scheduler.summary}
+          {scheduler.automaticProcessing
+            ? " Manual Run tick remains a diagnostic only — not the primary Founder workflow."
+            : " Manual Run tick processes queued jobs only; it does not bypass Founder approvals or advance Founder Proof by itself."}
+        </p>
+        <button
+          type="button"
+          className="header-btn-ghost"
+          data-testid="queue-run-tick"
+          onClick={() => void runManualTick()}
+          disabled={ticking || refreshing}
+        >
+          {ticking ? (
+            <MianxLoader variant="inline" label="Running tick…" />
+          ) : (
+            "Run tick"
+          )}
+        </button>
+      </details>
 
       {error && (
         <p className="runtime-error-text" role="alert">
@@ -349,7 +360,7 @@ export default function QueuePanel({
             statusFilter === "all"
               ? scheduler.automaticProcessing
                 ? "Enqueue work from Tasks or Objectives; the configured scheduler should drain the queue."
-                : "Create a task and enqueue it, then use Run tick to process when operating manually."
+                : "Enqueue work from Tasks when needed. Use Advanced Diagnostics → Run tick only for manual diagnostics."
               : "Try the All filter or refresh after a tick."
           }
           projectLabel={projectId}

@@ -10,10 +10,14 @@ export default function EmptyState({
   nextAction = null,
   cta = null,
   projectLabel = null,
+  compact = false,
   children = null,
 }) {
   return (
-    <div className="admin-empty-state" role="status">
+    <div
+      className={`admin-empty-state${compact ? " admin-empty-state--compact" : ""}`}
+      role="status"
+    >
       <h2 className="admin-empty-title">{title}</h2>
       {reason ? <p className="cc-muted">{reason}</p> : null}
       {configuration ? <p className="cc-muted">{configuration}</p> : null}

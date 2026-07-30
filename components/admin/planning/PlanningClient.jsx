@@ -57,7 +57,6 @@ export default function PlanningClient() {
   const [approvals, setApprovals] = useState([]);
   const [history, setHistory] = useState(null);
   const [projects, setProjects] = useState([]);
-  const [showAdvancedCreate, setShowAdvancedCreate] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -235,7 +234,7 @@ export default function PlanningClient() {
       <FounderActionBanner summary={opsSummary} projectId={projectId} />
 
       {activeProof ? (
-        <div className="cc-card" data-testid="planning-active-proof-banner" role="status">
+        <div className="cc-card admin-card-compact" data-testid="planning-active-proof-banner" role="status">
           <h2>Active Founder Production Proof</h2>
           <p>
             Stage:{" "}
@@ -244,6 +243,20 @@ export default function PlanningClient() {
                 opsSummary?.canonical_integration_run?.stage ||
                 "—"}
             </strong>
+            {opsSummary?.canonical_integration_run?.proof_status ===
+              "awaiting_plan_approval" ||
+            opsSummary?.canonical_integration_run?.stage ===
+              "founder_approval_required" ? (
+              <>
+                {" "}
+                · <span className="admin-status-badge warning">Awaiting approval</span>
+              </>
+            ) : opsSummary?.canonical_integration_run?.proof_status ? (
+              <>
+                {" "}
+                · <span className="admin-status-badge healthy">In progress</span>
+              </>
+            ) : null}
           </p>
           <p className="cc-muted">
             Continue the canonical proof plan in Founder Proof. Do not create a parallel planning
@@ -251,11 +264,12 @@ export default function PlanningClient() {
           </p>
           <Link
             className="header-btn"
+            data-testid="planning-continue-canonical"
             href={`/admin/integration?project_id=${encodeURIComponent(projectId)}&run_id=${encodeURIComponent(
               opsSummary.canonical_integration_run.id
             )}&tab=plan`}
           >
-            Continue canonical proof plan
+            Continue Canonical Proof Plan
           </Link>
         </div>
       ) : null}
@@ -275,20 +289,64 @@ export default function PlanningClient() {
         ))}
       </div>
 
-      {activeProof && !showAdvancedCreate ? (
-        <div className="cc-card" style={{ margin: "0.75rem 0" }}>
-          <p className="cc-muted">
-            Advanced / Separate planning package is hidden while a Founder Proof is active.
+      {activeProof ? (
+        <details
+          className="cc-card admin-card-compact"
+          style={{ margin: "0.75rem 0" }}
+          data-testid="planning-advanced-create-details"
+        >
+          <summary data-testid="planning-show-advanced-create">
+            Advanced / Separate planning package
+          </summary>
+          <p className="cc-muted" style={{ marginTop: "0.65rem" }}>
+            Collapsed while a Founder Proof is active. Creating a package here does not advance
+            the proof.
           </p>
-          <button
-            type="button"
-            className="header-btn-ghost"
-            data-testid="planning-show-advanced-create"
-            onClick={() => setShowAdvancedCreate(true)}
+          <form
+            onSubmit={createPlan}
+            data-testid="planning-create-form"
+            style={{ marginTop: "0.65rem" }}
           >
-            Show advanced separate package form
-          </button>
-        </div>
+            <p className="admin-warning" role="note">
+              This package will not alter the canonical Founder Proof stage or appear as proof
+              evidence.
+            </p>
+            <label htmlFor="plan-objective">
+              Founder objective
+              <textarea
+                id="plan-objective"
+                value={objective}
+                onChange={(e) => setObjective(e.target.value)}
+                rows={2}
+                style={{ width: "100%", marginTop: "0.35rem" }}
+                required
+              />
+            </label>
+            <label htmlFor="plan-horizon" style={{ display: "block", marginTop: "0.5rem" }}>
+              Horizon
+              <select
+                id="plan-horizon"
+                value={horizon}
+                onChange={(e) => setHorizon(e.target.value)}
+                style={{ marginLeft: "0.5rem" }}
+              >
+                <option value="30_day">30 day</option>
+                <option value="90_day">90 day</option>
+                <option value="180_day">180 day</option>
+                <option value="1_year">1 year</option>
+                <option value="multi_year">Multi-year</option>
+              </select>
+            </label>
+            <button
+              type="submit"
+              className="header-btn-ghost"
+              disabled={busy || !projectId}
+              style={{ marginTop: "0.5rem" }}
+            >
+              {busy ? "Creating…" : "Create separate package"}
+            </button>
+          </form>
+        </details>
       ) : (
         <form
           className="cc-card"
@@ -296,17 +354,7 @@ export default function PlanningClient() {
           style={{ margin: "0.75rem 0" }}
           data-testid="planning-create-form"
         >
-          <h3>
-            {activeProof
-              ? "Advanced / Separate planning package"
-              : "Create planning package"}
-          </h3>
-          {activeProof ? (
-            <p className="admin-warning" role="note">
-              This package will not alter the canonical Founder Proof stage or appear as proof
-              evidence.
-            </p>
-          ) : null}
+          <h3>Create planning package</h3>
           <label htmlFor="plan-objective">
             Founder objective
             <textarea
@@ -339,7 +387,7 @@ export default function PlanningClient() {
             disabled={busy || !projectId}
             style={{ marginTop: "0.5rem" }}
           >
-            {busy ? "Creating…" : activeProof ? "Create separate package" : "Create planning package"}
+            {busy ? "Creating…" : "Create planning package"}
           </button>
         </form>
       )}
@@ -388,36 +436,27 @@ export default function PlanningClient() {
             return (
               <>
                 <section
-                  className="cc-card"
+                  className="cc-card admin-card-compact"
                   style={{ margin: "0.75rem 0" }}
                   data-testid="planning-founder-proof-metrics"
                 >
                   <h3>Founder Proof Plans</h3>
-                  {proofAwaiting ? (
-                    <p role="status">
-                      Awaiting approval:{" "}
-                      <strong>
-                        {Math.max(
-                          overview?.founder_proof_plans?.awaiting_approval || 0,
-                          1
-                        )}
-                      </strong>
-                      {" · "}
-                      Approved: <strong>{proofApproved || 0}</strong>
-                    </p>
-                  ) : (
-                    <p>
-                      Awaiting approval:{" "}
-                      <strong>
-                        {overview?.founder_proof_plans?.awaiting_approval || 0}
-                      </strong>
-                      {" · "}
-                      Approved:{" "}
-                      <strong>
-                        {overview?.founder_proof_plans?.approved || proofApproved || 0}
-                      </strong>
-                    </p>
-                  )}
+                  <p role={proofAwaiting ? "status" : undefined}>
+                    Awaiting approval:{" "}
+                    <strong>
+                      {proofAwaiting
+                        ? Math.max(
+                            overview?.founder_proof_plans?.awaiting_approval || 0,
+                            1
+                          )
+                        : overview?.founder_proof_plans?.awaiting_approval || 0}
+                    </strong>
+                    {" · "}
+                    Approved:{" "}
+                    <strong>
+                      {overview?.founder_proof_plans?.approved || proofApproved || 0}
+                    </strong>
+                  </p>
                   {proofAwaiting ? (
                     <p className="cc-muted">
                       A Founder Proof plan is waiting for approval — this is not an empty
@@ -426,24 +465,45 @@ export default function PlanningClient() {
                   ) : null}
                 </section>
 
-                <section
-                  className="cc-card"
-                  style={{ margin: "0.75rem 0" }}
-                  data-testid="planning-advanced-package-metrics"
-                >
-                  <h3>Advanced Separate Planning Packages</h3>
-                  <p>
-                    Draft: <strong>{advanced.draft || 0}</strong>
-                    {" · "}
-                    Awaiting: <strong>{advanced.awaiting_approval || 0}</strong>
-                    {" · "}
-                    Approved: <strong>{advanced.approved || 0}</strong>
-                  </p>
-                  <p className="cc-muted">
-                    These packages are independent of the Founder Proof plan and never
-                    advance proof stage automatically.
-                  </p>
-                </section>
+                {activeProof ? (
+                  <details
+                    className="cc-card admin-card-compact"
+                    style={{ margin: "0.75rem 0" }}
+                    data-testid="planning-advanced-package-metrics"
+                  >
+                    <summary>Advanced Separate Planning Packages</summary>
+                    <p style={{ marginTop: "0.65rem" }}>
+                      Draft: <strong>{advanced.draft || 0}</strong>
+                      {" · "}
+                      Awaiting: <strong>{advanced.awaiting_approval || 0}</strong>
+                      {" · "}
+                      Approved: <strong>{advanced.approved || 0}</strong>
+                    </p>
+                    <p className="cc-muted">
+                      These packages are independent of the Founder Proof plan and never
+                      advance proof stage automatically.
+                    </p>
+                  </details>
+                ) : (
+                  <section
+                    className="cc-card admin-card-compact"
+                    style={{ margin: "0.75rem 0" }}
+                    data-testid="planning-advanced-package-metrics"
+                  >
+                    <h3>Advanced Separate Planning Packages</h3>
+                    <p>
+                      Draft: <strong>{advanced.draft || 0}</strong>
+                      {" · "}
+                      Awaiting: <strong>{advanced.awaiting_approval || 0}</strong>
+                      {" · "}
+                      Approved: <strong>{advanced.approved || 0}</strong>
+                    </p>
+                    <p className="cc-muted">
+                      These packages are independent of the Founder Proof plan and never
+                      advance proof stage automatically.
+                    </p>
+                  </section>
+                )}
               </>
             );
           })()}

@@ -1095,6 +1095,48 @@ no fabricated live AI completion, no auto Founder approval.
 
 ---
 
+## 19. Phase H.2 — Production reliability + Admin finalisation (Draft PR)
+
+Branch: `cursor/phase-h2-production-reliability-admin-finalisation`  
+Base: `origin/main` @ `4e25bac` (includes merged PR #59 / `f644fab`).
+
+### Scheduler root cause (read-only)
+
+GitHub Actions `Runtime tick` succeeds when it fires, but scheduled deliveries are
+sparse (hours apart), not every 5 minutes. Target cron remains `*/5 * * * *`;
+GitHub schedule delivery is approximate. Health thresholds now use grace windows
+(Healthy ≤2×, Delayed ≤6×, Stale >6× interval).
+
+### Scope
+
+Hardened `runtime-tick.yml` (retry, job summary, concurrency), Founder Action
+hierarchy, Approvals/Knowledge/Planning/Runtime/Audit/Settings finalisation,
+sidebar scroll, visual density.
+
+### Explicit non-goals
+
+No merge, no production deploy, no proof mutation, no Anthropic, no Phase I,
+no migration.
+
+### Gate evidence (local — before Draft PR)
+
+| Gate | Result |
+|------|--------|
+| `npm test` | 152 files, 1065 passed / 2 skipped |
+| `npm run lint` | pass |
+| `npm run typecheck` | pass |
+| `npm run build` | pass |
+| `npm audit --omit=dev` | 0 vulnerabilities |
+| `npm audit` | 13 high (dev-only; no `--force`) |
+| `npm run test:browser-harness` | 28 passed / 2 skipped |
+| `npm run test:browser-harness:chrome` | 30 passed |
+| `npx playwright test` | 130 passed |
+| Screenshots | `e2e-artifacts/h2-production-reliability/` |
+
+Status: **READY FOR DRAFT PR** (do not merge / do not deploy).
+
+---
+
 ## 18b. Phase H.1 — Truth reconciliation closeout (Draft PR)
 
 Branch: `cursor/phase-h1-truth-reconciliation-closeout`  

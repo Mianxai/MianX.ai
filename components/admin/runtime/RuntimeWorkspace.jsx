@@ -13,6 +13,12 @@ import { afterNextPaint } from "@/lib/after-paint";
 import { explainApproval } from "@/lib/core/approvals/explain";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { useProjectOperationalSummary } from "@/lib/admin-ops-summary";
+import {
+  AUDIT_FILTERS,
+  humanAuditEventLabel,
+  filterAuditEvents,
+  auditEventBadges,
+} from "@/lib/core/audit-labels";
 
 const TABS = [
   ["overview", "Overview"],
@@ -234,13 +240,11 @@ export default function RuntimeWorkspace({
             </option>
           ))}
         </select>
-        {activeTab !== "approvals" && (
-          <ProjectCreator
-            disabled={notConfigured || bootstrapping}
-            call={call}
-            onCreated={() => void loadProjects({ background: true })}
-          />
-        )}
+        {projects.length === 0 && !bootstrapping && !notConfigured ? (
+          <Link className="header-btn-ghost" href="/admin/projects">
+            Open projects
+          </Link>
+        ) : null}
         {!showChrome && (
           <button
             type="button"
@@ -352,116 +356,84 @@ export default function RuntimeWorkspace({
   );
 }
 
-function ProjectCreator({ disabled, call, onCreated }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-
-  async function submit(e) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setBusy(true);
-    setErr("");
-    const res = await call("/api/core/projects", {
-      method: "POST",
-      body: JSON.stringify({ name: name.trim() }),
-    });
-    setBusy(false);
-    if (!res.ok) {
-      setErr(errorMessage(res.data, "Could not create project."));
-      return;
-    }
-    setName("");
-    setOpen(false);
-    onCreated?.();
-  }
-
-  if (!open) {
-    return (
-      <button className="header-btn" disabled={disabled} onClick={() => setOpen(true)}>
-        New Project
-      </button>
-    );
-  }
-  return (
-    <form className="runtime-inline-form" onSubmit={submit}>
-      <label htmlFor="new-project-name" className="sr-only">
-        New project name
-      </label>
-      <input
-        id="new-project-name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Project name"
-        autoFocus
-      />
-      <button className="header-btn" type="submit" disabled={busy}>
-        {busy ? <MianxLoader variant="inline" label="Creating project…" /> : "Create"}
-      </button>
-      <button
-        className="header-btn-ghost"
-        type="button"
-        onClick={() => setOpen(false)}
-      >
-        Cancel
-      </button>
-      {err && <span className="runtime-error-text" role="alert">{err}</span>}
-    </form>
-  );
-}
-
 function OverviewPanel({ health, projects }) {
   const cfg = health?.config;
   const rateLimit = cfg?.rateLimit;
   const scheduler = cfg?.scheduler;
+  const anthropicOk = Boolean(cfg?.providers?.anthropic);
   const rateLabel = rateLimit?.durable
     ? "Durable adapter active"
     : rateLimit?.urlConfigured
       ? "In-memory (URL set, adapter inactive)"
       : "In-memory (single instance)";
-  const schedulerLabel = scheduler?.automaticProcessing
-    ? "Automatic processing"
-    : scheduler?.readyForExternalScheduler
-      ? "Manual — worker secret ready for external cron"
-      : "Manual — configure CRON_SECRET / INTERNAL_RUNTIME_SECRET for scheduler";
+  const schedulerMode = scheduler?.mode || "manual";
+  const schedulerIsWarning =
+    schedulerMode === "warning" ||
+    schedulerMode === "delayed" ||
+    schedulerMode === "stale";
+  let schedulerLabel;
+  if (scheduler?.automaticProcessing && !schedulerIsWarning) {
+    schedulerLabel = "Automatic processing";
+  } else if (schedulerIsWarning) {
+    schedulerLabel =
+      scheduler?.founderGuidance ||
+      "Warning: last tick is older than the expected cadence. Check GitHub Actions / external cron — not a Level-1 Founder Proof failure.";
+  } else if (scheduler?.readyForExternalScheduler) {
+    schedulerLabel = "Manual — worker secret ready for external cron";
+  } else {
+    schedulerLabel =
+      "Manual — configure CRON_SECRET / INTERNAL_RUNTIME_SECRET for scheduler";
+  }
 
   return (
-    <div className="runtime-cards">
-      <div className="runtime-card">
-        <h3>Service</h3>
-        <p className="runtime-metric">{health?.ok ? "Healthy" : "Unknown"}</p>
-        <p className="runtime-muted">{health?.service || "mianx-core"}</p>
-      </div>
-      <div className="runtime-card">
-        <h3>Supabase</h3>
-        <p className="runtime-metric">{cfg?.supabase ? "Configured" : "Not configured"}</p>
-      </div>
-      <div className="runtime-card">
-        <h3>AI provider</h3>
-        <p className="runtime-metric">
-          {cfg?.providers?.anthropic ? "Configured" : "Not configured"}
-        </p>
-        <p className="runtime-muted">Anthropic</p>
-      </div>
-      <div className="runtime-card">
-        <h3>Projects</h3>
-        <p className="runtime-metric">{projects.length}</p>
-      </div>
-      <div className="runtime-card">
-        <h3>Registered agents</h3>
-        <p className="runtime-metric">{health?.agents ?? 0}</p>
-        <p className="runtime-muted">catalog definitions</p>
-      </div>
-      <div className="runtime-card">
-        <h3>Rate limit</h3>
-        <p className="runtime-metric">{rateLimit?.durable ? "Durable" : "In-memory"}</p>
-        <p className="runtime-muted">{rateLabel}</p>
-      </div>
-      <div className="runtime-card">
-        <h3>Scheduler</h3>
-        <p className="runtime-metric">{scheduler?.mode || "manual"}</p>
-        <p className="runtime-muted">{schedulerLabel}</p>
+    <div>
+      <p className="runtime-muted" role="note" data-testid="overview-warning-note">
+        Warning states mean operational delay or optional configuration — not a
+        Level-1 Founder Proof failure. Deterministic proof does not require a live
+        AI provider.
+      </p>
+      <div className="runtime-cards">
+        <div className="runtime-card">
+          <h3>Service</h3>
+          <p className="runtime-metric">{health?.ok ? "Healthy" : "Unknown"}</p>
+          <p className="runtime-muted">{health?.service || "mianx-core"}</p>
+        </div>
+        <div className="runtime-card">
+          <h3>Supabase</h3>
+          <p className="runtime-metric">{cfg?.supabase ? "Configured" : "Not configured"}</p>
+        </div>
+        <div className="runtime-card" data-testid="overview-ai-provider">
+          <h3>AI provider</h3>
+          <p className="runtime-metric">
+            {anthropicOk ? "Configured" : "Not configured"}
+          </p>
+          <p className="runtime-muted">
+            {anthropicOk
+              ? "Anthropic"
+              : "Not required for deterministic Founder Proof"}
+          </p>
+        </div>
+        <div className="runtime-card">
+          <h3>Projects</h3>
+          <p className="runtime-metric">{projects.length}</p>
+        </div>
+        <div className="runtime-card">
+          <h3>Registered agents</h3>
+          <p className="runtime-metric">{health?.agents ?? 0}</p>
+          <p className="runtime-muted">catalog definitions</p>
+        </div>
+        <div className="runtime-card">
+          <h3>Rate limit</h3>
+          <p className="runtime-metric">{rateLimit?.durable ? "Durable" : "In-memory"}</p>
+          <p className="runtime-muted">{rateLabel}</p>
+        </div>
+        <div className="runtime-card" data-testid="overview-scheduler">
+          <h3>Scheduler</h3>
+          <p className="runtime-metric">
+            {schedulerIsWarning ? `Warning · ${schedulerMode}` : schedulerMode}
+          </p>
+          <p className="runtime-muted">{schedulerLabel}</p>
+        </div>
       </div>
     </div>
   );
@@ -566,6 +538,12 @@ function AgentsPanel({ call, projectId, opsSummary: _opsSummary }) {
     <div className="runtime-split">
       <section aria-labelledby="catalog-h">
         <h3 id="catalog-h">Agent catalog</h3>
+        <p className="runtime-muted" role="note" data-testid="agents-allocation-note">
+          Founder Proof allocates proposed agents after the proper approval and
+          start gates. Manual registration below is advanced administration only
+          and does not advance the Founder Production Proof. Capacity Inventory
+          (445) is planning capacity — not running agents.
+        </p>
         <div className="runtime-cards" aria-label="Agent counters" data-testid="agent-counters">
           <div className="runtime-card runtime-card-compact">
             <h3>Executable Agent Definitions</h3>
@@ -591,63 +569,73 @@ function AgentsPanel({ call, projectId, opsSummary: _opsSummary }) {
             <p className="runtime-muted">Planning capacity only — not running agents.</p>
           </div>
         </div>
-        <ul className="runtime-list">
-          {catalog.map((a) => {
-            const life = a.lifecycleStatus || a.lifecycle_status || "active";
-            const isDraft = life === "draft";
-            return (
-              <li key={a.slug} className="runtime-item">
-                <div>
-                  <strong>{a.name}</strong>
-                  <p className="runtime-muted">
-                    {a.slug} · v{a.version || 1} · {life}
-                  </p>
-                  <p className="runtime-muted">{a.purpose}</p>
-                  <p className="runtime-muted">
-                    Provider: {a.defaultProvider || a.default_provider || "anthropic"}
-                    {(a.defaultModel || a.default_model) ? ` / ${a.defaultModel || a.default_model}` : ""}
-                    {(a.requiresHumanApproval || a.requires_human_approval) ? " · approval required" : ""}
-                  </p>
-                  <p className="runtime-tags">
-                    {a.allowedCapabilities?.map((c) => (
-                      <span key={c} className="runtime-tag">{c}</span>
-                    ))}
-                  </p>
-                  {a.prohibitedCapabilities?.length > 0 && (
-                    <p className="runtime-tags" aria-label="Prohibited capabilities">
-                      {a.prohibitedCapabilities.map((c) => (
-                        <span key={c} className="runtime-tag" style={{ opacity: 0.7 }}>
-                          !{c}
-                        </span>
+        <details
+          className="runtime-advanced"
+          data-testid="advanced-manual-registration"
+        >
+          <summary>Advanced Manual Registration</summary>
+          <p className="runtime-muted" role="note">
+            Confirm before registering. Manual instances do not replace Founder
+            Proof allocation and do not imply that capacity inventory slots are live.
+          </p>
+          <ul className="runtime-list">
+            {catalog.map((a) => {
+              const life = a.lifecycleStatus || a.lifecycle_status || "active";
+              const isDraft = life === "draft";
+              return (
+                <li key={a.slug} className="runtime-item">
+                  <div>
+                    <strong>{a.name}</strong>
+                    <p className="runtime-muted">
+                      {a.slug} · v{a.version || 1} · {life}
+                    </p>
+                    <p className="runtime-muted">{a.purpose}</p>
+                    <p className="runtime-muted">
+                      Provider: {a.defaultProvider || a.default_provider || "anthropic"}
+                      {(a.defaultModel || a.default_model) ? ` / ${a.defaultModel || a.default_model}` : ""}
+                      {(a.requiresHumanApproval || a.requires_human_approval) ? " · approval required" : ""}
+                    </p>
+                    <p className="runtime-tags">
+                      {a.allowedCapabilities?.map((c) => (
+                        <span key={c} className="runtime-tag">{c}</span>
                       ))}
                     </p>
-                  )}
-                </div>
-                <button
-                  className="header-btn"
-                  disabled={!projectId || busySlug === a.slug || isDraft}
-                  title={isDraft ? "Draft definitions cannot be registered" : undefined}
-                  onClick={() => register(a.slug)}
-                >
-                  {busySlug === a.slug ? (
-                    <MianxLoader variant="inline" label="Registering agent…" />
-                  ) : (
-                    "Register"
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                    {a.prohibitedCapabilities?.length > 0 && (
+                      <p className="runtime-tags" aria-label="Prohibited capabilities">
+                        {a.prohibitedCapabilities.map((c) => (
+                          <span key={c} className="runtime-tag" style={{ opacity: 0.7 }}>
+                            !{c}
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    className="header-btn"
+                    disabled={!projectId || busySlug === a.slug || isDraft}
+                    title={isDraft ? "Draft definitions cannot be registered" : undefined}
+                    onClick={() => register(a.slug)}
+                  >
+                    {busySlug === a.slug ? (
+                      <MianxLoader variant="inline" label="Registering agent…" />
+                    ) : (
+                      "Register"
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </details>
       </section>
       <section aria-labelledby="instances-h">
         <h3 id="instances-h">Registered in this project</h3>
         {instances.length === 0 ? (
           <EmptyState
             title="No agents registered"
-            reason="This project has no registered agent instances yet. The catalog above lists definitions you can register — nothing is invented as sample data."
-            configuration="Registration requires a selected project and manage_agents capability."
-            nextAction="Instances appear after Founder-gated allocation or advanced manual registration."
+            reason="This project has no registered agent instances yet. Founder Proof will allocate proposed agents after approval/start gates — nothing is invented as sample data."
+            configuration="Manual registration is available under Advanced Manual Registration and requires manage_agents."
+            nextAction="Continue Founder Proof for allocation, or expand Advanced Manual Registration only when intentionally needed."
             projectLabel={projectId || "none"}
             cta={
               projectId ? (
@@ -784,16 +772,12 @@ function TasksPanel({ call, projectId, opsSummary }) {
 
   return (
     <div>
-      {nextAction ? (
-        <p className="runtime-muted" data-testid="tasks-ops-next">
-          Next Founder action:{" "}
-          {nextAction.href ? (
-            <Link href={nextAction.href}>{nextAction.label || nextAction.reason}</Link>
-          ) : (
-            nextAction.label || nextAction.reason
-          )}
-        </p>
-      ) : null}
+      <p className="runtime-muted" role="note" data-testid="tasks-proof-note">
+        Primary Founder action stays on the Founder Action Strip above (Review
+        Plan when due). Manual runtime tasks do not advance the Founder
+        Production Proof unless explicitly linked to its canonical objective and
+        run.
+      </p>
       <TaskCreator
         call={call}
         projectId={projectId}
@@ -822,7 +806,7 @@ function TasksPanel({ call, projectId, opsSummary }) {
           title={tasks.length === 0 ? "No tasks yet" : "No matching tasks"}
           reason={
             tasks.length === 0
-              ? "This project has no tasks yet. Create one below, or start work from Objectives / workflows — the list is not seeded with samples."
+              ? "This project has no agent runtime tasks yet. Founder Proof work lives under Founder Proof — expand Advanced Runtime Task only for standalone diagnostics."
               : `No tasks with status “${statusFilter}”.`
           }
           configuration={
@@ -832,7 +816,8 @@ function TasksPanel({ call, projectId, opsSummary }) {
           }
           nextAction={
             tasks.length === 0
-              ? "After creating a task, enqueue it to the queue for a worker tick."
+              ? nextAction?.label ||
+                "Use Review Plan on the Founder Action Strip when plan approval is due."
               : "Clear or change the status filter."
           }
           projectLabel={projectId}
@@ -840,9 +825,9 @@ function TasksPanel({ call, projectId, opsSummary }) {
             tasks.length === 0 ? (
               <Link
                 className="header-btn-ghost"
-                href={`/admin/objectives?project_id=${encodeURIComponent(projectId)}`}
+                href={`/admin/integration?project_id=${encodeURIComponent(projectId)}`}
               >
-                Objectives
+                Open Founder Proof
               </Link>
             ) : null
           }
@@ -864,7 +849,7 @@ function TasksPanel({ call, projectId, opsSummary }) {
   );
 }
 
-function TaskCreator({ call, projectId, onCreated, opsSummary }) {
+function TaskCreator({ call, projectId, onCreated, opsSummary: _opsSummary }) {
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState("normal");
   const [requiresApproval, setRequiresApproval] = useState(false);
@@ -940,78 +925,76 @@ function TaskCreator({ call, projectId, onCreated, opsSummary }) {
     onCreated?.();
   }
 
-  const next = opsSummary?.next_founder_action;
-
   return (
-    <form className="runtime-form" onSubmit={submit} aria-label="Advanced Runtime Task">
-      <h3>Advanced Runtime Task</h3>
-      <p className="runtime-muted" role="note">
-        Manual tasks do not advance the active Founder Production Proof unless
-        explicitly linked to its canonical objective and run.
-      </p>
-      {next?.href ? (
-        <p className="runtime-muted">
-          Prefer the Founder path:{" "}
-          <Link href={next.href}>{next.label || "Open next Founder action"}</Link>
+    <details
+      className="runtime-advanced"
+      data-testid="advanced-runtime-task"
+    >
+      <summary>Advanced Runtime Task</summary>
+      <form className="runtime-form" onSubmit={submit} aria-label="Advanced Runtime Task">
+        <p className="runtime-muted" role="note">
+          Manual tasks do not advance the active Founder Production Proof unless
+          explicitly linked to its canonical objective and run. Prefer Review Plan
+          on the Founder Action Strip when that is the due Founder action.
         </p>
-      ) : null}
-      <div className="runtime-form-row">
-        <label htmlFor="task-title">Title *</label>
-        <input
-          id="task-title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-          maxLength={200}
-        />
-      </div>
-      <div className="runtime-form-row">
-        <label htmlFor="task-source">Source classification</label>
-        <select
-          id="task-source"
-          value={sourceClassification}
-          onChange={(e) => setSourceClassification(e.target.value)}
-        >
-          <option value="standalone_advanced">standalone_advanced</option>
-          <option value="linked_to_objective">linked_to_objective</option>
-        </select>
-      </div>
-      <div className="runtime-form-row">
-        <label htmlFor="task-priority">Priority</label>
-        <select
-          id="task-priority"
-          value={priority}
-          onChange={(e) => setPriority(e.target.value)}
-        >
-          {["low", "normal", "high", "urgent"].map((p) => (
-            <option key={p} value={p}>{p}</option>
-          ))}
-        </select>
-      </div>
-      <div className="runtime-form-row">
-        <label htmlFor="task-input">Input (JSON)</label>
-        <textarea
-          id="task-input"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          rows={3}
-          spellCheck={false}
-        />
-      </div>
-      <div className="runtime-form-row runtime-checkbox">
-        <input
-          id="task-approval"
-          type="checkbox"
-          checked={requiresApproval}
-          onChange={(e) => setRequiresApproval(e.target.checked)}
-        />
-        <label htmlFor="task-approval">Require human approval before running</label>
-      </div>
-      {err && <p className="runtime-error-text" role="alert">{err}</p>}
-      <button className="header-btn" type="submit" disabled={busy}>
-        {busy ? <MianxLoader variant="inline" label="Creating task…" /> : "Create Task"}
-      </button>
-    </form>
+        <div className="runtime-form-row">
+          <label htmlFor="task-title">Title *</label>
+          <input
+            id="task-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+            maxLength={200}
+          />
+        </div>
+        <div className="runtime-form-row">
+          <label htmlFor="task-source">Source classification</label>
+          <select
+            id="task-source"
+            value={sourceClassification}
+            onChange={(e) => setSourceClassification(e.target.value)}
+          >
+            <option value="standalone_advanced">standalone_advanced</option>
+            <option value="linked_to_objective">linked_to_objective</option>
+          </select>
+        </div>
+        <div className="runtime-form-row">
+          <label htmlFor="task-priority">Priority</label>
+          <select
+            id="task-priority"
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+          >
+            {["low", "normal", "high", "urgent"].map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+        <div className="runtime-form-row">
+          <label htmlFor="task-input">Input (JSON)</label>
+          <textarea
+            id="task-input"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            rows={3}
+            spellCheck={false}
+          />
+        </div>
+        <div className="runtime-form-row runtime-checkbox">
+          <input
+            id="task-approval"
+            type="checkbox"
+            checked={requiresApproval}
+            onChange={(e) => setRequiresApproval(e.target.checked)}
+          />
+          <label htmlFor="task-approval">Require human approval before running</label>
+        </div>
+        {err && <p className="runtime-error-text" role="alert">{err}</p>}
+        <button className="header-btn" type="submit" disabled={busy}>
+          {busy ? <MianxLoader variant="inline" label="Creating task…" /> : "Create Task"}
+        </button>
+      </form>
+    </details>
   );
 }
 
@@ -1120,7 +1103,7 @@ function TaskRow({ task, instances, call, onChanged }) {
   );
 }
 
-function RunsPanel({ call, projectId, opsSummary }) {
+function RunsPanel({ call, projectId, opsSummary: _opsSummary }) {
   const { loading, error, items } = useAsyncList(async () => {
     if (!projectId) return [];
     const res = await call(`/api/core/runs?project_id=${projectId}`);
@@ -1132,7 +1115,7 @@ function RunsPanel({ call, projectId, opsSummary }) {
     return (
       <EmptyState
         title="Select a project"
-        reason="Runs are project-scoped records of completed (or failed) agent executions."
+        reason="Agent Runtime Runs are project-scoped records of completed (or failed) agent executions."
         nextAction="Select a project to inspect agent run history."
         projectLabel="none"
         cta={
@@ -1148,58 +1131,53 @@ function RunsPanel({ call, projectId, opsSummary }) {
   }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
   if (items.length === 0) {
-    const next = opsSummary?.next_founder_action;
     const proofHref = `/admin/integration?project_id=${encodeURIComponent(projectId)}`;
     return (
       <EmptyState
         title="No Agent Runtime Runs yet"
-        reason="This list shows Agent Runtime Runs (queued agent executions), not Founder Proof runs. Proof progress lives under Founder Proof."
-        nextAction={
-          next?.reason ||
-          next?.label ||
-          "Continue the Founder Production Proof when that is the active path."
-        }
+        reason="This list shows Agent Runtime Runs only. Founder Proof progress lives under Founder Proof."
+        nextAction={null}
         cta={
-          <>
-            <Link className="header-btn" href={proofHref}>
-              Open Founder Proof
-            </Link>
-            {next?.href ? (
-              <Link className="header-btn-ghost" href={next.href}>
-                {next.label || "Next Founder action"}
-              </Link>
-            ) : null}
-          </>
+          <Link className="header-btn" href={proofHref}>
+            Open Founder Proof
+          </Link>
         }
       />
     );
   }
 
   return (
-    <ul className="runtime-list">
-      {items.map((r) => (
-        <li key={r.id} className="runtime-item runtime-item-block">
-          <div>
-            <strong>
-              <span className={`runtime-status status-${r.status}`}>{r.status}</span>
-            </strong>
-            <p className="runtime-muted">
-              {r.provider} · {r.model || "—"} · retries {r.retry_count}
-            </p>
-          </div>
-          {r.output && (
-            <pre className="runtime-code" aria-label="Run output">
-              {JSON.stringify(r.output, null, 2)}
-            </pre>
-          )}
-          {r.error && (
-            <pre className="runtime-code runtime-code-error" aria-label="Run error">
-              {JSON.stringify(r.error, null, 2)}
-            </pre>
-          )}
-        </li>
-      ))}
-    </ul>
+    <div>
+      <h3 data-testid="runs-panel-heading">Agent Runtime Runs</h3>
+      <p className="runtime-muted" role="note">
+        Founder Proof runs live under Founder Proof — this list is agent runtime
+        execution history only.
+      </p>
+      <ul className="runtime-list">
+        {items.map((r) => (
+          <li key={r.id} className="runtime-item runtime-item-block">
+            <div>
+              <strong>
+                <span className={`runtime-status status-${r.status}`}>{r.status}</span>
+              </strong>
+              <p className="runtime-muted">
+                {r.provider} · {r.model || "—"} · retries {r.retry_count}
+              </p>
+            </div>
+            {r.output && (
+              <pre className="runtime-code" aria-label="Run output">
+                {JSON.stringify(r.output, null, 2)}
+              </pre>
+            )}
+            {r.error && (
+              <pre className="runtime-code runtime-code-error" aria-label="Run error">
+                {JSON.stringify(r.error, null, 2)}
+              </pre>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -1287,150 +1265,130 @@ function ApprovalsPanel({ call, projectId, opsSummary: opsSummaryProp }) {
       stage === "founder_approval_required" ||
       proofStatus === "awaiting_plan_approval" ||
       /review\s+plan/i.test(String(next?.label || "")) ||
-      /awaiting_plan_approval|founder_approval_required/i.test(
+      /awaiting_plan_approval|founder_approval_required|review_plan/i.test(
         String(next?.code || next?.id || "")
       );
-    const planHref = `/admin/integration?project_id=${encodeURIComponent(projectId)}&tab=plan${
-      canonical?.id ? `&run_id=${encodeURIComponent(canonical.id)}` : ""
-    }`;
-    const proofHref = `/admin/integration?project_id=${encodeURIComponent(projectId)}`;
 
     const runtimeEmpty = (
       <EmptyState
         title="No agent runtime approvals are currently due."
         reason={
           awaitingPlanApproval
-            ? "Protected-action runtime approvals are separate from Founder Proof plan approval."
-            : next?.reason ||
-              next?.label ||
-              "No Founder approval is waiting in runtime for this project."
+            ? "Protected-action runtime approvals are separate from Founder Proof plan approval. Use Review Plan on the Founder Action Strip above."
+            : "No protected-action requests are waiting for a Founder decision in agent runtime for this project."
         }
-        nextAction={
-          awaitingPlanApproval
-            ? null
-            : next?.label ||
-              "Continue the Founder Production Proof when that is the active path."
-        }
-        cta={
-          awaitingPlanApproval ? null : (
-            <>
-              <Link className="header-btn" href={proofHref}>
-                Open Founder Proof
-              </Link>
-              {next?.href ? (
-                <Link className="header-btn-ghost" href={next.href}>
-                  {next.label || "Next Founder action"}
-                </Link>
-              ) : (
-                <Link className="header-btn-ghost" href="/admin/inbox">
-                  Founder Inbox
-                </Link>
-              )}
-            </>
-          )
-        }
+        nextAction={null}
+        cta={null}
       />
     );
 
-    if (awaitingPlanApproval) {
-      return (
-        <div className="runtime-approvals-split" data-testid="approvals-founder-proof-pending">
-          <section
-            className="runtime-item runtime-approval-card"
-            aria-labelledby="founder-proof-approval-h"
-          >
-            <h3 id="founder-proof-approval-h">Founder Proof Approval</h3>
+    return (
+      <div className="runtime-approvals-split" data-testid="approvals-split">
+        <section
+          className="runtime-item runtime-approval-card"
+          aria-labelledby="founder-proof-approval-h"
+          data-testid="approvals-founder-proof"
+        >
+          <h3 id="founder-proof-approval-h">Founder Proof Approval</h3>
+          {awaitingPlanApproval ? (
+            <>
+              <p className="runtime-muted">
+                <strong>Current action:</strong> Review and approve deterministic plan
+              </p>
+              <p className="runtime-muted">
+                <strong>Status:</strong> Waiting for Founder Plan Approval
+              </p>
+              <p className="runtime-muted" role="note">
+                Approval moves proof to Simulation Approval only. It does not
+                start simulation, call a provider, deploy, or complete the proof.
+                Use the single Review Plan button on the Founder Action Strip above.
+              </p>
+            </>
+          ) : (
             <p className="runtime-muted">
-              <strong>Current action:</strong> Review and approve deterministic plan
+              No Founder Proof plan approval is waiting right now for this project.
             </p>
-            <p className="runtime-muted">
-              <strong>Status:</strong> Waiting for Founder Plan Approval
-            </p>
-            <p className="runtime-muted" role="note">
-              Approval moves proof to Simulation Approval only; it does not start simulation.
-            </p>
-            <div className="runtime-item-actions">
-              <Link className="header-btn" href={planHref}>
-                Review Plan
-              </Link>
-            </div>
-          </section>
-          <section aria-labelledby="agent-runtime-approvals-h">
-            <h3 id="agent-runtime-approvals-h">Agent Runtime Approvals</h3>
-            {runtimeEmpty}
-          </section>
-        </div>
-      );
-    }
-
-    return runtimeEmpty;
+          )}
+        </section>
+        <section aria-labelledby="agent-runtime-approvals-h">
+          <h3 id="agent-runtime-approvals-h">Agent Runtime Approvals</h3>
+          {runtimeEmpty}
+        </section>
+      </div>
+    );
   }
 
   return (
-    <ul className="runtime-list">
-      {items.map((a) => {
-        const ex = explanations[a.id] || {};
-        return (
-          <li key={a.id} className="runtime-item runtime-approval-card">
-            <div>
-              {ex.highRisk ? (
-                <p className="runtime-risk-banner">{ex.riskLabel || "PROTECTED ACTION"}</p>
-              ) : null}
-              <strong>{ex.requestedAction || a.requested_capability}</strong>
-              <p className="runtime-muted">
-                <span className={`runtime-status status-${a.status}`}>{a.status}</span>
-                {" · source=runtime"}
-                {ex.requestingAgent ? ` · agent ${ex.requestingAgent}` : ""}
-                {a.project_id ? ` · project ${String(a.project_id).slice(0, 8)}…` : ""}
-              </p>
-              <p className="runtime-muted">
-                <strong>Reason:</strong> {ex.reason || a.reason || "No reason recorded"}
-              </p>
-              {ex.affectedResource ? (
-                <p className="runtime-muted">
-                  <strong>Affected:</strong> {ex.affectedResource}
-                </p>
-              ) : null}
-              <p className="runtime-muted">
-                <strong>If approved:</strong> {ex.whatIfApproved}
-              </p>
-              <p className="runtime-muted">
-                <strong>If rejected:</strong> {ex.whatIfRejected}
-              </p>
-            </div>
-            {a.status === "pending" && (
-              <div className="runtime-item-actions">
-                {confirming === a.id ? (
-                  <>
-                    <span className="runtime-muted">Confirm decision:</span>
-                    <button className="header-btn" onClick={() => decide(a.id, "approved")}>
-                      Approve
-                    </button>
-                    <button
-                      className="header-btn-ghost"
-                      onClick={() => decide(a.id, "rejected")}
-                    >
-                      Reject
-                    </button>
-                    <button className="header-btn-ghost" onClick={() => setConfirming(null)}>
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <button className="header-btn" onClick={() => setConfirming(a.id)}>
-                    Review decision
-                  </button>
+    <div>
+      <section aria-labelledby="agent-runtime-approvals-list-h">
+        <h3 id="agent-runtime-approvals-list-h">Agent Runtime Approvals</h3>
+        <ul className="runtime-list">
+          {items.map((a) => {
+            const ex = explanations[a.id] || {};
+            return (
+              <li key={a.id} className="runtime-item runtime-approval-card">
+                <div>
+                  {ex.highRisk ? (
+                    <p className="runtime-risk-banner">{ex.riskLabel || "PROTECTED ACTION"}</p>
+                  ) : null}
+                  <strong>{ex.requestedAction || a.requested_capability}</strong>
+                  <p className="runtime-muted">
+                    <span className={`runtime-status status-${a.status}`}>{a.status}</span>
+                    {" · source=runtime"}
+                    {ex.requestingAgent ? ` · agent ${ex.requestingAgent}` : ""}
+                    {a.project_id ? ` · project ${String(a.project_id).slice(0, 8)}…` : ""}
+                  </p>
+                  <p className="runtime-muted">
+                    <strong>Reason:</strong> {ex.reason || a.reason || "No reason recorded"}
+                  </p>
+                  {ex.affectedResource ? (
+                    <p className="runtime-muted">
+                      <strong>Affected:</strong> {ex.affectedResource}
+                    </p>
+                  ) : null}
+                  <p className="runtime-muted">
+                    <strong>If approved:</strong> {ex.whatIfApproved}
+                  </p>
+                  <p className="runtime-muted">
+                    <strong>If rejected:</strong> {ex.whatIfRejected}
+                  </p>
+                </div>
+                {a.status === "pending" && (
+                  <div className="runtime-item-actions">
+                    {confirming === a.id ? (
+                      <>
+                        <span className="runtime-muted">Confirm decision:</span>
+                        <button className="header-btn" onClick={() => decide(a.id, "approved")}>
+                          Approve
+                        </button>
+                        <button
+                          className="header-btn-ghost"
+                          onClick={() => decide(a.id, "rejected")}
+                        >
+                          Reject
+                        </button>
+                        <button className="header-btn-ghost" onClick={() => setConfirming(null)}>
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button className="header-btn" onClick={() => setConfirming(a.id)}>
+                        Review decision
+                      </button>
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    </div>
   );
 }
 
 function AuditPanel({ call, projectId, opsSummary: _opsSummary }) {
+  const [filter, setFilter] = useState("All");
   const { loading, error, items } = useAsyncList(async () => {
     if (!projectId) return [];
     const unified = await call(
@@ -1449,6 +1407,11 @@ function AuditPanel({ call, projectId, opsSummary: _opsSummary }) {
     if (!res.ok) throw new Error(errorMessage(res.data, "Failed to load audit log."));
     return res.data?.logs || [];
   }, [call, projectId]);
+
+  const visible = useMemo(
+    () => filterAuditEvents(items || [], filter),
+    [items, filter]
+  );
 
   if (!projectId) {
     return (
@@ -1469,7 +1432,7 @@ function AuditPanel({ call, projectId, opsSummary: _opsSummary }) {
     return <DelayedLoader active variant="section" label="Loading audit log…" />;
   }
   if (error) return <p className="runtime-error-text" role="alert">{error}</p>;
-  if (items.length === 0) {
+  if (!items || items.length === 0) {
     return (
       <EmptyState
         title="No audit entries yet"
@@ -1480,9 +1443,9 @@ function AuditPanel({ call, projectId, opsSummary: _opsSummary }) {
         cta={
           <Link
             className="header-btn-ghost"
-            href={`/admin/objectives?project_id=${encodeURIComponent(projectId)}`}
+            href={`/admin/integration?project_id=${encodeURIComponent(projectId)}`}
           >
-            Objectives
+            Open Founder Proof
           </Link>
         }
       />
@@ -1490,35 +1453,68 @@ function AuditPanel({ call, projectId, opsSummary: _opsSummary }) {
   }
 
   return (
-    <ul className="runtime-list runtime-audit">
-      {items.map((e) => {
-        const eventType = e.event_type || e.action || e.type || "event";
-        const source = e.source || e.resource_type || "runtime";
-        const actor = e.actor || e.actor_id || "system";
-        const outcome = e.outcome || e.status || e.result || null;
-        const ts = e.timestamp || e.created_at;
-        return (
-          <li key={e.id || `${eventType}-${ts}`} className="runtime-item">
-            <div>
-              <strong>{eventType}</strong>
-              <p className="runtime-muted">
-                source={source} · actor {actor}
-                {outcome ? ` · outcome ${outcome}` : ""}
-                {e.resource_id ? ` · ${String(e.resource_id).slice(0, 8)}` : ""}
-              </p>
-              <details className="runtime-audit-details">
-                <summary>Technical details</summary>
-                <pre className="runtime-code" aria-label="Audit event detail">
-                  {JSON.stringify(e, null, 2)}
-                </pre>
-              </details>
-            </div>
-            <time className="runtime-muted">
-              {ts ? new Date(ts).toLocaleString() : ""}
-            </time>
-          </li>
-        );
-      })}
-    </ul>
+    <div data-testid="audit-panel">
+      <div className="runtime-filters" role="group" aria-label="Filter audit events">
+        {AUDIT_FILTERS.map((f) => (
+          <button
+            key={f}
+            type="button"
+            className={`runtime-chip small${filter === f ? " active" : ""}`}
+            aria-pressed={filter === f}
+            data-testid={`audit-filter-${f.toLowerCase().replace(/\s+/g, "-")}`}
+            onClick={() => setFilter(f)}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+      {visible.length === 0 ? (
+        <p className="runtime-muted">No events match this filter.</p>
+      ) : (
+        <ul className="runtime-list runtime-audit">
+          {visible.map((e) => {
+            const eventType = e.event_type || e.action || e.type || "event";
+            const label = humanAuditEventLabel(eventType);
+            const badges = auditEventBadges(e);
+            const ts = e.timestamp || e.created_at;
+            return (
+              <li key={e.id || `${eventType}-${ts}`} className="runtime-item">
+                <div>
+                  <strong>{label}</strong>
+                  <div className="runtime-audit-badges" aria-label="Event badges">
+                    <span className="runtime-audit-badge">source · {badges.source}</span>
+                    <span className="runtime-audit-badge">actor · {badges.actor}</span>
+                    {badges.outcome ? (
+                      <span className="runtime-audit-badge">
+                        outcome · {badges.outcome}
+                      </span>
+                    ) : null}
+                    {badges.canonical ? (
+                      <span
+                        className={`runtime-audit-badge runtime-audit-badge--${badges.canonical}`}
+                      >
+                        {badges.canonical}
+                      </span>
+                    ) : null}
+                  </div>
+                  <details className="runtime-audit-details">
+                    <summary>Technical Details</summary>
+                    <p className="runtime-muted">
+                      event_type: <code>{eventType}</code>
+                    </p>
+                    <pre className="runtime-code" aria-label="Audit event detail">
+                      {JSON.stringify(e, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+                <time className="runtime-muted">
+                  {ts ? new Date(ts).toLocaleString() : ""}
+                </time>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }

@@ -153,6 +153,21 @@ function AdminShellInner({
     closeSidebar();
   }, [pathname, closeSidebar]);
 
+  useEffect(() => {
+    const root = sidebarRef.current;
+    if (!root) return;
+    const active = root.querySelector(
+      '.sidebar-nav a[aria-current="page"], .sidebar-nav a.active'
+    );
+    if (active && typeof active.scrollIntoView === "function") {
+      try {
+        active.scrollIntoView({ block: "nearest", inline: "nearest" });
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [pathname, advancedOpsOpen]);
+
   async function logout() {
     const supabase = getSupabase();
     if (supabase) await supabase.auth.signOut();
