@@ -1476,3 +1476,26 @@ No merge, no production deploy, no production Founder Proof mutation, no live pr
 
 In-memory instances (no new migration); best-effort durable task/memory writes; catalogue defaultProvider still anthropic until Founder routes OpenRouter; FS knowledge index; live-tested=0.
 
+---
+
+## 26. Phase I.2 — Complete 445-seat workforce + one-key activation (Draft PR)
+
+Branch: `cursor/phase-i2-complete-445-agent-workforce`  
+Base: `origin/main` after merged PR #66.
+
+### Completion truth
+
+445/445 seats compiled+mapped+ready to allocate · 20 departments · 13 workflows · Postgres migrations prepared · test-double E2E verified · OpenRouter one-key ready · LIVE TESTED: 0 · blocked only by Founder deploy/migration/API key
+
+### Deliverables
+
+- `lib/core/workforce-i2/*` — source audit, archetypes, 445 seats, variants, store, prompt compiler, provider resolution, readiness, team formation, software-house E2E, Postgres rate limit
+- Migration `20260730180000_phase_i2_workforce_registry.sql`
+- Admin `/admin/workforce-activation` one-click setup
+- Scripts: `workforce:bootstrap|verify|test-double|live-activation-check`
+- Docs under `execution/PHASE-I2-*`, seat/archetype/instance/activation/bootstrap/recovery/live-acceptance/founder guides
+
+### Explicit non-goals
+
+No merge, no production migrate/deploy, no live provider calls, no Founder Proof mutation, no invented filler personas.
+

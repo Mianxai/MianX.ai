@@ -53,14 +53,26 @@ describe("migration contract (static, not applied)", () => {
     // Exact list a Founder should see from `supabase db push --dry-run`
     // when only these are pending relative to a pre-runtime_jobs prod.
     const expectedTail = [
-      "20260728120000_phase_b_memory_learning.sql",
       "20260728150000_phase_d_execution_engine.sql",
       "20260728180000_phase_e_template_intelligence.sql",
       "20260728190000_phase_f_planning_intelligence.sql",
       "20260728200000_phase_g_workforce_runtime.sql",
       "20260728210000_phase_h_integration_runtime.sql",
+      "20260730180000_phase_i2_workforce_registry.sql",
     ];
     expect(files.slice(-6)).toEqual(expectedTail);
+  });
+
+  it("phase_i2 workforce registry migration is additive", () => {
+    const sql = readMigration("20260730180000_phase_i2_workforce_registry.sql");
+    expect(sql).toMatch(/create table if not exists agent_role_archetypes/i);
+    expect(sql).toMatch(/create table if not exists agent_capacity_seats/i);
+    expect(sql).toMatch(/create table if not exists project_agent_instances/i);
+    expect(sql).toMatch(/create table if not exists rate_limit_buckets/i);
+    expect(sql).toMatch(/grant all on table agent_capacity_seats to service_role/i);
+    expect(sql).not.toMatch(/drop table (?!if exists)/i);
+    expect(sql).not.toMatch(/truncate /i);
+    expect(sql).not.toMatch(/delete from /i);
   });
 
   it("phase_b memory/learning migration is additive with RLS", () => {
