@@ -13,6 +13,7 @@ import {
   extractPlanDependencySummary,
   extractPlanRiskCards,
 } from "@/lib/core/integration/founder-labels";
+import { validateFounderPlanReadiness } from "@/lib/core/integration/plan-readiness.js";
 
 function CopyId({ id, label = "Copy ID" }) {
   const [copied, setCopied] = useState(false);
@@ -62,10 +63,14 @@ export default function IntegrationPlanReview({
   const tasks = useMemo(() => (run ? extractPlanTasks(run) : []), [run]);
   const agents = useMemo(() => (run ? extractProposedAgents(run) : []), [run]);
   const depSummary = useMemo(
-    () => (run ? extractPlanDependencySummary(run) : { count: 0, edges: [] }),
+    () => (run ? extractPlanDependencySummary(run) : { count: 0, edges: [], flow_labels: [] }),
     [run]
   );
   const riskCards = useMemo(() => (run ? extractPlanRiskCards(run) : []), [run]);
+  const readiness = useMemo(
+    () => (run ? validateFounderPlanReadiness(run) : null),
+    [run]
+  );
 
   if (!run) return null;
 
@@ -76,10 +81,11 @@ export default function IntegrationPlanReview({
     ...new Set(tasks.map((t) => t.department).filter(Boolean)),
   ];
   const protectedActions =
-    run.objective?.protected_actions ||
     run.approval_package?.protected_actions ||
+    run.objective?.protected_actions ||
     ["production_deployment"];
   const awaitingPlan = run.current_stage === "founder_approval_required";
+  const approveEnabled = readiness?.approve_enabled !== false;
 
   function isTaskOpen(id) {
     return expandAll || expandedTasks.has(id);
@@ -129,6 +135,61 @@ export default function IntegrationPlanReview({
           </StatusBadge>
         </div>
       </header>
+
+      {readiness ? (
+        <section
+          className={`cc-card founder-plan-readiness is-${readiness.status}`}
+          data-testid="plan-readiness"
+          aria-labelledby="plan-readiness-h"
+        >
+          <div className="founder-plan-readiness-header">
+            <h3 id="plan-readiness-h">Plan readiness</h3>
+            <span
+              className={`founder-readiness-badge is-${readiness.status}`}
+              data-testid="plan-readiness-status"
+              aria-label={`Plan readiness: ${readiness.status}`}
+            >
+              {String(readiness.status).toUpperCase()}
+            </span>
+          </div>
+          {readiness.reasons?.length ? (
+            <div data-testid="plan-readiness-reasons">
+              <h4>Blocking reasons</h4>
+              <ul className="founder-readiness-list">
+                {readiness.reasons.map((r, i) => (
+                  <li key={`reason-${i}`}>{r}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {readiness.warnings?.length ? (
+            <div data-testid="plan-readiness-warnings">
+              <h4>Warnings</h4>
+              <ul className="founder-readiness-list">
+                {readiness.warnings.map((w, i) => (
+                  <li key={`warn-${i}`}>{w}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {readiness.recommended_corrections?.length ? (
+            <div data-testid="plan-readiness-corrections">
+              <h4>Recommended corrections</h4>
+              <ul className="founder-readiness-list">
+                {readiness.recommended_corrections.map((c, i) => (
+                  <li key={`corr-${i}`}>{c}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {!readiness.reasons?.length && !readiness.warnings?.length ? (
+            <p className="cc-muted" data-testid="plan-readiness-ok">
+              Plan is ready for Founder approval. Approving still does not deploy, call a
+              provider, or start simulation.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="cc-card" data-testid="plan-overview" aria-labelledby="plan-overview-h">
         <h3 id="plan-overview-h">Plan overview</h3>
@@ -212,12 +273,21 @@ export default function IntegrationPlanReview({
             {depSummary.count} task{" "}
             {depSummary.count === 1 ? "dependency" : "dependencies"}
           </p>
+          {Array.isArray(depSummary.flow_labels) && depSummary.flow_labels.length > 0 ? (
+            <p className="founder-dep-flow" data-testid="plan-dependency-flow">
+              Flow: {depSummary.flow_labels.join(" → ")}
+            </p>
+          ) : null}
           {depSummary.edges?.length ? (
-            <ul>
+            <ul className="founder-dep-edges">
               {depSummary.edges.map((e, i) => (
-                <li key={`${e.from}-${e.to}-${i}`}>
-                  {e.from} → {e.to}
-                  {e.implied ? " (sequential)" : ""}
+                <li key={`${e.from}-${e.to}-${i}`} data-testid={`dep-edge-${i}`}>
+                  <span className="founder-dep-edge-label">
+                    {e.from_label || e.from} → {e.to_label || e.to}
+                  </span>
+                  {e.implied ? (
+                    <span className="cc-muted"> (sequential)</span>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -235,17 +305,27 @@ export default function IntegrationPlanReview({
               Proposed roles for deterministic simulation. Agents are not allocated until
               simulation approval and start.
             </p>
-            <ul className="founder-agent-list">
+            <ul className="founder-agent-list founder-agent-cards">
               {agents.map((a) => (
-                <li key={a.slug || a.role} data-testid={`proposed-agent-${a.slug || a.role}`}>
-                  <strong>{a.role}</strong>
-                  {a.department ? <span> · {a.department}</span> : null}
-                  <span className="cc-muted"> · proposed</span>
+                <li
+                  key={a.slug || a.role}
+                  className="founder-agent-card"
+                  data-testid={`proposed-agent-${a.slug || a.role}`}
+                >
+                  <div className="founder-agent-card-title">
+                    <strong>{a.role}</strong>
+                    {a.department ? (
+                      <span className="founder-dept-badge">{a.department}</span>
+                    ) : null}
+                    <span className="cc-muted">proposed</span>
+                  </div>
                   {a.reason ? (
                     <p className="founder-agent-reason" data-testid="agent-selection-reason">
-                      Reason: {a.reason}
+                      {a.reason}
                     </p>
-                  ) : null}
+                  ) : (
+                    <p className="cc-muted founder-agent-reason">No selection reason recorded.</p>
+                  )}
                 </li>
               ))}
             </ul>
@@ -298,7 +378,17 @@ export default function IntegrationPlanReview({
                     <span className="founder-wbs-num">{idx + 1}</span>
                     <span className="founder-wbs-title">{t.title}</span>
                     <span className="founder-wbs-meta">
-                      {t.department}
+                      <span className="founder-dept-badge" data-testid={`wbs-dept-badge-${t.id}`}>
+                        {t.department}
+                      </span>
+                      {t.supporting_department ? (
+                        <span
+                          className="founder-dept-badge is-supporting"
+                          data-testid={`wbs-supporting-dept-${t.id}`}
+                        >
+                          Supporting: {t.supporting_department}
+                        </span>
+                      ) : null}
                       {t.agent_role ? ` · ${t.agent_role}` : ""}
                     </span>
                     <span aria-hidden="true">{open ? "▾" : "▸"}</span>
@@ -312,7 +402,10 @@ export default function IntegrationPlanReview({
                       <div>
                         <dt>Proposed department</dt>
                         <dd data-testid={`wbs-dept-${t.id}`}>
-                          {t.department}
+                          <span className="founder-dept-badge">{t.department}</span>
+                          {t.department_reason ? (
+                            <span className="cc-muted"> · {t.department_reason}</span>
+                          ) : null}
                           {t.department_proposed ? (
                             <span className="cc-muted">
                               {" "}
@@ -321,6 +414,16 @@ export default function IntegrationPlanReview({
                           ) : null}
                         </dd>
                       </div>
+                      {t.supporting_department ? (
+                        <div>
+                          <dt>Supporting department</dt>
+                          <dd>
+                            <span className="founder-dept-badge is-supporting">
+                              {t.supporting_department}
+                            </span>
+                          </dd>
+                        </div>
+                      ) : null}
                       <div>
                         <dt>Proposed agent</dt>
                         <dd>{t.agent_role || "Assigned at simulation start"}</dd>
@@ -372,6 +475,9 @@ export default function IntegrationPlanReview({
                   severity: "low",
                   meaning: "This proof does not perform live AI execution.",
                   mitigation: "Approve the plan, then separately approve and start simulation.",
+                  effect_on_approval:
+                    "Informational — does not auto-approve or start simulation.",
+                  blocks_deterministic_simulation: false,
                 },
               ]
           ).map((r) => (
@@ -392,12 +498,25 @@ export default function IntegrationPlanReview({
                 <span className="founder-risk-label">Mitigation</span>
                 {r.mitigation}
               </p>
+              <p>
+                <span className="founder-risk-label">Effect on approval</span>
+                {r.effect_on_approval || "Informational for Founder review."}
+              </p>
+              <p>
+                <span className="founder-risk-label">Blocks deterministic simulation</span>
+                {r.blocks_deterministic_simulation ? "Yes" : "No"}
+              </p>
             </article>
           ))}
         </div>
 
         <article className="founder-protected-card" data-testid="plan-protected-actions">
           <h4>Protected actions</h4>
+          <p className="cc-muted" data-testid="plan-protected-copy">
+            Approving this plan does not deploy, call a provider, or start simulation.
+            <code> production_deployment </code>
+            remains blocked.
+          </p>
           {(Array.isArray(protectedActions) ? protectedActions : [protectedActions]).map(
             (pa, i) => (
               <div key={i} className="founder-protected-row">
@@ -465,13 +584,21 @@ export default function IntegrationPlanReview({
           primaryTestId="approve-plan-for-simulation"
           secondaryTestId="return-plan-for-changes"
           dangerTestId="reject-plan"
-          onPrimary={() => setConfirm("approve")}
+          primaryDisabled={!approveEnabled}
+          onPrimary={() => {
+            if (!approveEnabled) return;
+            setConfirm("approve");
+          }}
           secondaryLabel="Return for Changes"
           onSecondary={() => setConfirm("return")}
           dangerLabel="Reject Plan"
           onDanger={() => setConfirm("reject")}
           busy={busy}
-          note="Approving the plan does not start simulation."
+          note={
+            approveEnabled
+              ? "Approving the plan does not start simulation, call a provider, or deploy. Simulation does not start until a separate Founder action."
+              : "Approve is disabled until plan readiness blockers are resolved."
+          }
           confirmOpen={Boolean(confirm)}
           confirmTitle={
             confirm === "approve"
@@ -482,15 +609,29 @@ export default function IntegrationPlanReview({
           }
           confirmBody={
             confirm === "approve" ? (
-              <ul className="sticky-confirm-list">
-                <li>This approves only the plan.</li>
-                <li>Simulation will not start.</li>
-                <li>Provider will not be called.</li>
-                <li>Production deployment remains blocked.</li>
-                <li>The next stage will be simulation approval.</li>
-              </ul>
+              <div className="sticky-confirm-readiness" data-testid="approve-confirm-body">
+                <div>
+                  <h4>Will happen</h4>
+                  <ul className="sticky-confirm-list">
+                    {(readiness?.will_happen_on_approve || []).map((item, i) => (
+                      <li key={`will-${i}`}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4>Will not happen</h4>
+                  <ul className="sticky-confirm-list">
+                    {(readiness?.will_not_happen_on_approve || []).map((item, i) => (
+                      <li key={`wont-${i}`}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             ) : (
-              <p>Provide a short reason. The canonical run is not deleted.</p>
+              <p>
+                Provide a short reason before confirming. The canonical run is not deleted.
+                {confirm === "reject" ? " Rejecting archives this plan decision." : ""}
+              </p>
             )
           }
           requireReason={confirm === "reject" || confirm === "return"}
@@ -498,6 +639,7 @@ export default function IntegrationPlanReview({
           onConfirmReasonChange={setReason}
           onConfirmYes={async () => {
             if (confirm === "approve") {
+              if (!approveEnabled) return;
               await onApprove?.();
               setConfirm(null);
               return;
@@ -523,8 +665,14 @@ export default function IntegrationPlanReview({
               correlation_id: run.correlation_id,
               trace_id: run.trace_id,
               plan_id: run.planning_plan?.id,
-              dependency_summary: depSummary,
+              dependency_raw_ids: (depSummary.edges || []).map((e) => ({
+                from: e.from,
+                to: e.to,
+                kind: e.kind,
+                implied: e.implied || false,
+              })),
               risks_raw: run.approval_package?.risks || run.planning_plan?.risks,
+              readiness,
               approval_package: run.approval_package,
             },
             null,

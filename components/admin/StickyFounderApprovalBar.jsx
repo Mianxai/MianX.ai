@@ -11,6 +11,7 @@ export default function StickyFounderApprovalBar({
   dangerLabel = "Reject",
   onDanger = null,
   busy = false,
+  primaryDisabled = false,
   confirmOpen = false,
   confirmTitle = "Confirm Founder decision",
   confirmBody = null,
@@ -25,6 +26,8 @@ export default function StickyFounderApprovalBar({
   secondaryTestId = "sticky-return",
   dangerTestId = "sticky-reject",
 }) {
+  const approveBlocked = Boolean(busy || primaryDisabled);
+
   return (
     <div className="sticky-founder-bar" data-testid={testId} role="region" aria-label="Founder actions">
       {note ? <p className="sticky-founder-bar-note cc-muted">{note}</p> : null}
@@ -34,7 +37,13 @@ export default function StickyFounderApprovalBar({
             type="button"
             className="header-btn"
             data-testid={primaryTestId}
-            disabled={busy}
+            disabled={approveBlocked}
+            aria-disabled={approveBlocked}
+            title={
+              primaryDisabled
+                ? "Plan readiness is blocked — resolve corrections before approving."
+                : undefined
+            }
             onClick={onPrimary}
           >
             {primaryLabel}
@@ -82,6 +91,7 @@ export default function StickyFounderApprovalBar({
                 value={confirmReason}
                 onChange={(e) => onConfirmReasonChange?.(e.target.value)}
                 rows={3}
+                placeholder="Required before confirming"
               />
             </label>
           ) : null}
@@ -90,7 +100,11 @@ export default function StickyFounderApprovalBar({
               type="button"
               className="header-btn"
               data-testid="sticky-confirm-yes"
-              disabled={busy || (requireReason && !String(confirmReason || "").trim())}
+              disabled={
+                busy ||
+                (requireReason && !String(confirmReason || "").trim()) ||
+                (primaryDisabled && !requireReason)
+              }
               onClick={onConfirmYes}
             >
               Confirm
