@@ -1445,3 +1445,34 @@ Base: `origin/main` @ `52cee02` (merged PR #64).
 
 No merge, no production deploy, no production Founder Proof mutation, no Final Review decision, no Anthropic, no filler agents.
 
+---
+
+## 25. Phase I.1 — Real AI agent runtime + OpenRouter (Draft PR)
+
+Branch: `cursor/phase-i1-real-agent-runtime-openrouter`  
+Base: `origin/main` @ `4d0643b` (merged PR #65).
+
+### Completion truth
+
+CODE COMPLETE · TEST-DOUBLE VERIFIED · READY FOR PROVIDER ACTIVATION · LIVE SMOKE NOT YET RUN · live-tested=0
+
+### Measured readiness (no provider keys)
+
+Documented capacity 445 · Compiled roles 92 · Gaps 291 · Contract-valid 43 · Deterministic/tools/runtime-ready 38 · Provider-ready 0 · Live-tested 0 · Fabrications 0 · Workflows 13/13 mapped · Tools 31
+
+### Deliverables
+
+- `lib/core/real-agent/*` — readiness, OpenRouter, invoke, tools, instances, knowledge, QA, role compilation, delegation, worker-bridge, workflow coverage, harness
+- Worker: `provider=openrouter` → `invokeRealAgent` (fail closed without key)
+- Admin Workforce Readiness real totals + readiness check (no provider calls) + queue/instance summary
+- `npm run agents:live-smoke` (Founder-gated; **not** executed in this PR)
+- Docs: `PHASE-I1-REAL-AGENT-RUNTIME-REPORT`, `REAL-AGENT-READINESS-MATRIX`, `OPENROUTER-ACTIVATION-GUIDE`, `LIVE-AGENT-ACCEPTANCE-CHECKLIST`, `445-ROLE-COMPILATION-REPORT`, `AI-SOFTWARE-HOUSE-OPERATIONS-GUIDE`
+
+### Explicit non-goals
+
+No merge, no production deploy, no production Founder Proof mutation, no live provider calls in CI/Cursor, no paid fallback.
+
+### Honest remaining limitations
+
+In-memory instances (no new migration); best-effort durable task/memory writes; catalogue defaultProvider still anthropic until Founder routes OpenRouter; FS knowledge index; live-tested=0.
+
