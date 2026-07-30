@@ -58,9 +58,9 @@ npm run workforce:software-house-acceptance -- --project <uuid> --confirm
 | 1 | Current main SHA | `267bd65f8dc176c2e480c4acd7e39e18eab9715e` |
 | 2 | PR #67 state | MERGED |
 | 3 | Branch used | `cursor/phase-i3-real-workforce-activation-closeout` |
-| 4 | Commit SHA | `d8d31101a75b1140e8dabec71a0cd4a2f67ac18f` |
-| 5 | Draft PR URL | pending push / `gh pr create` (local `gh` token invalid — Founder may need `gh auth refresh`) |
-| 6 | Preview URL | Pending Vercel Preview after push |
+| 4 | Commit SHA | `eb03acfebe81043bfcc8b226bc6495352f387534` |
+| 5 | Draft PR URL | https://github.com/Mianxai/MianX.ai/pull/68 |
+| 6 | Preview URL | Pending Vercel Preview after Draft PR checks |
 | 7 | Changed files | Phase I.3 closeout set (code, migration, scripts, docs) |
 | 8 | Capacity seats compiled | **445** |
 | 9 | Capacity seats persisted (test env) | **445** (in-memory / double; Postgres when Supabase+migration) |
