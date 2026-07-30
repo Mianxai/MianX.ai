@@ -168,6 +168,7 @@ export default function WorkforceClient() {
   }
 
   const counts = dash?.counts || {};
+  const capacityTruth = dash?.capacityTruth || {};
   const executableCount = dash?.executable_agents ?? 38;
   const assignedCount = Number(dash?.assigned_count ?? counts.busy ?? 0);
   const simState =
@@ -177,15 +178,56 @@ export default function WorkforceClient() {
   const isZeroAssignment = assignedCount === 0;
 
   const statusCards = [
-    { label: "Executable", value: executableCount, testId: "wf-card-executable" },
-    { label: "Idle", value: counts.idle ?? 0, testId: "wf-card-idle" },
-    { label: "Busy", value: counts.busy ?? 0, testId: "wf-card-busy" },
-    { label: "Waiting", value: counts.waiting ?? 0, testId: "wf-card-waiting" },
-    { label: "Blocked", value: counts.blocked ?? 0, testId: "wf-card-blocked" },
-    { label: "Executing", value: counts.executing ?? 0, testId: "wf-card-executing" },
-    { label: "Review", value: counts.review ?? 0, testId: "wf-card-review" },
-    { label: "Failed", value: counts.failed ?? 0, testId: "wf-card-failed" },
-    { label: "Completed", value: counts.completed ?? 0, testId: "wf-card-completed" },
+    {
+      label: "445 Capacity Seats",
+      value: capacityTruth.capacitySeats ?? 445,
+      testId: "wf-card-capacity-seats",
+    },
+    {
+      label: "Ready to Allocate",
+      value: capacityTruth.readyToAllocate ?? capacityTruth.capacitySeats ?? 445,
+      testId: "wf-card-ready-to-allocate",
+    },
+    {
+      label: "Allocated",
+      value: capacityTruth.allocated ?? assignedCount,
+      testId: "wf-card-allocated",
+    },
+    {
+      label: "Active",
+      value: capacityTruth.active ?? counts.busy ?? 0,
+      testId: "wf-card-active",
+    },
+    {
+      label: "Waiting",
+      value: counts.waiting ?? 0,
+      testId: "wf-card-waiting",
+    },
+    {
+      label: "Reviewing",
+      value: counts.review ?? capacityTruth.reviewing ?? 0,
+      testId: "wf-card-reviewing",
+    },
+    {
+      label: "Blocked",
+      value: capacityTruth.blocked ?? counts.blocked ?? 0,
+      testId: "wf-card-blocked",
+    },
+    {
+      label: "Released",
+      value: capacityTruth.released ?? counts.completed ?? 0,
+      testId: "wf-card-released",
+    },
+    {
+      label: "Live Tested",
+      value: capacityTruth.liveTested ?? 0,
+      testId: "wf-card-live-tested",
+    },
+    {
+      label: "Runtime definitions (not all seats)",
+      value: executableCount,
+      testId: "wf-card-executable",
+    },
     {
       label: "Current proof assignment",
       value: assignedCount,
@@ -216,7 +258,7 @@ export default function WorkforceClient() {
     >
       <PageHeader
         title="Real Autonomous Workforce"
-        description="Activates the 38 executable agents only — lifecycle, collaboration, simulation. No filler agents. No auto Founder approval. No paid provider in simulation."
+        description="445 capacity seats are allocatable workforce capacity — not 445 always-on agents. Live Tested stays 0 until controlled provider evidence. Runtime definitions are a smaller executable subset. No auto Founder approval. No paid provider in simulation."
       />
       <FounderActionBanner summary={opsSummary} projectId={projectId} />
 
@@ -265,10 +307,12 @@ export default function WorkforceClient() {
               role="status"
             >
               <p>
-                <strong>{executableCount} agents available</strong>
+                <strong>
+                  {capacityTruth.readyToAllocate ?? 445} seats ready to allocate
+                </strong>
               </p>
               <p>
-                <strong>0 assigned</strong>
+                <strong>0 allocated · Live tested: {capacityTruth.liveTested ?? 0}</strong>
               </p>
               <p className="cc-muted">
                 Reason: Agent allocation begins only after simulation approval and

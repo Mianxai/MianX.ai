@@ -24,8 +24,25 @@ import {
   listLifecycleStatuses,
   isWorkforcePaused,
 } from "@/lib/core/workforce-runtime";
+import { runWorkforceVerify } from "@/lib/core/workforce-i2";
 
 export const dynamic = "force-dynamic";
+
+function capacityTruthPayload() {
+  const verify = runWorkforceVerify();
+  return {
+    capacitySeats: verify.capacityBaseline,
+    readyToAllocate: verify.mappedSeats,
+    allocated: verify.allocatedSeats,
+    active: verify.activeInstances,
+    waiting: verify.availableSeats,
+    reviewing: 0,
+    blocked: verify.blockedSeats,
+    released: 0,
+    liveTested: verify.liveTestedCount,
+    note: "445 = allocatable capacity seats, not continuously running processes. Live tested only after real provider evidence.",
+  };
+}
 
 export const GET = withErrorHandling(async (req) => {
   await requireAdmin(req);
@@ -35,7 +52,11 @@ export const GET = withErrorHandling(async (req) => {
   const slug = url.searchParams.get("slug") || url.searchParams.get("agent");
 
   if (action === "dashboard" || action === "overview") {
-    return NextResponse.json(getWorkforceDashboard({ project_id: projectId || null }));
+    const dash = getWorkforceDashboard({ project_id: projectId || null });
+    return NextResponse.json({
+      ...dash,
+      capacityTruth: capacityTruthPayload(),
+    });
   }
   if (action === "agent" && slug) {
     return NextResponse.json({
