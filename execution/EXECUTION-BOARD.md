@@ -1524,18 +1524,21 @@ Draft/merged PR: https://github.com/Mianxai/MianX.ai/pull/68
 
 ---
 
-## 28. Phase I.4 — Durable bootstrap truth (Draft PR)
+## 29. Phase I.5 — Production-safe workforce bootstrap (Draft PR)
 
-Branch: `cursor/phase-i4-durable-bootstrap-truth`  
-Base: `origin/main` `9c49656`  
-Draft PR: https://github.com/Mianxai/MianX.ai/pull/69  
-Tip: `f541707`
+Branch: `cursor/phase-i5-production-foundation-closeout`
+Base: `origin/main` `33e2180`
 
-### Problem fixed
+Secure Admin `POST /api/admin/workforce/bootstrap` (preflight/apply/idempotency).
+No Production DB mutation during PR development. No OpenRouter.
+Canonical scheduler cadence: 300000 ms. themeColor moved to viewport only.
+Gates: lint/typecheck/build PASS · Vitest 1213 · Playwright 136 · browser 5/5 · themeColor 0.
 
-Compiled in-memory seats were reported as `persistedSeats`. CLIs ran Vitest instead of application code.
+See `execution/PHASE-I5-PRODUCTION-FOUNDATION-CLOSEOUT.md`.
 
-### Expected truth before Founder apply
+### Prior Phase I.4 context (merged)
 
-445 compiled · persisted null/0 · no false OK · foundation scripts ready · OpenRouter not required · LIVE TESTED: 0
+Branch: `cursor/phase-i4-durable-bootstrap-truth` · PR #69 · tip `f541707`
+
+Compiled in-memory seats were falsely reported as `persistedSeats`. Expected pre-bootstrap truth: 445 compiled · persisted null/0 · LIVE TESTED: 0.
 

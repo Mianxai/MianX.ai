@@ -193,7 +193,7 @@ function buildCards(data) {
       label: "AI provider",
       value: ai,
       href: "/admin/settings",
-      hint: "Anthropic",
+      hint: ai ? "Configured" : "AI provider unconfigured",
       tone: ai ? "success" : "warning",
     });
   }

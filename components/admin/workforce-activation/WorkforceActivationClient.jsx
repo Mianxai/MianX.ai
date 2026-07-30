@@ -1,13 +1,38 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import FounderPageLayout from "@/components/admin/FounderPageLayout";
+
+const CONFIRM_PHRASE = "BOOTSTRAP 445";
+
+const CHECKLIST_STEPS = [
+  { id: "migration", label: "Database migration" },
+  { id: "bootstrap", label: "Workforce bootstrap" },
+  { id: "verify", label: "445-seat database verification" },
+  { id: "key", label: "AI provider key" },
+  { id: "free", label: "Free-only provider policy" },
+  { id: "queue", label: "Durable queue" },
+  { id: "leases", label: "Durable leases" },
+  { id: "rate", label: "Durable rate limiter" },
+  { id: "scheduler", label: "Scheduler" },
+  { id: "knowledge", label: "Knowledge" },
+  { id: "memory", label: "Memory" },
+  { id: "qa", label: "Independent QA" },
+  { id: "security", label: "Security gates" },
+  { id: "live", label: "Controlled activation check" },
+  { id: "acceptance", label: "AI Software House acceptance" },
+];
 
 export default function WorkforceActivationClient() {
   const [data, setData] = useState(null);
   const [preflight, setPreflight] = useState(null);
+  const [bootPreflight, setBootPreflight] = useState(null);
+  const [applyResult, setApplyResult] = useState(null);
   const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
 
   const load = useCallback(async () => {
     const [snap, pre] = await Promise.all([
@@ -36,7 +61,109 @@ export default function WorkforceActivationClient() {
     };
   }, [load]);
 
-  if (error) {
+  const runBootPreflight = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/workforce/bootstrap", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ mode: "preflight" }),
+      });
+      const json = await res.json();
+      if (!res.ok && !json?.compiledSeats) {
+        throw new Error(json?.errors?.[0] || json?.error?.message || "Preflight failed");
+      }
+      setBootPreflight(json);
+      setApplyResult(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runApply = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/workforce/bootstrap", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ mode: "apply", confirmation: confirmText }),
+      });
+      const json = await res.json();
+      setApplyResult(json);
+      setShowConfirm(false);
+      setConfirmText("");
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runIdempotency = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/workforce/bootstrap", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ mode: "idempotency", confirmation: CONFIRM_PHRASE }),
+      });
+      const json = await res.json();
+      setApplyResult(json);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const checks = useMemo(() => preflight?.preflight?.checks || {}, [preflight]);
+  const verify = preflight?.verifySummary || data?.verify || {};
+  const capacity = useMemo(() => data?.capacity || {}, [data]);
+  const bp = bootPreflight;
+
+  const applyEnabled = useMemo(() => {
+    if (!bp?.ok) return false;
+    if (bp.compiledSeats !== 445) return false;
+    if (bp.mappedSeats !== 445) return false;
+    if ((bp.duplicateSeats ?? 0) !== 0) return false;
+    if ((bp.orphanSeats ?? 0) !== 0) return false;
+    if (!bp.schemaReady) return false;
+    if (confirmText !== CONFIRM_PHRASE) return false;
+    return true;
+  }, [bp, confirmText]);
+
+  const checklistStatuses = useMemo(() => {
+    const persistedOk = Number(capacity.persistedSeats) === 445 || bp?.persistedSeats === 445;
+    return {
+      migration: checks.durableDatabase || bp?.schemaReady ? "Ready" : "Action required",
+      bootstrap: persistedOk ? "Ready" : "Action required",
+      verify: persistedOk ? "Ready" : "Blocked",
+      key: checks.openRouterKeyPresent ? "Ready" : "Optional until foundation",
+      free: checks.freeOnlyMode ? "Ready" : "Warning",
+      queue: checks.queue || persistedOk ? "Ready" : "Action required",
+      leases: checks.leases || persistedOk ? "Ready" : "Action required",
+      rate: checks.durableRateLimiter?.durableReady ? "Ready" : "Action required",
+      scheduler: "Optional",
+      knowledge: "Ready",
+      memory: "Ready",
+      qa: "Ready",
+      security: "Ready",
+      live: checks.openRouterKeyPresent ? "Action required" : "Blocked",
+      acceptance: "Blocked",
+    };
+  }, [checks, capacity, bp]);
+
+  if (error && !data) {
     return (
       <div className="admin-page" data-testid="workforce-activation">
         <p role="alert">{error}</p>
@@ -51,79 +178,9 @@ export default function WorkforceActivationClient() {
     );
   }
 
-  const checks = preflight.preflight?.checks || {};
-  const verify = preflight.verifySummary || data.verify || {};
-  const foundationReady = Boolean(verify.foundationReady || data.foundationReady);
-  const dbReady = Boolean(checks.durableDatabase && checks.seatRegistryPersisted445);
-  const keyPresent = Boolean(checks.openRouterKeyPresent);
-
-  const checklist = [
-    {
-      id: "migration",
-      label: "Database migration",
-      status: checks.durableDatabase ? "Ready" : "Action required",
-    },
-    {
-      id: "bootstrap",
-      label: "Workforce bootstrap",
-      status: checks.seatRegistryPersisted445 ? "Ready" : "Action required",
-    },
-    {
-      id: "verify",
-      label: "445-seat database verification",
-      status: checks.seatRegistryPersisted445 ? "Ready" : "Blocked",
-    },
-    {
-      id: "key",
-      label: "OpenRouter key",
-      status: keyPresent ? "Ready" : foundationReady ? "Action required" : "Optional until foundation",
-    },
-    {
-      id: "free",
-      label: "Free-only provider policy",
-      status: checks.freeOnlyMode ? "Ready" : "Warning",
-    },
-    {
-      id: "queue",
-      label: "Durable queue",
-      status: checks.queue ? "Ready" : "Action required",
-    },
-    {
-      id: "leases",
-      label: "Durable leases",
-      status: checks.leases ? "Ready" : "Action required",
-    },
-    {
-      id: "rate",
-      label: "Durable rate limiter",
-      status: checks.durableRateLimiter?.durableReady ? "Ready" : "Action required",
-    },
-    { id: "scheduler", label: "Scheduler", status: "Optional" },
-    { id: "knowledge", label: "Knowledge", status: "Ready" },
-    { id: "memory", label: "Memory", status: "Ready" },
-    { id: "qa", label: "Independent QA", status: "Ready" },
-    { id: "security", label: "Security gates", status: "Ready" },
-    {
-      id: "live",
-      label: "Controlled activation check",
-      status: keyPresent ? "Action required" : "Blocked",
-    },
-    {
-      id: "acceptance",
-      label: "AI Software House acceptance",
-      status: "Blocked",
-    },
-  ];
-
-  let cta = "Apply workforce database foundation";
-  if (!dbReady) cta = "Apply workforce database foundation";
-  else if (!keyPresent) cta = "Add OpenRouter API key";
-  else cta = "Run Controlled Activation Check";
-
-  const capacity = data.capacity;
   const persistedDisplay =
-    capacity?.persistedSeats === null || capacity?.persistedSeats === undefined
-      ? "null (no database)"
+    capacity.persistedSeats === null || capacity.persistedSeats === undefined
+      ? "n/a"
       : capacity.persistedSeats;
 
   return (
@@ -142,8 +199,12 @@ export default function WorkforceActivationClient() {
             </p>
             <dl className="wr-totals" data-testid="wa-truth-cards">
               <div>
-                <dt>Compiled</dt>
-                <dd data-testid="wa-compiled">{capacity?.compiledSeats ?? 445}</dd>
+                <dt>Capacity seats</dt>
+                <dd data-testid="wa-capacity">445</dd>
+              </div>
+              <div>
+                <dt>Compiled seats</dt>
+                <dd data-testid="wa-compiled">{capacity.compiledSeats ?? 445}</dd>
               </div>
               <div>
                 <dt>Persisted in database</dt>
@@ -151,94 +212,228 @@ export default function WorkforceActivationClient() {
               </div>
               <div>
                 <dt>Ready to allocate</dt>
-                <dd data-testid="wa-ready">{capacity?.readyToAllocate ?? 0}</dd>
+                <dd data-testid="wa-ready">{capacity.readyToAllocate ?? 0}</dd>
+              </div>
+              <div>
+                <dt>Allocated</dt>
+                <dd data-testid="wa-allocated">{capacity.allocated ?? 0}</dd>
+              </div>
+              <div>
+                <dt>Active instances</dt>
+                <dd data-testid="wa-active">{verify.activeInstances ?? 0}</dd>
               </div>
               <div>
                 <dt>Live tested</dt>
                 <dd data-testid="wa-live-tested">{data.liveTested ?? 0}</dd>
               </div>
+              <div>
+                <dt>Departments</dt>
+                <dd data-testid="wa-departments">{bp?.departmentCount ?? verify.departmentCount ?? 20}</dd>
+              </div>
+              <div>
+                <dt>Archetypes</dt>
+                <dd data-testid="wa-archetypes">{bp?.archetypeCount ?? verify.archetypeCount ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>Workflow families</dt>
+                <dd data-testid="wa-workflows">{bp?.workflowFamilyCount ?? 13}</dd>
+              </div>
+              <div>
+                <dt>Database durability</dt>
+                <dd data-testid="wa-db-durable">
+                  {checks.durableDatabase || verify.databaseDurable ? "Durable" : "Not durable"}
+                </dd>
+              </div>
+              <div>
+                <dt>Queue durability</dt>
+                <dd data-testid="wa-queue-durable">
+                  {checks.queue || verify.queueDurable ? "Durable" : "Not durable"}
+                </dd>
+              </div>
+              <div>
+                <dt>Lease durability</dt>
+                <dd data-testid="wa-lease-durable">
+                  {checks.leases || verify.leaseDurable ? "Durable" : "Not durable"}
+                </dd>
+              </div>
+              <div>
+                <dt>Provider status</dt>
+                <dd data-testid="wa-provider">
+                  {checks.openRouterKeyPresent ? "Configured" : "AI provider unconfigured"}
+                </dd>
+              </div>
+              <div>
+                <dt>Live execution readiness</dt>
+                <dd data-testid="wa-live-exec">
+                  {checks.openRouterKeyPresent && Number(capacity.persistedSeats) === 445
+                    ? "Ready when gated"
+                    : "Unavailable until provider configuration"}
+                </dd>
+              </div>
             </dl>
           </>
         }
         attention={
-          <ol data-testid="wa-checklist">
-            {checklist.map((item) => (
-              <li key={item.id} data-testid={`wa-item-${item.id}`}>
-                {item.label}: <strong>{item.status}</strong>
+          <ol data-testid="wa-checklist" style={{ listStyleType: "decimal", paddingLeft: "1.5rem" }}>
+            {CHECKLIST_STEPS.map((item, idx) => (
+              <li key={item.id} value={idx + 1} data-testid={`wa-item-${item.id}`}>
+                <span aria-hidden="true">{idx + 1}. </span>
+                {item.label}: <strong>{checklistStatuses[item.id]}</strong>
               </li>
             ))}
           </ol>
         }
         willHappen={
           <p>
-            Complete database foundation first (migration + bootstrap) without any AI API key. Add
-            OpenRouter later for real AI execution. This page cannot set Vercel secrets.
+            Complete database foundation with the secure Admin bootstrap (runs on the deployed
+            server where Production secrets are available). An AI provider key is not required for
+            foundation.
           </p>
         }
         willNotHappen={
           <p>
-            Compiled seats are never reported as persisted. No OpenRouter calls from this page. Live
-            tested stays 0 until a controlled activation succeeds.
+            Local Terminal cannot read Vercel Sensitive Production variables. Do not use vercel env
+            pull/run for bootstrap. No OpenRouter calls from this page. Live tested stays 0 until a
+            controlled activation succeeds.
           </p>
         }
         primaryAction={
-          <div className="founder-cta-row">
-            <span className="header-btn" data-testid="wa-primary-action">
-              {cta}
-            </span>
+          <div className="founder-cta-row" data-testid="wa-bootstrap-actions">
+            <button
+              type="button"
+              className="header-btn"
+              data-testid="wa-run-preflight"
+              disabled={busy}
+              onClick={runBootPreflight}
+            >
+              Run Bootstrap Preflight
+            </button>
+            <button
+              type="button"
+              className="header-btn"
+              data-testid="wa-open-bootstrap"
+              disabled={busy || !bp?.ok}
+              onClick={() => setShowConfirm(true)}
+            >
+              Bootstrap 445 Seats
+            </button>
+            <button
+              type="button"
+              className="header-btn-ghost"
+              data-testid="wa-run-idempotency"
+              disabled={busy || Number(capacity.persistedSeats) !== 445}
+              onClick={runIdempotency}
+            >
+              Run Idempotency Verification
+            </button>
+            <button
+              type="button"
+              className="header-btn-ghost"
+              data-testid="wa-refresh-truth"
+              disabled={busy}
+              onClick={() => load()}
+            >
+              Refresh production truth
+            </button>
             <Link href="/admin/workforce-readiness" className="header-btn-ghost">
               Readiness detail
             </Link>
-            <details data-testid="wa-live-gate">
-              <summary>Terminal commands (Founder-only)</summary>
-              <pre className="wr-json">
-                {`bash scripts/apply-workforce-foundation.sh
-bash scripts/verify-workforce-foundation.sh
-# After key is set on the host (example UUID — replace with yours):
-bash scripts/run-controlled-workforce-activation.sh \\
-  123e4567-e89b-12d3-a456-426614174000
-# or:
-bash scripts/run-controlled-workforce-activation.sh \\
-  "$DISPOSABLE_PROJECT_ID"`}
-              </pre>
-            </details>
           </div>
         }
         progress={
-          <dl className="wr-totals" data-testid="wa-totals">
-            <div>
-              <dt>Foundation</dt>
-              <dd>{foundationReady ? "Ready" : "Required"}</dd>
-            </div>
-            <div>
-              <dt>Provider key</dt>
-              <dd>{keyPresent ? "Present" : "Not required for foundation"}</dd>
-            </div>
-            <div>
-              <dt>Paid fallback</dt>
-              <dd>Disabled</dd>
-            </div>
-            <div>
-              <dt>Preflight</dt>
-              <dd>{preflight.ok ? "OK" : "Issues"}</dd>
-            </div>
-          </dl>
+          <div data-testid="wa-bootstrap-panels">
+            {error ? (
+              <p role="alert" className="admin-error-state">
+                {error}
+              </p>
+            ) : null}
+            {bp ? (
+              <section data-testid="wa-preflight-panel">
+                <h3>Preflight result</h3>
+                <p>
+                  Compiled {bp.compiledSeats} · Mapped {bp.mappedSeats} · Orphans {bp.orphanSeats} ·
+                  Duplicates {bp.duplicateSeats} · Persisted {String(bp.persistedSeats)} · Schema{" "}
+                  {bp.schemaReady ? "ready" : "missing"} · Bootstrap{" "}
+                  {bp.bootstrapRequired ? "required" : "not required"}
+                </p>
+              </section>
+            ) : null}
+            {applyResult ? (
+              <section data-testid="wa-apply-panel">
+                <h3>Bootstrap result</h3>
+                <p>
+                  {applyResult.ok ? "Success" : "Failed"} · Created {applyResult.created ?? "—"} ·
+                  Persisted {String(applyResult.persistedSeats)} · Ready{" "}
+                  {applyResult.readyToAllocateSeats ?? "—"} · Live tested{" "}
+                  {applyResult.liveTestedSeats ?? 0} · Provider{" "}
+                  {applyResult.providerConfigured ? "configured" : "unconfigured"}
+                </p>
+              </section>
+            ) : null}
+            {showConfirm ? (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="wa-confirm-title"
+                data-testid="wa-confirm-modal"
+                className="cc-card"
+                style={{ marginTop: "1rem", padding: "1rem" }}
+              >
+                <h3 id="wa-confirm-title">Confirm workforce bootstrap</h3>
+                <p>
+                  Type <code>{CONFIRM_PHRASE}</code> to upsert exactly 445 capacity seats. This does
+                  not allocate agents, start instances, or call an AI provider.
+                </p>
+                <label htmlFor="wa-confirm-input">Confirmation</label>
+                <input
+                  id="wa-confirm-input"
+                  data-testid="wa-confirm-input"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  autoComplete="off"
+                  style={{ display: "block", width: "100%", margin: "0.5rem 0" }}
+                />
+                <button
+                  type="button"
+                  className="header-btn"
+                  data-testid="wa-confirm-apply"
+                  disabled={!applyEnabled || busy}
+                  onClick={runApply}
+                >
+                  Apply bootstrap
+                </button>
+                <button
+                  type="button"
+                  className="header-btn-ghost"
+                  data-testid="wa-confirm-cancel"
+                  onClick={() => {
+                    setShowConfirm(false);
+                    setConfirmText("");
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : null}
+          </div>
         }
         results={
-          <pre className="wr-json" data-testid="wa-json">
-            {JSON.stringify(
-              {
-                compiledSeats: capacity?.compiledSeats,
-                persistedSeats: capacity?.persistedSeats,
-                readyToAllocate: capacity?.readyToAllocate,
-                liveTested: data.liveTested ?? 0,
-                foundationReady,
-                providerReady: data.providerReady,
-              },
-              null,
-              2
-            )}
-          </pre>
+          <details data-testid="wa-technical-details">
+            <summary>Technical details</summary>
+            <pre className="wr-json" data-testid="wa-json">
+              {JSON.stringify(
+                {
+                  capacity,
+                  bootPreflight: bp,
+                  applyResult,
+                  foundationReady: verify.foundationReady,
+                  providerReady: verify.providerReady,
+                },
+                null,
+                2
+              )}
+            </pre>
+          </details>
         }
       />
     </div>
