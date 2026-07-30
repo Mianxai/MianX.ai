@@ -4,15 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import FounderPageLayout from "@/components/admin/FounderPageLayout";
 
-const CTA_RULES = [
-  { when: "migration", label: "Apply workforce migration" },
-  { when: "bootstrap", label: "Bootstrap 445-seat workforce" },
-  { when: "key", label: "Add OpenRouter API Key" },
-  { when: "live_check", label: "Run Controlled Activation Check" },
-  { when: "acceptance", label: "Run AI Software House Acceptance" },
-  { when: "activate", label: "Activate AI Software House" },
-];
-
 export default function WorkforceActivationClient() {
   const [data, setData] = useState(null);
   const [preflight, setPreflight] = useState(null);
@@ -61,14 +52,47 @@ export default function WorkforceActivationClient() {
   }
 
   const checks = preflight.preflight?.checks || {};
+  const verify = preflight.verifySummary || data.verify || {};
+  const foundationReady = Boolean(verify.foundationReady || data.foundationReady);
+  const dbReady = Boolean(checks.durableDatabase && checks.seatRegistryPersisted445);
+  const keyPresent = Boolean(checks.openRouterKeyPresent);
+
   const checklist = [
-    { id: "migration", label: "Database migration", status: checks.durableDatabase ? "Ready" : "Action required" },
-    { id: "bootstrap", label: "Workforce bootstrap", status: checks.seatRegistry445 ? "Ready" : "Action required" },
-    { id: "verify", label: "445-seat verification", status: checks.seatRegistry445 ? "Ready" : "Blocked" },
-    { id: "key", label: "OpenRouter key", status: checks.openRouterKeyPresent ? "Ready" : "Action required" },
-    { id: "free", label: "Free-only provider policy", status: checks.freeOnlyMode ? "Ready" : "Warning" },
-    { id: "queue", label: "Durable queue", status: checks.durableDatabase ? "Ready" : "Action required" },
-    { id: "leases", label: "Durable leases", status: checks.durableDatabase ? "Ready" : "Action required" },
+    {
+      id: "migration",
+      label: "Database migration",
+      status: checks.durableDatabase ? "Ready" : "Action required",
+    },
+    {
+      id: "bootstrap",
+      label: "Workforce bootstrap",
+      status: checks.seatRegistryPersisted445 ? "Ready" : "Action required",
+    },
+    {
+      id: "verify",
+      label: "445-seat database verification",
+      status: checks.seatRegistryPersisted445 ? "Ready" : "Blocked",
+    },
+    {
+      id: "key",
+      label: "OpenRouter key",
+      status: keyPresent ? "Ready" : foundationReady ? "Action required" : "Optional until foundation",
+    },
+    {
+      id: "free",
+      label: "Free-only provider policy",
+      status: checks.freeOnlyMode ? "Ready" : "Warning",
+    },
+    {
+      id: "queue",
+      label: "Durable queue",
+      status: checks.queue ? "Ready" : "Action required",
+    },
+    {
+      id: "leases",
+      label: "Durable leases",
+      status: checks.leases ? "Ready" : "Action required",
+    },
     {
       id: "rate",
       label: "Durable rate limiter",
@@ -79,17 +103,28 @@ export default function WorkforceActivationClient() {
     { id: "memory", label: "Memory", status: "Ready" },
     { id: "qa", label: "Independent QA", status: "Ready" },
     { id: "security", label: "Security gates", status: "Ready" },
-    { id: "live", label: "Controlled activation check", status: "Blocked" },
-    { id: "acceptance", label: "AI Software House acceptance", status: "Blocked" },
+    {
+      id: "live",
+      label: "Controlled activation check",
+      status: keyPresent ? "Action required" : "Blocked",
+    },
+    {
+      id: "acceptance",
+      label: "AI Software House acceptance",
+      status: "Blocked",
+    },
   ];
 
-  let cta = CTA_RULES[2].label;
-  if (!checks.durableDatabase) cta = CTA_RULES[0].label;
-  else if (!checks.seatRegistry445) cta = CTA_RULES[1].label;
-  else if (!checks.openRouterKeyPresent) cta = CTA_RULES[2].label;
-  else cta = CTA_RULES[3].label;
+  let cta = "Apply workforce database foundation";
+  if (!dbReady) cta = "Apply workforce database foundation";
+  else if (!keyPresent) cta = "Add OpenRouter API key";
+  else cta = "Run Controlled Activation Check";
 
   const capacity = data.capacity;
+  const persistedDisplay =
+    capacity?.persistedSeats === null || capacity?.persistedSeats === undefined
+      ? "null (no database)"
+      : capacity.persistedSeats;
 
   return (
     <div className="admin-page" data-testid="workforce-activation">
@@ -101,12 +136,28 @@ export default function WorkforceActivationClient() {
               Your MianX workforce contains 445 allocatable seats across 20 departments. MianX
               activates only the specialists needed for current project work.
             </p>
-            <p>
-              Capacity: <strong data-testid="wa-capacity">{capacity?.capacitySeats}</strong> · Mapped:{" "}
-              <strong>{capacity?.mappedSeats}</strong> · Available / Ready to allocate:{" "}
-              {capacity?.available} · Allocated: {capacity?.allocated} · Live tested:{" "}
-              <span data-testid="wa-live-tested">{data.liveTested ?? 0}</span>
+            <p data-testid="wa-provider-free">
+              {data.providerFreeMessage ||
+                "Workforce foundation ready. Add an AI provider key to start real AI execution."}
             </p>
+            <dl className="wr-totals" data-testid="wa-truth-cards">
+              <div>
+                <dt>Compiled</dt>
+                <dd data-testid="wa-compiled">{capacity?.compiledSeats ?? 445}</dd>
+              </div>
+              <div>
+                <dt>Persisted in database</dt>
+                <dd data-testid="wa-persisted">{String(persistedDisplay)}</dd>
+              </div>
+              <div>
+                <dt>Ready to allocate</dt>
+                <dd data-testid="wa-ready">{capacity?.readyToAllocate ?? 0}</dd>
+              </div>
+              <div>
+                <dt>Live tested</dt>
+                <dd data-testid="wa-live-tested">{data.liveTested ?? 0}</dd>
+              </div>
+            </dl>
           </>
         }
         attention={
@@ -120,14 +171,13 @@ export default function WorkforceActivationClient() {
         }
         willHappen={
           <p>
-            After migration, bootstrap, and OpenRouter key setup, run the controlled activation
-            check from a secure terminal (max 3 provider calls) on a disposable project. This page
-            cannot set Vercel secrets automatically.
+            Complete database foundation first (migration + bootstrap) without any AI API key. Add
+            OpenRouter later for real AI execution. This page cannot set Vercel secrets.
           </p>
         }
         willNotHappen={
           <p>
-            No OpenRouter calls from this page. No production deploy. No Founder Proof mutation. Live
+            Compiled seats are never reported as persisted. No OpenRouter calls from this page. Live
             tested stays 0 until a controlled activation succeeds.
           </p>
         }
@@ -142,11 +192,14 @@ export default function WorkforceActivationClient() {
             <details data-testid="wa-live-gate">
               <summary>Terminal commands (Founder-only)</summary>
               <pre className="wr-json">
-                {`npm run workforce:bootstrap
-npm run workforce:verify
-# After key is set in the host:
-npm run workforce:live-activation-check -- --project <disposable-uuid> --confirm
-npm run workforce:software-house-acceptance -- --project <disposable-uuid> --confirm`}
+                {`bash scripts/apply-workforce-foundation.sh
+bash scripts/verify-workforce-foundation.sh
+# After key is set on the host (example UUID — replace with yours):
+bash scripts/run-controlled-workforce-activation.sh \\
+  123e4567-e89b-12d3-a456-426614174000
+# or:
+bash scripts/run-controlled-workforce-activation.sh \\
+  "$DISPOSABLE_PROJECT_ID"`}
               </pre>
             </details>
           </div>
@@ -154,12 +207,12 @@ npm run workforce:software-house-acceptance -- --project <disposable-uuid> --con
         progress={
           <dl className="wr-totals" data-testid="wa-totals">
             <div>
-              <dt>Ready to allocate</dt>
-              <dd>{capacity?.mappedSeats}</dd>
+              <dt>Foundation</dt>
+              <dd>{foundationReady ? "Ready" : "Required"}</dd>
             </div>
             <div>
               <dt>Provider key</dt>
-              <dd>{checks.openRouterKeyPresent ? "Present" : "Required"}</dd>
+              <dd>{keyPresent ? "Present" : "Not required for foundation"}</dd>
             </div>
             <div>
               <dt>Paid fallback</dt>
@@ -175,14 +228,12 @@ npm run workforce:software-house-acceptance -- --project <disposable-uuid> --con
           <pre className="wr-json" data-testid="wa-json">
             {JSON.stringify(
               {
+                compiledSeats: capacity?.compiledSeats,
+                persistedSeats: capacity?.persistedSeats,
+                readyToAllocate: capacity?.readyToAllocate,
                 liveTested: data.liveTested ?? 0,
-                preflightChecks: {
-                  openRouterKeyPresent: checks.openRouterKeyPresent,
-                  freeOnlyMode: checks.freeOnlyMode,
-                  paidFallbackDisabled: checks.paidFallbackDisabled,
-                  seatRegistry445: checks.seatRegistry445,
-                  openRouterReachable: checks.openRouterReachable,
-                },
+                foundationReady,
+                providerReady: data.providerReady,
               },
               null,
               2

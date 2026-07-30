@@ -28,19 +28,21 @@ import { runWorkforceVerify } from "@/lib/core/workforce-i2";
 
 export const dynamic = "force-dynamic";
 
-function capacityTruthPayload() {
-  const verify = runWorkforceVerify();
+async function capacityTruthPayload() {
+  const verify = await runWorkforceVerify({ productionMode: false });
   return {
     capacitySeats: verify.capacityBaseline,
-    readyToAllocate: verify.mappedSeats,
+    compiledSeats: verify.compiledSeats,
+    persistedSeats: verify.persistedSeats,
+    readyToAllocate: verify.readyToAllocateSeats,
     allocated: verify.allocatedSeats,
     active: verify.activeInstances,
-    waiting: verify.availableSeats,
-    reviewing: 0,
+    waiting: 0,
+    reviewing: verify.reviewingInstances,
     blocked: verify.blockedSeats,
     released: 0,
-    liveTested: verify.liveTestedCount,
-    note: "445 = allocatable capacity seats, not continuously running processes. Live tested only after real provider evidence.",
+    liveTested: verify.liveTestedSeats,
+    note: "Compiled seats are not persisted database seats. Live tested only after real provider evidence.",
   };
 }
 
@@ -55,7 +57,7 @@ export const GET = withErrorHandling(async (req) => {
     const dash = getWorkforceDashboard({ project_id: projectId || null });
     return NextResponse.json({
       ...dash,
-      capacityTruth: capacityTruthPayload(),
+      capacityTruth: await capacityTruthPayload(),
     });
   }
   if (action === "agent" && slug) {

@@ -56,6 +56,13 @@ if (
 ) {
   fail("Refusing canonical Founder Proof project without --allow-founder-proof");
 }
+if (
+  !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    projectId
+  )
+) {
+  fail("INVALID_PROJECT_UUID — do not paste documentation placeholders like <DISPOSABLE_PROJECT_UUID>");
+}
 
 const { runLiveOpenRouterSmoke, liveSmokeReadiness } = await import(
   "../lib/core/real-agent/harness.js"

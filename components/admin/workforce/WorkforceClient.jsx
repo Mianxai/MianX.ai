@@ -179,13 +179,21 @@ export default function WorkforceClient() {
 
   const statusCards = [
     {
-      label: "445 Capacity Seats",
-      value: capacityTruth.capacitySeats ?? 445,
+      label: "Compiled seats",
+      value: capacityTruth.compiledSeats ?? capacityTruth.capacitySeats ?? 445,
       testId: "wf-card-capacity-seats",
     },
     {
+      label: "Persisted in database",
+      value:
+        capacityTruth.persistedSeats === null || capacityTruth.persistedSeats === undefined
+          ? "n/a"
+          : capacityTruth.persistedSeats,
+      testId: "wf-card-persisted",
+    },
+    {
       label: "Ready to Allocate",
-      value: capacityTruth.readyToAllocate ?? capacityTruth.capacitySeats ?? 445,
+      value: capacityTruth.readyToAllocate ?? 0,
       testId: "wf-card-ready-to-allocate",
     },
     {

@@ -16,13 +16,11 @@ import {
   runWorkforceVerify,
   oneKeyActivationStatus,
   durableRateLimitStatus,
-  INSTANCE_DURABILITY,
 } from "@/lib/core/workforce-i2";
-import { isSupabaseConfigured } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-/** PUBLIC health — never returns secrets. */
+/** PUBLIC health — never returns secrets. Never treats compiled seats as persisted. */
 export async function GET() {
   let lastTick = null;
   try {
@@ -43,18 +41,21 @@ export async function GET() {
 
   let workforce = {
     capacitySeats: 445,
+    compiledSeats: 445,
     persistedSeats: null,
     mappedSeats: null,
-    readyToAllocateSeats: null,
-    allocatedSeats: null,
-    activeInstances: null,
-    reviewingInstances: null,
-    blockedSeats: null,
+    readyToAllocateSeats: 0,
+    allocatedSeats: 0,
+    activeInstances: 0,
+    reviewingInstances: 0,
+    blockedSeats: 0,
     liveTestedSeats: 0,
     archetypeCount: null,
     departmentCoverage: null,
     workflowCoverage: null,
     bootstrapStatus: "unknown",
+    foundationReady: false,
+    productionReady: false,
   };
   let provider = {
     configured: isProviderConfigured("openrouter"),
@@ -65,13 +66,10 @@ export async function GET() {
     lastControlledTestAt: null,
     lastControlledTestResult: null,
   };
-  const durability = INSTANCE_DURABILITY.describe({
-    supabaseConfigured: isSupabaseConfigured(),
-  });
   let runtime = {
-    databaseDurable: isSupabaseConfigured(),
-    queueDurable: isSupabaseConfigured(),
-    leaseDurable: durability.leasesDurable,
+    databaseDurable: false,
+    queueDurable: false,
+    leaseDurable: false,
     rateLimitDurable: false,
     schedulerStatus: config.scheduler,
     lastTickAt: lastTick?.at || null,
@@ -82,23 +80,29 @@ export async function GET() {
   };
 
   try {
-    const v = runWorkforceVerify();
+    const v = await runWorkforceVerify({ productionMode: true });
     const oneKey = oneKeyActivationStatus();
     const rate = durableRateLimitStatus();
     workforce = {
       capacitySeats: v.capacityBaseline,
+      compiledSeats: v.compiledSeats,
       persistedSeats: v.persistedSeats,
       mappedSeats: v.mappedSeats,
-      readyToAllocateSeats: v.availableSeats,
+      readyToAllocateSeats: v.readyToAllocateSeats,
       allocatedSeats: v.allocatedSeats,
       activeInstances: v.activeInstances,
-      reviewingInstances: 0,
+      reviewingInstances: v.reviewingInstances,
       blockedSeats: v.blockedSeats,
-      liveTestedSeats: v.liveTestedCount,
+      liveTestedSeats: v.liveTestedSeats,
       archetypeCount: v.archetypeCount,
       departmentCoverage: v.departmentCoverage,
       workflowCoverage: v.workflowCoverage,
-      bootstrapStatus: isSupabaseConfigured() ? "ready_when_migrated" : "memory_bootstrap",
+      bootstrapStatus: v.bootstrapStatus,
+      foundationReady: v.foundationReady,
+      productionReady: false,
+      compilationReady: v.compilationReady,
+      databaseReady: v.databaseReady,
+      providerFreeMessage: v.providerFreeMessage,
     };
     provider = {
       configured: Boolean(oneKey.keyPresent),
@@ -110,10 +114,16 @@ export async function GET() {
       lastControlledTestResult: null,
     };
     runtime = {
-      ...runtime,
-      rateLimitDurable: rate.durableReady,
-      leaseDurable: durability.leasesDurable,
+      databaseDurable: v.databaseDurable,
+      queueDurable: v.queueDurable,
+      leaseDurable: v.leasesDurable,
+      rateLimitDurable: v.rateLimitDurable || rate.durableReady,
       schedulerStatus: v.schedulerStatus || config.scheduler,
+      lastTickAt: lastTick?.at || null,
+      claimed: lastTick?.claimed ?? null,
+      succeeded: lastTick?.succeeded ?? null,
+      failed: lastTick?.failed ?? null,
+      deadLettered: lastTick?.dead_lettered ?? null,
     };
   } catch {
     /* keep defaults */
