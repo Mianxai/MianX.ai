@@ -445,11 +445,11 @@ export default function CommandCenterClient({ title = "Founder Home" }) {
                   <dl className="cc-detail-dl founder-plan-grid">
                     <div>
                       <dt>Executable</dt>
-                      <dd>{executableCount ?? 36}</dd>
+                      <dd>{executableCount ?? 38}</dd>
                     </div>
                     <div>
                       <dt>Routable</dt>
-                      <dd>{data?.agentInventory?.routable ?? executableCount ?? 36}</dd>
+                      <dd>{data?.agentInventory?.routable ?? executableCount ?? 38}</dd>
                     </div>
                     <div>
                       <dt>Departments</dt>
@@ -529,11 +529,11 @@ export default function CommandCenterClient({ title = "Founder Home" }) {
                 >
                   <div>
                     <dt>Executable</dt>
-                    <dd>{executableCount ?? 36}</dd>
+                    <dd>{executableCount ?? 38}</dd>
                   </div>
                   <div>
                     <dt>Routable</dt>
-                    <dd>{routableCount ?? executableCount ?? 36}</dd>
+                    <dd>{routableCount ?? executableCount ?? 38}</dd>
                   </div>
                   <div>
                     <dt>Active</dt>

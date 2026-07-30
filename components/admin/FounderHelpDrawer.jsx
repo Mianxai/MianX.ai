@@ -135,6 +135,13 @@ export function buildPageTips(pathname, { projectName, proofState } = {}) {
       "Home shows current project, proof state, Next Founder Action, and nine-step progress."
     );
     tips.push("Full Agent Network lives under Agents — not on Home by default.");
+  } else if (path.startsWith("/admin/workforce-readiness")) {
+    tips.push(
+      "Workforce Readiness shows exact catalogue vs executable vs 445 capacity counts — not filler agents."
+    );
+    tips.push(
+      "Definitions are contracts; Live Workforce shows project-scoped instances only when allocated."
+    );
   } else if (path.startsWith("/admin/integration")) {
     tips.push(
       "Plan approval does not start simulation. Simulation approval does not start simulation either."

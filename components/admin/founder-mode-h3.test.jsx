@@ -34,15 +34,19 @@ describe("FounderHelpDrawer page tips", () => {
 });
 
 describe("ProductionReadinessCentre categories", () => {
-  it("marks live AI optional when provider unconfigured", () => {
+  it("marks intelligence optional when provider unconfigured", () => {
     const cats = buildReadinessCategories({
       provider: { status: "unconfigured" },
       rateLimit: { durable: false },
       schedule: { mode: "manual", platform: "github_actions" },
     });
-    const live = cats.find((c) => c.id === "live_ai");
-    expect(live.tone).toBe("optional");
-    expect(live.detail).toMatch(/not required for the deterministic Founder Proof/i);
+    const intelligence = cats.find((c) => c.id === "intelligence");
+    expect(intelligence.tone).toBe("optional");
+    expect(intelligence.detail).toMatch(/Level-1|not configured|optional/i);
+    const workforce = cats.find((c) => c.id === "workforce");
+    expect(workforce).toBeTruthy();
+    const governance = cats.find((c) => c.id === "governance");
+    expect(governance.tone).toBe("ready");
     const core = cats.find((c) => c.id === "core");
     expect(core.detail).toMatch(/single-instance testing/i);
   });
@@ -55,6 +59,10 @@ describe("FOUNDER_GLOSSARY expansion", () => {
     expect(terms).toContain("Live provider execution");
     expect(terms).toContain("Agent definition");
     expect(terms).toContain("Agent instance");
+    expect(terms).toContain("Catalogue agent");
+    expect(terms).toContain("Executable agent");
+    expect(terms).toContain("Capacity slots (445)");
+    expect(terms).toContain("Definition vs live instance");
     expect(terms).toContain("Workflow definition");
     expect(terms).toContain("Workflow instance");
     expect(terms).toContain("Queue");

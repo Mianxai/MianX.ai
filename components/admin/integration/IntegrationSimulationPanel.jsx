@@ -390,15 +390,15 @@ export default function IntegrationSimulationPanel({
             Stage: {humanStageLabel(stage)}. Evidence and memory appear only when durable records
             exist.
           </p>
-          {/* CI / Founder truth: allocation is proposed-only until Start; never all 36. */}
+          {/* CI / Founder truth: allocation is proposed-only until Start; never all 38. */}
           <div data-testid="agent-allocation" className="founder-sim-allocation-truth">
             <p>
               Proposed agents:{" "}
               <strong data-testid="allocation-proposed-count">
                 {agents.length || run.allocation?.selected_agents?.length || 0}
               </strong>
-              . Activated all 36:{" "}
-              <strong data-testid="allocation-activated-all-36">
+              . Activated all 38:{" "}
+              <strong data-testid="allocation-activated-all-38">
                 {String(Boolean(run.allocation?.activated_all_36))}
               </strong>
               .
