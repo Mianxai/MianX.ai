@@ -2,9 +2,9 @@
 
 **Branch:** `cursor/phase-i1-real-agent-runtime-openrouter`  
 **Base main SHA:** `4d0643b5d2ca28d149f75e71ee270c52dfbb31e8` (merged PR #65)  
-**Head commit:** `764718dd7b7c26da5535fda578e1a4aa2bbf025c`  
+**Head commit:** `830650cb9cab018348ef4803b6483f5c1bf14bc5`  
 **Draft PR:** https://github.com/Mianxai/MianX.ai/pull/66  
-**Preview URL:** Vercel Preview for PR #66 (appears after Vercel check)
+**Preview URL:** https://mian-x-ai-git-cursor-phase-i1-real-age-693c54-mianxais-projects.vercel.app
 
 ## Completion truth (exact)
 
@@ -22,10 +22,10 @@ Do **not** claim “100% real agents working.” Real Agent Ready requires provi
 |---|-------|-------|
 | 1 | Latest main SHA used | `4d0643b5d2ca28d149f75e71ee270c52dfbb31e8` |
 | 2 | New branch | `cursor/phase-i1-real-agent-runtime-openrouter` |
-| 3 | Commit SHA | `3840043` (report fill-in; runtime code `764718d`) |
+| 3 | Commit SHA | `830650cb9cab018348ef4803b6483f5c1bf14bc5` |
 | 4 | New Draft PR URL | https://github.com/Mianxai/MianX.ai/pull/66 |
-| 5 | Preview URL | Vercel Preview on PR #66 |
-| 6 | Changed-file count | **30** (+1 report fill-in commit) |
+| 5 | Preview URL | https://mian-x-ai-git-cursor-phase-i1-real-age-693c54-mianxais-projects.vercel.app |
+| 6 | Changed-file count | **30** source files in primary commit (+ report fill-ins) |
 | 7 | Documented capacity | **445** |
 | 8 | Canonical roles actually compiled | **92** (57 named workforce + 35 runtime_catalogue; **0 fabrications**) |
 | 9 | Contract-valid roles | **43** (catalogue) |
