@@ -2,7 +2,9 @@
 
 **Branch:** `cursor/phase-i2-complete-445-agent-workforce`  
 **Base main SHA:** `380a1885fa81eee75b81bcd5c0704e450ca98bef` (merged PR #66)  
-**Head commit / Draft PR / Preview:** filled at PR open
+**Head commit:** `6251b12281e7b014eba27e2bac98de1fcee9de9f`  
+**Draft PR:** https://github.com/Mianxai/MianX.ai/pull/67  
+**Preview URL:** https://mian-x-ai-git-cursor-phase-i2-complete-4833b7-mianxais-projects.vercel.app
 
 ## Completion truth (exact)
 
@@ -23,10 +25,10 @@
 |---|-------|-------|
 | 1 | Latest main SHA used | `380a1885fa81eee75b81bcd5c0704e450ca98bef` |
 | 2 | Branch | `cursor/phase-i2-complete-445-agent-workforce` |
-| 3 | Commit SHA | _(at PR open)_ |
-| 4 | Draft PR URL | _(at PR open)_ |
-| 5 | Preview URL | Vercel Preview on Draft PR |
-| 6 | Changed-file count | _(at PR open)_ |
+| 3 | Commit SHA | `6251b12281e7b014eba27e2bac98de1fcee9de9f` |
+| 4 | Draft PR URL | https://github.com/Mianxai/MianX.ai/pull/67 |
+| 5 | Preview URL | https://mian-x-ai-git-cursor-phase-i2-complete-4833b7-mianxais-projects.vercel.app |
+| 6 | Changed-file count | **36** |
 | 7 | Authoritative capacity baseline | **445** |
 | 8 | Department baseline sum | **445** |
 | 9 | Canonical role archetypes | **148** |
