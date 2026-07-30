@@ -248,18 +248,12 @@ export default function FounderGuidedPanel({
         {next ? (
           <div className="founder-next-action-body">
             <div>
-              <h3>What the Founder needs to do</h3>
-              <p data-testid="founder-next-need">{next.reason || next.label}</p>
+              <h3>Current step</h3>
+              <p data-testid="founder-current-step-label">{stageLabel}</p>
             </div>
-            {willHappen ? (
-              <div>
-                <h3>What happens after clicking</h3>
-                <p data-testid="guided-will-happen">{willHappen}</p>
-              </div>
-            ) : null}
             <div>
-              <h3>What will not happen automatically</h3>
-              <p data-testid="guided-will-not-happen">{willNot}</p>
+              <h3>Why action is required</h3>
+              <p data-testid="founder-next-need">{next.reason || next.label}</p>
             </div>
 
             {resolveDuplicates ? (
@@ -283,10 +277,21 @@ export default function FounderGuidedPanel({
                 {next.label}
               </Link>
             ) : (
-              <p className="admin-muted" role="status">
+              <p className="admin-muted" role="status" data-testid="founder-guided-primary-action">
                 {next.label}
               </p>
             )}
+
+            {willHappen ? (
+              <div>
+                <h3>What will happen</h3>
+                <p data-testid="guided-will-happen">{willHappen}</p>
+              </div>
+            ) : null}
+            <div>
+              <h3>What will not happen</h3>
+              <p data-testid="guided-will-not-happen">{willNot}</p>
+            </div>
           </div>
         ) : (
           <p className="admin-muted">No action required for this project right now.</p>

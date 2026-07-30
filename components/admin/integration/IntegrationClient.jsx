@@ -140,6 +140,7 @@ export default function IntegrationClient() {
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [projectsError, setProjectsError] = useState("");
   const [projectsLoaded, setProjectsLoaded] = useState(false);
+  const [correctionNotice, setCorrectionNotice] = useState(null);
 
   const selectableProjects = useMemo(
     () => filterProofSelectableProjects(projects),
@@ -529,15 +530,42 @@ export default function IntegrationClient() {
   async function act(body) {
     setBusy(true);
     setError("");
+    setCorrectionNotice(null);
     const res = await postJson("/api/admin/integration", body, router);
     setBusy(false);
     if (!res.ok) {
-      setError(res.data?.error?.message || res.data?.message || "Action failed");
+      const code = res.data?.code || res.data?.error?.code;
+      const msg =
+        res.data?.error?.message ||
+        res.data?.message ||
+        res.data?.error ||
+        "Action failed";
+      setError(typeof msg === "string" ? msg : "Action failed");
+      if (code === "CONFLICT" || res.data?.code === "CONFLICT") {
+        await load();
+      }
       return null;
     }
     const nextRun = res.data?.run || res.data?.value?.run || res.data;
     const preferCanonical =
       res.data?.canonical_run_id || dash?.canonicalFounderProofRunId || null;
+    if (
+      body?.action === "return_plan_for_corrections" ||
+      (body?.action === "return_for_changes" &&
+        body?.regenerate_plan !== false)
+    ) {
+      setCorrectionNotice({
+        message:
+          "Plan corrected and durable task ownership saved. Review the corrected plan before approval. Simulation has not started.",
+        runId: nextRun?.id || body?.run_id,
+      });
+      if (nextRun?.id) {
+        setRun(nextRun);
+        setTab("plan", { run_id: nextRun.id });
+      }
+      await load();
+      return res.data;
+    }
     if (body?.action === "cancel_founder_proof_duplicate" && preferCanonical) {
       setTab(tab, { run_id: preferCanonical });
     } else if (nextRun?.id && body?.action !== "cancel_founder_proof_duplicate") {
@@ -624,6 +652,28 @@ export default function IntegrationClient() {
       </div>
 
       {error ? <div className="admin-error">{error}</div> : null}
+      {correctionNotice ? (
+        <div
+          className="admin-success founder-correction-notice"
+          role="status"
+          data-testid="plan-correction-success"
+        >
+          <p>{correctionNotice.message}</p>
+          <button
+            type="button"
+            className="header-btn"
+            data-testid="review-corrected-plan"
+            onClick={() => {
+              setTab("plan", {
+                run_id: correctionNotice.runId || run?.id || undefined,
+              });
+              setCorrectionNotice(null);
+            }}
+          >
+            Review corrected plan
+          </button>
+        </div>
+      ) : null}
       {loading ? <MianxLoader variant="section" label="Loading…" /> : null}
 
       {!loading ? (

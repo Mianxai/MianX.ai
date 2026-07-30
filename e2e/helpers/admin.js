@@ -104,6 +104,7 @@ function json(route, status, body) {
  */
 export async function installAdminMocks(page, { projectId = "proj-1", proofStage = null } = {}) {
   const token = makeStructurallyValidToken();
+  const mockState = { proofStage };
   await page.context().addCookies([
     {
       name: "sb-access-token",
@@ -218,7 +219,7 @@ export async function installAdminMocks(page, { projectId = "proj-1", proofStage
       });
     }
     if (path.startsWith("/api/admin/operations/summary")) {
-      const awaitingSim = proofStage === "simulation_approval_required";
+      const awaitingSim = mockState.proofStage === "simulation_approval_required";
       return json(route, 200, {
         ok: true,
         project_id: url.searchParams.get("project_id") || projectId,
@@ -489,6 +490,121 @@ export async function installAdminMocks(page, { projectId = "proj-1", proofStage
             error: { message: "Production proof requires explicit Founder confirmation" },
           });
         }
+        if (
+          body.action === "return_plan_for_corrections" ||
+          (body.action === "return_for_changes" && body.regenerate_plan !== false)
+        ) {
+          if (body.expected_version === 999) {
+            return json(route, 409, {
+              ok: false,
+              code: "CONFLICT",
+              error: "version conflict",
+            });
+          }
+          if (body.project_id && body.project_id !== qsProject && body.project_id !== "proj-proof-1") {
+            return json(route, 409, {
+              ok: false,
+              code: "CONFLICT",
+              error: "project scope mismatch",
+            });
+          }
+          mockState.proofStage = "founder_approval_required";
+          return json(route, 200, {
+            ok: true,
+            duplicate_created: false,
+            provider_called: false,
+            simulation_approved: false,
+            simulation_started: false,
+            preserved_run_id: body.run_id || "irun-e2e-1",
+            preserved_project_id: qsProject,
+            proof_status: "awaiting_plan_approval",
+            note:
+              "Plan corrected and durable task ownership saved. Review the corrected plan before approval. Simulation has not started.",
+            run: {
+              id: body.run_id || "irun-e2e-1",
+              current_stage: "founder_approval_required",
+              status: "awaiting_approval",
+              execution_mode: "deterministic_simulation",
+              project_id: qsProject,
+              version: Number(body.expected_version || 3) + 1,
+              proof: { is_production_proof: true },
+              objective: {
+                title: "Secure Internal Employee Onboarding Workflow",
+                business_purpose: "Secure internal employee onboarding with least privilege.",
+                protected_actions: ["production_deployment"],
+                is_production_proof: true,
+              },
+              plan_correction: {
+                regenerated_at: new Date().toISOString(),
+                reason: body.note || "corrected",
+                provider_called: false,
+                duplicate_created: false,
+              },
+              planning_plan: {
+                id: "plan-e2e-corrected",
+                wbs: {
+                  tasks: [
+                    {
+                      id: "task-1",
+                      title: "Identity and Access",
+                      department: "security",
+                      proposed_agent: "platform-security",
+                      agent_role: "Platform Security Reviewer",
+                      payload: { agent_slug: "platform-security", department: "security" },
+                    },
+                    {
+                      id: "task-2",
+                      title: "Organisation and Employee Lifecycle Management",
+                      department: "hr",
+                      proposed_agent: "hr-workforce-planner",
+                      agent_role: "HR Workforce Planner",
+                      payload: { agent_slug: "hr-workforce-planner", department: "hr" },
+                    },
+                    {
+                      id: "task-3",
+                      title: "Security Controls and Access Governance",
+                      department: "security",
+                      proposed_agent: "platform-security",
+                      agent_role: "Platform Security Reviewer",
+                      payload: { agent_slug: "platform-security", department: "security" },
+                    },
+                    {
+                      id: "task-4",
+                      title: "Operational Onboarding Coordination",
+                      department: "operations",
+                      proposed_agent: "ops-coordinator",
+                      agent_role: "Ops Coordinator",
+                      quality_reviewer: { slug: "qa-review", role: "QA Review Agent" },
+                      payload: { agent_slug: "ops-coordinator", department: "operations" },
+                    },
+                  ],
+                  edges: [
+                    { from: "task-1", to: "task-2", kind: "depends_on" },
+                    { from: "task-2", to: "task-3", kind: "depends_on" },
+                    { from: "task-3", to: "task-4", kind: "depends_on" },
+                  ],
+                },
+              },
+              allocation: {
+                count: 0,
+                proposed_only: true,
+                activated_all_36: false,
+                selected_agents: [
+                  { slug: "executive-ceo", role: "Executive Orchestrator" },
+                  { slug: "hr-workforce-planner", role: "HR Workforce Planner" },
+                  { slug: "platform-security", role: "Platform Security Reviewer" },
+                  { slug: "ops-coordinator", role: "Ops Coordinator" },
+                  { slug: "qa-review", role: "QA Review Agent" },
+                ],
+              },
+              approval_package: { decision: null },
+              evidence: { count: 0 },
+              memory: { count: 0 },
+              learning: { count: 0 },
+              provider_called: false,
+            },
+          });
+        }
         return json(route, 200, {
           ok: true,
           run: {
@@ -536,7 +652,7 @@ export async function installAdminMocks(page, { projectId = "proj-1", proofStage
       }
       const action = url.searchParams.get("action") || "dashboard";
       if (action === "run") {
-        const awaitingSim = proofStage === "simulation_approval_required";
+        const awaitingSim = mockState.proofStage === "simulation_approval_required";
         const awaitingPlan =
           qsProject === "proj-proof-1" && !awaitingSim;
         const current_stage = awaitingSim
@@ -762,13 +878,13 @@ export async function installAdminMocks(page, { projectId = "proj-1", proofStage
             id: "irun-e2e-1",
             project_id: qsProject,
             stage:
-              proofStage === "simulation_approval_required"
+              mockState.proofStage === "simulation_approval_required"
                 ? "simulation_approval_required"
                 : qsProject === "proj-proof-1"
                   ? "founder_approval_required"
                   : "founder_final_review",
             status:
-              proofStage === "simulation_approval_required"
+              mockState.proofStage === "simulation_approval_required"
                 ? "awaiting_simulation_approval"
                 : qsProject === "proj-proof-1"
                   ? "awaiting_plan_approval"
@@ -781,7 +897,7 @@ export async function installAdminMocks(page, { projectId = "proj-1", proofStage
             is_canonical_active: true,
             is_production_proof: true,
           },
-          ...(proofStage === "simulation_approval_required"
+          ...(mockState.proofStage === "simulation_approval_required"
             ? [
                 {
                   id: "irun-cancelled-hist",

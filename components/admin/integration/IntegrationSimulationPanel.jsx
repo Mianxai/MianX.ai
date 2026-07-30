@@ -390,6 +390,20 @@ export default function IntegrationSimulationPanel({
             Stage: {humanStageLabel(stage)}. Evidence and memory appear only when durable records
             exist.
           </p>
+          {/* CI / Founder truth: allocation is proposed-only until Start; never all 36. */}
+          <div data-testid="agent-allocation" className="founder-sim-allocation-truth">
+            <p>
+              Proposed agents:{" "}
+              <strong data-testid="allocation-proposed-count">
+                {agents.length || run.allocation?.selected_agents?.length || 0}
+              </strong>
+              . Activated all 36:{" "}
+              <strong data-testid="allocation-activated-all-36">
+                {String(Boolean(run.allocation?.activated_all_36))}
+              </strong>
+              .
+            </p>
+          </div>
           <div className="admin-actions">
             {running ? (
               <>
@@ -399,15 +413,27 @@ export default function IntegrationSimulationPanel({
                 <button
                   type="button"
                   className="header-btn-ghost"
+                  data-testid="deterministic-recovery-test"
                   disabled={busy}
                   onClick={onRecoveryTest}
                 >
-                  Recovery test
+                  Deterministic recovery test
                 </button>
                 <button type="button" className="header-btn-ghost" disabled={busy} onClick={onCancel}>
                   Cancel proof
                 </button>
               </>
+            ) : null}
+            {doneForReview && !running ? (
+              <button
+                type="button"
+                className="header-btn-ghost"
+                data-testid="deterministic-recovery-test"
+                disabled={busy}
+                onClick={onRecoveryTest}
+              >
+                Deterministic recovery test
+              </button>
             ) : null}
             {stage === "paused" ? (
               <button type="button" className="header-btn" disabled={busy} onClick={onResume}>
@@ -417,6 +443,22 @@ export default function IntegrationSimulationPanel({
           </div>
         </section>
       )}
+
+      <details className="founder-technical-details" data-testid="simulation-technical-details">
+        <summary>Technical details — proposed agent list</summary>
+        {agents.length ? (
+          <ul>
+            {agents.map((a) => (
+              <li key={a.slug || a.role}>
+                {a.role || a.slug}
+                {a.reason ? ` — ${a.reason}` : ""}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="cc-muted">No proposed agents listed yet.</p>
+        )}
+      </details>
     </div>
   );
 }
