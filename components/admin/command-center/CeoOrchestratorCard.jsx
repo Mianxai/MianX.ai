@@ -116,7 +116,7 @@ export default function CeoOrchestratorCard({
         </div>
       </dl>
       <p className="cc-muted" data-testid="agent-inventory-clarity">
-        Executable agents: 36 · Catalogue: 43 · Future capacity slots: 445 (not live processes).
+        Executable agents: 38 · Catalogue: 43 · Future capacity slots: 445 (not live processes).
         Idle before simulation approval is expected.
       </p>
       <div className="cc-link-row">

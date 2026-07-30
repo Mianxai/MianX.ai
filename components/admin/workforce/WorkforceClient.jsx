@@ -168,7 +168,7 @@ export default function WorkforceClient() {
   }
 
   const counts = dash?.counts || {};
-  const executableCount = dash?.executable_agents ?? 36;
+  const executableCount = dash?.executable_agents ?? 38;
   const assignedCount = Number(dash?.assigned_count ?? counts.busy ?? 0);
   const simState =
     simResult?.simulation?.status ||
@@ -216,7 +216,7 @@ export default function WorkforceClient() {
     >
       <PageHeader
         title="Real Autonomous Workforce"
-        description="Activates the 36 executable agents only — lifecycle, collaboration, simulation. No filler agents. No auto Founder approval. No paid provider in simulation."
+        description="Activates the 38 executable agents only — lifecycle, collaboration, simulation. No filler agents. No auto Founder approval. No paid provider in simulation."
       />
       <FounderActionBanner summary={opsSummary} projectId={projectId} />
 
@@ -347,7 +347,7 @@ export default function WorkforceClient() {
         ) : (
           <EmptyState
             title="No agent states"
-            reason="Bootstrap the workforce to initialise the 36 executable agents."
+            reason="Bootstrap the workforce to initialise the 38 executable agents."
             configuration="Catalog agents only — no fabricated personas."
             nextAction="Open Founder Control and bootstrap, or run a simulation."
             projectLabel={projectId || "all"}

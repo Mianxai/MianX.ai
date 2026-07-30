@@ -1408,3 +1408,40 @@ unless additive and required (none in this closeout).
 4. Merge / promote only with explicit Founder approval
 
 ---
+
+---
+
+## 24. Phase I — Operational Workforce Completion, Founder Admin Simplification, Autonomous Readiness (Draft PR)
+
+Branch: `cursor/phase-i-operational-workforce-completion`  
+Base: `origin/main` @ `52cee02` (merged PR #64).
+
+### Verified main truth at branch cut
+
+- Latest main SHA: `52cee02e6ed7f10069c249fd07a739276a874b50`
+- PR #64 (H.3.3) present on main
+
+### Workforce truth (code)
+
+- Catalogue 43 → Executable 38 → Intentionally non-executable 5
+- Capacity 445 (planning only)
+- Departments 20 with executable coverage paths
+- Canonical workflows + employee-onboarding Founder Proof routing covered
+
+### Gap actions
+
+- Promoted: follow-up-draft, release-readiness
+- Superseded labelled: workflow-orchestrator, requirements-analyst, engineering-planning, test-qa, security-review
+- Workflows remapped off superseded drafts onto Wave executable agents / executive-ceo
+
+### Deliverables
+
+- `lib/core/workforce-completion/` matrix, contract, hierarchy, router, workflows, evidence, lifecycle, memory/learning, queue, readiness
+- Admin Workforce Readiness surface
+- FounderPageLayout + glossary expansions
+- Docs: PHASE-I-OPERATIONAL-WORKFORCE-REPORT, WORKFORCE-COMPLETION-MATRIX, FOUNDER-ADMIN-USER-GUIDE, PRODUCTION-READINESS-CHECKLIST
+
+### Explicit non-goals
+
+No merge, no production deploy, no production Founder Proof mutation, no Final Review decision, no Anthropic, no filler agents.
+

@@ -180,9 +180,9 @@ export async function installAdminMocks(page, { projectId = "proj-1", proofStage
           expectedIntervalSec: 300,
         },
         providers: { anthropic: { status: "unconfigured" } },
-        agentInventory: { executable: 36, executableCount: 36, catalogCount: 43 },
-        hierarchy: { executableCount: 36 },
-        agents: Array.from({ length: 36 }, (_, i) => ({
+        agentInventory: { executable: 38, executableCount: 38, catalogCount: 43 },
+        hierarchy: { executableCount: 38 },
+        agents: Array.from({ length: 38 }, (_, i) => ({
           slug: i === 0 ? "executive-ceo" : `agent-${i + 1}`,
           name: i === 0 ? "Executive Orchestrator" : `Agent ${i + 1}`,
           department: ["executive", "operations", "security", "hr", "qa"][i % 5],
@@ -448,12 +448,12 @@ export async function installAdminMocks(page, { projectId = "proj-1", proofStage
       return json(route, 200, {
         ok: true,
         engine_version: "phase-g-test",
-        executable_agents: 36,
+        executable_agents: 38,
         paused: false,
         assigned_count: 0,
         simulation_state: "not_started",
         counts: {
-          idle: 36,
+          idle: 38,
           busy: 0,
           waiting: 0,
           blocked: 0,
@@ -469,9 +469,9 @@ export async function installAdminMocks(page, { projectId = "proj-1", proofStage
         running_tasks: 0,
         memory_writes: 0,
         learning_proposals: 0,
-        note: "Live dashboard over real executable catalog (36). Simulation safe. No fabricated agents.",
+        note: "Live dashboard over real executable catalog (38). Simulation safe. No fabricated agents.",
         analytics: { task_count: 0, success_pct: 0 },
-        health: { healthy: true, executable_count: 36, dead_agents: [], blocked_agents: [] },
+        health: { healthy: true, executable_count: 38, dead_agents: [], blocked_agents: [] },
         control: { paused: false, recent: [] },
       });
     }
@@ -852,7 +852,7 @@ export async function installAdminMocks(page, { projectId = "proj-1", proofStage
               ? "awaiting_plan_approval"
               : "awaiting_final_review",
           providerStatus: "unconfigured",
-          routableAgentCount: 36,
+          routableAgentCount: 38,
           persistence: {
             durable: true,
             backend: "supabase",
@@ -868,9 +868,9 @@ export async function installAdminMocks(page, { projectId = "proj-1", proofStage
           reason: null,
         },
         routable_agent_audit: {
-          expected: 36,
-          actual_executable: 36,
-          actual_routable: 36,
+          expected: 38,
+          actual_executable: 38,
+          actual_routable: 38,
           matches_expected: true,
         },
         runs: [

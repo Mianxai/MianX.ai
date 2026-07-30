@@ -805,7 +805,7 @@ export default function IntegrationClient() {
           ) : null}
           <p>
             Routable agents:{" "}
-            <strong>{dash?.routable_agent_audit?.actual_routable ?? "—"}</strong> / 36 expected.
+            <strong>{dash?.routable_agent_audit?.actual_routable ?? "—"}</strong> / 38 expected.
             Live AI execution remains disabled unless separately configured.
           </p>
 

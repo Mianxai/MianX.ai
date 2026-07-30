@@ -70,6 +70,7 @@ export function buildReadinessCategories({
   rateLimit = null,
   schedule = null,
   opsSummary = null,
+  phaseI = null,
 } = {}) {
   const providerStatus =
     provider?.status || readiness?.provider || readiness?.providerStatus?.status || "unknown";
@@ -102,20 +103,34 @@ export function buildReadinessCategories({
     proofUi?.state === "persistence_error" ||
     opsSummary?.proof_persistence?.ok === false;
 
+  const execCount =
+    phaseI?.matrixTotals?.executable ??
+    phaseI?.categories?.WORKFORCE?.executableCoverage ??
+    null;
+
   return [
     {
       id: "core",
-      label: "CORE PLATFORM",
+      label: "CORE",
       tone: persistenceOk ? "ready" : "warning",
       statusLabel: persistenceOk ? STATUS.ready : STATUS.warning,
       detail: [
         persistenceOk
-          ? "Core admin, auth, and persistence paths are available for Founder Mode."
+          ? "Database, authentication, project isolation, audit, and health paths are available."
           : "Persistence or schema readiness needs attention before durable proof work.",
         durable
           ? "Durable rate limit adapter is active."
           : "In-memory rate limiting is suitable for single-instance testing, not durable multi-instance production.",
       ].join(" "),
+    },
+    {
+      id: "workforce",
+      label: "WORKFORCE",
+      tone: phaseI?.routingCovered === false ? "action" : "ready",
+      statusLabel:
+        execCount != null ? `${execCount} executable definitions` : STATUS.ready,
+      detail:
+        "Agent definitions, executable coverage, routing, lifecycle, and delegation. 445 capacity slots are planning inventory — not live agents.",
     },
     {
       id: "automation",
@@ -128,9 +143,29 @@ export function buildReadinessCategories({
           ? "GitHub Actions delivery may be delayed."
           : null,
         sched.detail || `Scheduler: ${sched.label}.`,
+        durable
+          ? "Durable rate limiter active."
+          : "Durable rate limiter unconfigured — in-memory development limiter in use.",
       ]
         .filter(Boolean)
         .join(" "),
+    },
+    {
+      id: "intelligence",
+      label: "INTELLIGENCE",
+      tone: "optional",
+      statusLabel: providerConfigured ? "Provider optional" : STATUS.optional,
+      detail: providerConfigured
+        ? "Provider configured but optional for Level-1. Memory and learning never auto-promote."
+        : "Provider unconfigured by design for Level-1. Deterministic paths remain usable. Memory/learning never auto-promote.",
+    },
+    {
+      id: "governance",
+      label: "GOVERNANCE",
+      tone: "ready",
+      statusLabel: "Founder-gated",
+      detail:
+        "Approvals, protected actions (including production_deployment), evidence, security, and project isolation remain Founder-controlled.",
     },
     {
       id: "deterministic_proof",
@@ -148,15 +183,6 @@ export function buildReadinessCategories({
         : simReady
           ? "Deterministic simulation path is ready. Anthropic is not required."
           : "Complete project selection and persistence checks to run the Founder Proof.",
-    },
-    {
-      id: "live_ai",
-      label: "LIVE AI EXECUTION",
-      tone: "optional",
-      statusLabel: STATUS.optional,
-      detail: providerConfigured
-        ? "Live provider is configured but remains Founder-gated. Not required for deterministic Founder Proof."
-        : "Live AI provider is not configured. It is not required for the deterministic Founder Proof.",
     },
   ];
 }
