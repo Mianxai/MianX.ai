@@ -28,9 +28,10 @@ running application code.
 |---|-------|--------|
 | 1 | Latest main SHA | `9c49656` |
 | 2 | Branch | `cursor/phase-i4-durable-bootstrap-truth` |
-| 3 | Commit SHA | *(fill after commit)* |
-| 4 | Draft PR URL | *(fill after create)* |
+| 3 | Commit SHA | `f5417078387843b1a05ec61603f72d12f66415de` |
+| 4 | Draft PR URL | https://github.com/Mianxai/MianX.ai/pull/69 |
 | 5 | Preview URL | Pending Vercel Preview |
+| 26 | Playwright | PASS (admin-chromium) |
 | 6 | Changed files | Persistence adapter, bootstrap/verify runners+CLIs, health/Admin UX, foundation/scheduler scripts, docs, tests |
 | 7 | Root cause | In-memory compile misreported as persisted; Vitest-wrapped CLIs |
 | 8 | Bootstrap CLI | Real Vite SSR loader → `runWorkforceBootstrap` (not Vitest) |

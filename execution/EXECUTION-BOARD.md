@@ -1527,7 +1527,9 @@ Draft/merged PR: https://github.com/Mianxai/MianX.ai/pull/68
 ## 28. Phase I.4 — Durable bootstrap truth (Draft PR)
 
 Branch: `cursor/phase-i4-durable-bootstrap-truth`  
-Base: `origin/main` `9c49656`
+Base: `origin/main` `9c49656`  
+Draft PR: https://github.com/Mianxai/MianX.ai/pull/69  
+Tip: `f541707`
 
 ### Problem fixed
 
