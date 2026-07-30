@@ -1095,6 +1095,57 @@ no fabricated live AI completion, no auto Founder approval.
 
 ---
 
+## 21. Phase H.3.1 — Founder plan correctness + approval readiness (Draft PR)
+
+Branch: `cursor/phase-h31-founder-plan-correctness-closeout`  
+Base: `origin/main` @ `4e1ab86` (includes merged PR #61).
+
+### Root causes
+
+1. Catalog capabilities `identity-access` / `organisation-management` owned by
+   `engineering`; WBS defaulted unknown caps to engineering.
+2. Proposed agents could retain `lead-intelligence` / `research` fillers when
+   onboarding detection or template maps were weak.
+3. Risk cards dropped `name`/`slug` → titles rendered as “Risk N”.
+4. Dependencies showed raw task IDs; Quick Start status joined label text.
+5. Plan approval lacked a Founder-facing readiness gate.
+
+### Routing corrections (read-time + future plans)
+
+- Intent → department resolver (`intent-department.js`).
+- Catalog ownership: identity-access → security; organisation-management → hr.
+- Allocation prefers HR / Security / Ops / QA executables with precise reasons;
+  excludes lead-intelligence / research for production-proof onboarding.
+- Existing durable runs are **not mutated**; display recompute is read-only.
+
+### Plan validation
+
+`validateFounderPlanReadiness` → ready | warning | blocked with reasons and
+recommended corrections. Approve Plan disabled when blocked.
+
+### Explicit non-goals
+
+No merge, no production deploy, no proof mutation, no Anthropic, no Phase I,
+no migration.
+
+### Gate evidence (local — before Draft PR)
+
+| Gate | Result |
+|------|--------|
+| `npm test` | 157 files, 1102 passed / 2 skipped |
+| `npm run lint` | pass |
+| `npm run typecheck` | pass |
+| `npm run build` | pass |
+| `npm audit --omit=dev` | 0 vulnerabilities |
+| `npm run test:browser-harness` | 28 passed / 2 skipped |
+| `npm run test:browser-harness:chrome` | 30 passed |
+| `npx playwright test` | 134 passed |
+| Screenshots | `e2e-artifacts/h31-plan-correctness/` |
+
+Status: **READY FOR DRAFT PR** (do not merge / do not deploy).
+
+---
+
 ## 20. Phase H.3 — Founder guided Admin + proof-state reconciliation (Draft PR)
 
 Branch: `cursor/phase-h3-founder-guided-admin-proof-reconciliation`  

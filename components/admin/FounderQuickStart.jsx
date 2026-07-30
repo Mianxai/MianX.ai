@@ -5,6 +5,13 @@ import { deriveQuickStartStates } from "@/lib/core/integration/founder-labels";
 
 const STORAGE_KEY = "mianx.admin.founderQuickStartExpanded";
 
+function quickStartStateLabel(state, { isCompactNext = false } = {}) {
+  if (state === "completed") return "COMPLETED";
+  if (state === "current") return "CURRENT";
+  if (isCompactNext) return "NEXT";
+  return "UPCOMING";
+}
+
 /**
  * Truly compact Founder Quick Start — current + next by default.
  */
@@ -71,9 +78,11 @@ export default function FounderQuickStart({ run = null, hasProject = false }) {
       </header>
 
       <ol className="founder-quick-start-list founder-quick-start-list--compact">
-        {visible.map((step) => {
+        {visible.map((step, visibleIdx) => {
           const fullIdx = steps.findIndex((s) => s.id === step.id);
           const expanded = showAll || step.state === "current";
+          const isCompactNext = !showAll && visibleIdx === 1 && step.state === "upcoming";
+          const label = quickStartStateLabel(step.state, { isCompactNext });
           return (
             <li
               key={step.id}
@@ -84,16 +93,16 @@ export default function FounderQuickStart({ run = null, hasProject = false }) {
               data-state={step.state}
             >
               <span className="founder-quick-start-index">{fullIdx + 1}</span>
-              <div>
-                <strong>{step.label}</strong>
+              <div className="founder-quick-start-body">
+                <strong className="founder-quick-start-label">{step.label}</strong>
                 {expanded ? <p>{step.description}</p> : null}
-                <span className="founder-quick-start-state">
-                  {step.state === "completed"
-                    ? "Completed"
-                    : step.state === "current"
-                      ? "Current"
-                      : "Next"}
-                </span>
+                <div
+                  className="founder-quick-start-state"
+                  aria-label={`Step status: ${label}`}
+                  data-testid={`quick-start-state-${step.id}`}
+                >
+                  {label}
+                </div>
               </div>
             </li>
           );

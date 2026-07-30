@@ -591,7 +591,10 @@ export default function IntegrationClient() {
                 onRefresh={load}
               />
               <FounderQuickStart run={run} hasProject={Boolean(projectId && selectedProject)} />
-              <ProofDiagnosticsPanel projectId={projectId} />
+              <ProofDiagnosticsPanel
+                projectId={projectId}
+                runId={runIdParam || run?.id || null}
+              />
             </>
           ) : null}
           <IntegrationFlowStepper stepStates={stepStates} />
