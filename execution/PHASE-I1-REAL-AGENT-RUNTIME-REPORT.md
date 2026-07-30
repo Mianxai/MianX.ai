@@ -2,8 +2,8 @@
 
 **Branch:** `cursor/phase-i1-real-agent-runtime-openrouter`  
 **Base main SHA:** `4d0643b5d2ca28d149f75e71ee270c52dfbb31e8` (merged PR #65)  
-**Head commit:** _(filled at PR open)_  
-**Draft PR:** _(filled at PR open)_  
+**Head commit:** `764718dd7b7c26da5535fda578e1a4aa2bbf025c`  
+**Draft PR:** _(URL filled after open)_  
 **Preview URL:** Vercel Preview for the Draft PR (auto after push)
 
 ## Completion truth (exact)
@@ -22,10 +22,10 @@ Do **not** claim “100% real agents working.” Real Agent Ready requires provi
 |---|-------|-------|
 | 1 | Latest main SHA used | `4d0643b5d2ca28d149f75e71ee270c52dfbb31e8` |
 | 2 | New branch | `cursor/phase-i1-real-agent-runtime-openrouter` |
-| 3 | Commit SHA | _(filled at PR open)_ |
-| 4 | New Draft PR URL | _(filled at PR open)_ |
+| 3 | Commit SHA | `764718dd7b7c26da5535fda578e1a4aa2bbf025c` |
+| 4 | New Draft PR URL | _(filled after open)_ |
 | 5 | Preview URL | Vercel Preview on Draft PR |
-| 6 | Changed-file count | _(filled at PR open)_ |
+| 6 | Changed-file count | **30** |
 | 7 | Documented capacity | **445** |
 | 8 | Canonical roles actually compiled | **92** (57 named workforce + 35 runtime_catalogue; **0 fabrications**) |
 | 9 | Contract-valid roles | **43** (catalogue) |
