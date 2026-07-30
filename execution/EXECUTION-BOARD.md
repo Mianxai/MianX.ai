@@ -1095,6 +1095,52 @@ no fabricated live AI completion, no auto Founder approval.
 
 ---
 
+## 20. Phase H.3 — Founder guided Admin + proof-state reconciliation (Draft PR)
+
+Branch: `cursor/phase-h3-founder-guided-admin-proof-reconciliation`  
+Base: `origin/main` @ `f264564` (includes merged PR #60).
+
+### Production forensics (read-only)
+
+After PR #60, health reported `activeProofCount: 0`. PR #60 did **not** change
+proof counting. Root issues addressed in code:
+
+1. Query/persistence failure was coerced to `activeProofCount: 0` via `|| 0`.
+2. Health counting did not use the canonical resolver / terminal helper.
+3. `listPersistedIntegrationRuns` swallowed errors as `[]`.
+
+Diagnostics: `GET /api/admin/integration/proof-diagnostics?project_id=` (admin,
+project-scoped, read-only). Does not mutate production rows.
+
+### Scope
+
+Founder Mode nav, Founder Home, proof recovery UX, onboarding tour, contextual
+Help, Production Readiness Centre, unified Founder Proof state model.
+
+### Explicit non-goals
+
+No merge, no production deploy, no proof mutation, no Anthropic, no Phase I,
+no migration apply.
+
+### Gate evidence (local — before Draft PR)
+
+| Gate | Result |
+|------|--------|
+| `npm test` | 156 files, 1090 passed / 2 skipped |
+| `npm run lint` | pass |
+| `npm run typecheck` | pass |
+| `npm run build` | pass |
+| `npm audit --omit=dev` | 0 vulnerabilities |
+| `npm audit` | 13 high (dev-only; no `--force`) |
+| `npm run test:browser-harness` | 28 passed / 2 skipped |
+| `npm run test:browser-harness:chrome` | 30 passed |
+| `npx playwright test` | 133 passed |
+| Screenshots | `e2e-artifacts/h3-founder-guided-admin/` |
+
+Status: **READY FOR DRAFT PR** (do not merge / do not deploy).
+
+---
+
 ## 19. Phase H.2 — Production reliability + Admin finalisation (Draft PR)
 
 Branch: `cursor/phase-h2-production-reliability-admin-finalisation`  

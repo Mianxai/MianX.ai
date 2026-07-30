@@ -21,6 +21,8 @@ import ExecutionPanel from "@/components/admin/command-center/ExecutionPanel";
 import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import FounderQuickStart from "@/components/admin/FounderQuickStart";
+import ProofRecoveryPanel from "@/components/admin/integration/ProofRecoveryPanel";
+import ProductionReadinessCentre from "@/components/admin/ProductionReadinessCentre";
 import { resolveProjectDisplayName } from "@/lib/admin/resolve-project-label";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { adminFetch } from "@/lib/admin-fetch";
@@ -58,7 +60,7 @@ async function fetchJson(path, router, loginFallback) {
   return { ok: res.ok, status: res.status, data };
 }
 
-export default function CommandCenterClient({ title = "Command Center" }) {
+export default function CommandCenterClient({ title = "Founder Home" }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
@@ -237,7 +239,21 @@ export default function CommandCenterClient({ title = "Command Center" }) {
   });
 
   const nextAction = opsSummary?.next_founder_action;
+  const founderProofUi = opsSummary?.founder_proof_ui || null;
   const hasActiveProof = Boolean(opsSummary?.canonical_integration_run?.id);
+  const activeProofCount =
+    opsSummary?.integration?.active_founder_proof_run_count ??
+    (hasActiveProof ? 1 : 0);
+  const showProofRecovery =
+    !agentsPage &&
+    Boolean(
+      founderProofUi &&
+        (["resolver_error", "persistence_error", "no_proof", "no_project"].includes(
+          founderProofUi.state
+        ) ||
+          ["resumable_historical", "terminal_only", "empty"].includes(founderProofUi.caseId) ||
+          (Number(activeProofCount) === 0 && !hasActiveProof))
+    );
   const stageCtaHref = nextAction?.href
     ? nextAction.href.includes("project_id=") || !projectId
       ? nextAction.href
@@ -245,6 +261,10 @@ export default function CommandCenterClient({ title = "Command Center" }) {
     : projectId
       ? `/admin/integration?project_id=${encodeURIComponent(projectId)}`
       : "/admin/integration";
+
+  const recentActivityLabel = opsSummary?.last_activity_at
+    ? `Last activity ${opsSummary.last_activity_at}`
+    : null;
 
   const actions = (
     <div className="cc-header-actions">
@@ -257,7 +277,7 @@ export default function CommandCenterClient({ title = "Command Center" }) {
           }
           aria-label="Filter by project"
         >
-          <option value="">All projects</option>
+          <option value="">Select project</option>
           {(Array.isArray(data?.projects) ? data.projects : []).map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -301,11 +321,16 @@ export default function CommandCenterClient({ title = "Command Center" }) {
   );
 
   return (
-    <AdminShell title={title} actions={actions}>
-      <div className="cc-page">
+    <AdminShell
+      title={title}
+      actions={actions}
+      helpProjectName={selectedProjectName}
+      helpProofState={founderProofUi}
+    >
+      <div className="cc-page founder-home-page">
         {loading && !data ? (
           <DelayedLoader delayMs={200}>
-            <MianxLoader variant="section" label="Loading command center…" />
+            <MianxLoader variant="section" label="Loading Founder Home…" />
           </DelayedLoader>
         ) : null}
 
@@ -317,21 +342,44 @@ export default function CommandCenterClient({ title = "Command Center" }) {
 
         {data ? (
           <>
-            <OpsStatusBar
-              schedule={data.schedule}
-              readiness={data.productionReadiness}
-              overview={data.overview}
-              refreshing={refreshing}
-              provider={data.provider}
-              rateLimit={data.rateLimit}
-              agentInventory={data.agentInventory}
-            />
-            <FounderAuthorityBanner />
+            {!agentsPage ? (
+              <section
+                className="founder-home-hero cc-card"
+                data-testid="founder-home-hero"
+                aria-labelledby="founder-home-project-h"
+              >
+                <h2 id="founder-home-project-h">Current project</h2>
+                <p className="founder-home-project-name" data-testid="founder-home-project-name">
+                  {projectId ? selectedProjectName : "Select a project to continue"}
+                </p>
+                <div className="founder-home-proof-state" data-testid="founder-home-proof-state">
+                  <h3>Founder Proof state</h3>
+                  <p>
+                    {founderProofUi?.title ||
+                      nextAction?.label ||
+                      (projectId ? "No active Founder Proof" : "Select a project")}
+                  </p>
+                  {founderProofUi?.explanation ? (
+                    <p className="cc-muted">{founderProofUi.explanation}</p>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
+
+            {agentsPage ? <FounderAuthorityBanner /> : null}
+
             {projectId ? (
               agentsPage ? (
                 <FounderActionBanner summary={opsSummary} projectId={projectId} />
               ) : (
                 <>
+                  {showProofRecovery ? (
+                    <ProofRecoveryPanel
+                      founderProofUi={founderProofUi}
+                      projectId={projectId}
+                      onRetry={() => load({ soft: true })}
+                    />
+                  ) : null}
                   <FounderGuidedPanel
                     summary={opsSummary}
                     projectId={projectId}
@@ -345,75 +393,121 @@ export default function CommandCenterClient({ title = "Command Center" }) {
                   />
                 </>
               )
+            ) : !agentsPage ? (
+              <ProofRecoveryPanel
+                founderProofUi={
+                  founderProofUi || {
+                    state: "no_project",
+                    title: "Select a project to continue",
+                    explanation: "Founder Proof is always scoped to one active project.",
+                    primaryCta: {
+                      id: "select_project",
+                      label: "Select project",
+                      href: "/admin/projects",
+                    },
+                  }
+                }
+                projectId=""
+              />
             ) : null}
-            <OverviewMetrics metrics={data.overview} />
-            <CeoOrchestratorCard
-              agent={ceoAgent}
-              brief={data.ceoBrief}
-              projectId={projectId || null}
-              projectName={selectedProjectName}
-              opsSummary={opsSummary}
-            />
 
             {!agentsPage ? (
-              <section className="cc-card cc-workforce-preview" data-testid="cc-workforce-preview">
-                <h2>Workforce preview</h2>
-                <p className="cc-muted">
-                  Compact snapshot only. Full Agent Network is available under Agents.
-                </p>
-                <dl className="cc-detail-dl founder-plan-grid">
-                  <div>
-                    <dt>Executable</dt>
-                    <dd>{executableCount ?? 36}</dd>
+              <>
+                <ProductionReadinessCentre
+                  compact
+                  readiness={data.productionReadiness}
+                  provider={data.provider}
+                  rateLimit={data.rateLimit}
+                  schedule={data.schedule}
+                  opsSummary={opsSummary}
+                />
+                <section
+                  className="cc-card founder-home-activity"
+                  data-testid="founder-home-activity"
+                  aria-labelledby="founder-home-activity-h"
+                >
+                  <h2 id="founder-home-activity-h">Recent activity</h2>
+                  {recentActivityLabel ? (
+                    <p>{recentActivityLabel}</p>
+                  ) : (
+                    <p className="cc-muted">
+                      No recent activity recorded for this project yet.
+                    </p>
+                  )}
+                  {opsSummary?.open_founder_actions != null ? (
+                    <p className="cc-muted">
+                      Open Founder actions: {opsSummary.open_founder_actions}
+                    </p>
+                  ) : null}
+                </section>
+                <details className="cc-card founder-home-advanced" data-testid="founder-home-advanced">
+                  <summary>Advanced — workforce snapshot</summary>
+                  <dl className="cc-detail-dl founder-plan-grid">
+                    <div>
+                      <dt>Executable</dt>
+                      <dd>{executableCount ?? 36}</dd>
+                    </div>
+                    <div>
+                      <dt>Routable</dt>
+                      <dd>{data?.agentInventory?.routable ?? executableCount ?? 36}</dd>
+                    </div>
+                    <div>
+                      <dt>Departments</dt>
+                      <dd>
+                        {Array.isArray(data?.departments) ? data.departments.length : "—"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Active workflows</dt>
+                      <dd>{Array.isArray(data?.workflows) ? data.workflows.length : 0}</dd>
+                    </div>
+                  </dl>
+                  <div className="cc-link-row">
+                    <Link
+                      href={
+                        projectId
+                          ? `/admin/agents?project_id=${encodeURIComponent(projectId)}`
+                          : "/admin/agents"
+                      }
+                      className="header-btn"
+                      data-testid="cc-view-agent-network"
+                    >
+                      View Agent Network
+                    </Link>
+                    <Link
+                      href={
+                        projectId
+                          ? `/admin/workforce?project_id=${encodeURIComponent(projectId)}`
+                          : "/admin/workforce"
+                      }
+                      className="header-btn-ghost"
+                    >
+                      Open Live Workforce
+                    </Link>
                   </div>
-                  <div>
-                    <dt>Routable</dt>
-                    <dd>{data?.agentInventory?.routable ?? executableCount ?? 36}</dd>
-                  </div>
-                  <div>
-                    <dt>Departments</dt>
-                    <dd>{Array.isArray(data?.departments) ? data.departments.length : "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>Active workflows</dt>
-                    <dd>{Array.isArray(data?.workflows) ? data.workflows.length : 0}</dd>
-                  </div>
-                </dl>
-                <div className="cc-link-row">
-                  <Link
-                    href={
-                      projectId
-                        ? `/admin/agents?project_id=${encodeURIComponent(projectId)}`
-                        : "/admin/agents"
-                    }
-                    className="header-btn"
-                    data-testid="cc-view-agent-network"
-                  >
-                    View Agent Network
-                  </Link>
-                  <Link
-                    href={
-                      projectId
-                        ? `/admin/workforce?project_id=${encodeURIComponent(projectId)}`
-                        : "/admin/workforce"
-                    }
-                    className="header-btn-ghost"
-                  >
-                    Open Live Workforce
-                  </Link>
-                  <Link
-                    href={
-                      projectId
-                        ? `/admin/departments?project_id=${encodeURIComponent(projectId)}`
-                        : "/admin/departments"
-                    }
-                    className="header-btn-ghost"
-                  >
-                    View Departments
-                  </Link>
-                </div>
-              </section>
-            ) : null}
+                </details>
+              </>
+            ) : (
+              <>
+                <OpsStatusBar
+                  schedule={data.schedule}
+                  readiness={data.productionReadiness}
+                  overview={data.overview}
+                  refreshing={refreshing}
+                  provider={data.provider}
+                  rateLimit={data.rateLimit}
+                  agentInventory={data.agentInventory}
+                />
+                <OverviewMetrics metrics={data.overview} />
+                <CeoOrchestratorCard
+                  agent={ceoAgent}
+                  brief={data.ceoBrief}
+                  projectId={projectId || null}
+                  projectName={selectedProjectName}
+                  opsSummary={opsSummary}
+                />
+              </>
+            )}
 
             {agentsPage ? (
             <div className="cc-layout" data-testid="cc-agents-full-layout">
@@ -697,14 +791,17 @@ export default function CommandCenterClient({ title = "Command Center" }) {
               </aside>
             </div>
             ) : (
-              <div className="cc-cc-side-compact">
-                <CeoBriefPanel brief={data.ceoBrief} showCancelled={false} />
-                <SchedulePanel
-                  schedule={data.schedule}
-                  readiness={data.productionReadiness}
-                  provider={data.provider}
-                  rateLimit={data.rateLimit}
-                />
+              <div className="cc-cc-side-compact founder-home-below-fold">
+                <details>
+                  <summary>CEO Brief &amp; schedule</summary>
+                  <CeoBriefPanel brief={data.ceoBrief} showCancelled={false} />
+                  <SchedulePanel
+                    schedule={data.schedule}
+                    readiness={data.productionReadiness}
+                    provider={data.provider}
+                    rateLimit={data.rateLimit}
+                  />
+                </details>
               </div>
             )}
 

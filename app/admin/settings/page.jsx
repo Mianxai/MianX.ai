@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import MianxLoader from "@/components/shared/MianxLoader";
 import DelayedLoader from "@/components/shared/DelayedLoader";
+import ProductionReadinessCentre from "@/components/admin/ProductionReadinessCentre";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 
 /**
@@ -452,6 +453,15 @@ export default function SettingsPage() {
         variant="section"
         label="Loading settings…"
       />
+
+      {data ? (
+        <ProductionReadinessCentre
+          readiness={data.readiness || data.productionReadiness || null}
+          provider={data.provider || data.config?.provider || null}
+          rateLimit={data.rateLimit || data.config?.rateLimit || null}
+          schedule={data.scheduler || data.config?.scheduler || null}
+        />
+      ) : null}
 
       {grouped.length > 0 && (
         <section className="settings-section" aria-labelledby="settings-config-h">

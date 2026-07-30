@@ -13,6 +13,9 @@ import {
 import { NavIcon } from "@/components/admin/navIcons";
 import { useAdminNotifications } from "@/components/admin/AdminNotificationProvider";
 import FounderHelpDrawer from "@/components/admin/FounderHelpDrawer";
+import FounderOnboardingTour, {
+  tourStorageKey,
+} from "@/components/admin/FounderOnboardingTour";
 import {
   formatNewSubmissionsBadge,
   newSubmissionsAriaLabel,
@@ -51,6 +54,8 @@ function AdminShellInner({
   actions = null,
   breadcrumbs = null,
   newCount,
+  helpProjectName = null,
+  helpProofState = null,
 }) {
   const pathname = usePathname() || "";
   const router = useRouter();
@@ -59,6 +64,8 @@ function AdminShellInner({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourUserId, setTourUserId] = useState("anon");
   const [advancedOpsOpen, setAdvancedOpsOpen] = useState(false);
   const closeBtnRef = useRef(null);
   const sidebarRef = useRef(null);
@@ -88,6 +95,38 @@ function AdminShellInner({
     sync();
     mq.addEventListener?.("change", sync);
     return () => mq.removeEventListener?.("change", sync);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function maybeShowTour() {
+      // Unit tests and automated browsers — never auto-block dialogs.
+      if (typeof process !== "undefined" && process.env.VITEST) return;
+      if (typeof navigator !== "undefined" && navigator.webdriver) return;
+      let uid = "anon";
+      try {
+        const supabase = getSupabase();
+        if (supabase) {
+          const { data } = await supabase.auth.getUser();
+          if (data?.user?.id) uid = data.user.id;
+        }
+      } catch {
+        /* ignore */
+      }
+      if (cancelled) return;
+      setTourUserId(uid);
+      try {
+        const key = tourStorageKey(uid);
+        const stored = window.localStorage.getItem(key);
+        if (!stored) setTourOpen(true);
+      } catch {
+        /* ignore */
+      }
+    }
+    maybeShowTour();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
@@ -283,7 +322,7 @@ function AdminShellInner({
       >
         <div className="sidebar-logo">
           <Link
-            href={withProjectQuery("/admin", projectId)}
+            href={withProjectQuery("/admin/command-center", projectId)}
             className="sidebar-logo-brand"
             onClick={closeSidebar}
           >
@@ -444,7 +483,26 @@ function AdminShellInner({
         </div>
         <div className="admin-body">{children}</div>
       </main>
-      <FounderHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <FounderHelpDrawer
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        pathname={pathname}
+        projectName={helpProjectName}
+        proofState={helpProofState}
+        onRestartTour={() => {
+          try {
+            window.localStorage.removeItem(tourStorageKey(tourUserId));
+          } catch {
+            /* ignore */
+          }
+          setTourOpen(true);
+        }}
+      />
+      <FounderOnboardingTour
+        open={tourOpen}
+        onClose={() => setTourOpen(false)}
+        userId={tourUserId}
+      />
     </div>
   );
 }

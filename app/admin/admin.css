@@ -2719,3 +2719,198 @@
   }
 }
 
+
+/* Phase H.3 — Founder Mode UI */
+.founder-home-page {
+  max-width: 56rem;
+}
+.founder-home-hero {
+  margin-bottom: 0.75rem;
+}
+.founder-home-hero h2,
+.founder-home-hero h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.founder-home-project-name {
+  margin: 0 0 0.75rem;
+  font-size: 1.35rem;
+  font-weight: 650;
+}
+.founder-home-proof-state p {
+  margin: 0.25rem 0;
+}
+.founder-home-activity,
+.founder-home-advanced {
+  margin-top: 0.75rem;
+}
+.founder-home-below-fold {
+  margin-top: 1rem;
+}
+.proof-recovery-panel {
+  margin-bottom: 0.85rem;
+}
+.proof-recovery-panel h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+.proof-recovery-facts {
+  margin: 0.65rem 0;
+}
+.proof-recovery-facts h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.8rem;
+}
+.proof-recovery-facts ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+.proof-recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.proof-recovery-confirm {
+  margin-top: 0.85rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.proof-diagnostics-panel {
+  margin: 0.85rem 0;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  max-width: 56rem;
+}
+.proof-diagnostics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.55rem 1rem;
+  margin: 0.65rem 0;
+}
+.proof-diagnostics-grid dt {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.proof-diagnostics-grid dd {
+  margin: 0.15rem 0 0;
+}
+.proof-diagnostics-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+}
+.production-readiness-centre {
+  margin: 0.75rem 0;
+  max-width: 56rem;
+}
+.production-readiness-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.production-readiness-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.production-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+.production-readiness-item {
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.production-readiness-item h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.production-readiness-status {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.production-readiness-item.is-ready {
+  border-color: rgba(120, 200, 160, 0.4);
+}
+.production-readiness-item.is-warning,
+.production-readiness-item.is-action {
+  border-color: rgba(220, 180, 100, 0.45);
+}
+.production-readiness-item.is-error {
+  border-color: rgba(220, 120, 100, 0.5);
+}
+.production-readiness-centre.is-compact .production-readiness-grid {
+  gap: 0.5rem;
+}
+.founder-tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+}
+.founder-tour-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+}
+.founder-tour-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100% - 2rem));
+  padding: 1.15rem 1.25rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-card, #111);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
+.founder-tour-progress {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.founder-tour-card h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+.founder-tour-card p {
+  margin: 0 0 0.85rem;
+  color: var(--text-secondary, var(--text-muted));
+  line-height: 1.45;
+}
+.founder-tour-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.founder-help-context {
+  margin: 0.85rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.founder-help-context ul {
+  margin: 0.45rem 0 0;
+  padding-left: 1.1rem;
+}
