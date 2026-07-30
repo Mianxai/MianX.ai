@@ -1499,3 +1499,35 @@ Base: `origin/main` after merged PR #66.
 
 No merge, no production migrate/deploy, no live provider calls, no Founder Proof mutation, no invented filler personas.
 
+---
+
+## 27. Phase I.3 — Production activation closeout (Draft PR)
+
+Branch: `cursor/phase-i3-real-workforce-activation-closeout`
+Base: `origin/main` `267bd65` after merged PR #67.
+
+### Completion truth
+
+445/445 source-backed · 148 archetypes validated · 20 depts · 13 workflows · migrations verified · bootstrap idempotent · free-only verified · activation scripts ready · LIVE TESTED: 0 · blocked only by Founder merge/migration/API key/controlled test
+
+### Gates (local)
+
+- Vitest: 1177 passed / 2 skipped (164 files)
+- Lint / typecheck / build: PASS
+- Browser harness: 28 passed / 2 skipped
+- Chrome harness: blocked in agent environment (Chrome CDP exit); Playwright admin-chromium PASS
+- `npm audit --omit=dev`: 0 vulnerabilities
+- Full `npm audit`: 13 high (no --force)
+- Live provider test: NOT RUN
+
+### Deliverables
+
+- Claim verification + durability honesty
+- Org isolation; duplicate seat invariant
+- Bootstrap dry-run/verify-only; preflight API; health workforce fields
+- Activation Admin CTA checklist; Workforce capacity-truth cards
+- Live activation CI/paid-fallback/Founder-Proof refuse
+- Additive RLS migration `20260730190000_phase_i3_workforce_rls.sql`
+- Production scripts prepared (not executed)
+- Docs: PHASE-I3 closeout, claim verification, deployment/OpenRouter/activation/acceptance/founder/incident guides
+
