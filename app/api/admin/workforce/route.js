@@ -42,6 +42,9 @@ async function capacityTruthPayload() {
     blocked: verify.blockedSeats,
     released: 0,
     liveTested: verify.liveTestedSeats,
+    databaseReady: verify.databaseReady,
+    foundationReady: verify.foundationReady,
+    providerReady: verify.providerReady,
     note: "Compiled seats are not persisted database seats. Live tested only after real provider evidence.",
   };
 }

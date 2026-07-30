@@ -15,6 +15,7 @@ import {
   hasActiveFounderProof,
 } from "@/lib/admin-ops-summary";
 import FounderActionBanner from "@/components/admin/FounderActionBanner";
+import { normalizeCapacityTruth } from "@/lib/core/workforce-i2/ui-truth";
 
 const TABS = [
   { id: "dashboard", label: "Dashboard" },
@@ -168,7 +169,7 @@ export default function WorkforceClient() {
   }
 
   const counts = dash?.counts || {};
-  const capacityTruth = dash?.capacityTruth || {};
+  const capacityTruth = normalizeCapacityTruth(dash?.capacityTruth || {});
   const executableCount = dash?.executable_agents ?? 38;
   const assignedCount = Number(dash?.assigned_count ?? counts.busy ?? 0);
   const simState =
@@ -180,30 +181,27 @@ export default function WorkforceClient() {
   const statusCards = [
     {
       label: "Compiled seats",
-      value: capacityTruth.compiledSeats ?? capacityTruth.capacitySeats ?? 445,
+      value: capacityTruth.compiledSeats,
       testId: "wf-card-capacity-seats",
     },
     {
       label: "Persisted in database",
-      value:
-        capacityTruth.persistedSeats === null || capacityTruth.persistedSeats === undefined
-          ? "n/a"
-          : capacityTruth.persistedSeats,
+      value: capacityTruth.persistedDisplay,
       testId: "wf-card-persisted",
     },
     {
       label: "Ready to Allocate",
-      value: capacityTruth.readyToAllocate ?? 0,
+      value: capacityTruth.readyToAllocate,
       testId: "wf-card-ready-to-allocate",
     },
     {
       label: "Allocated",
-      value: capacityTruth.allocated ?? assignedCount,
+      value: capacityTruth.allocated || assignedCount,
       testId: "wf-card-allocated",
     },
     {
       label: "Active",
-      value: capacityTruth.active ?? counts.busy ?? 0,
+      value: capacityTruth.active || counts.busy || 0,
       testId: "wf-card-active",
     },
     {
@@ -213,22 +211,22 @@ export default function WorkforceClient() {
     },
     {
       label: "Reviewing",
-      value: counts.review ?? capacityTruth.reviewing ?? 0,
+      value: counts.review ?? capacityTruth.reviewing,
       testId: "wf-card-reviewing",
     },
     {
       label: "Blocked",
-      value: capacityTruth.blocked ?? counts.blocked ?? 0,
+      value: capacityTruth.blocked || counts.blocked || 0,
       testId: "wf-card-blocked",
     },
     {
       label: "Released",
-      value: capacityTruth.released ?? counts.completed ?? 0,
+      value: capacityTruth.released || counts.completed || 0,
       testId: "wf-card-released",
     },
     {
       label: "Live Tested",
-      value: capacityTruth.liveTested ?? 0,
+      value: capacityTruth.liveTested,
       testId: "wf-card-live-tested",
     },
     {
@@ -316,11 +314,11 @@ export default function WorkforceClient() {
             >
               <p>
                 <strong>
-                  {capacityTruth.readyToAllocate ?? 445} seats ready to allocate
+                  {capacityTruth.readyToAllocate} seats ready to allocate
                 </strong>
               </p>
               <p>
-                <strong>0 allocated · Live tested: {capacityTruth.liveTested ?? 0}</strong>
+                <strong>0 allocated · Live tested: {capacityTruth.liveTested}</strong>
               </p>
               <p className="cc-muted">
                 Reason: Agent allocation begins only after simulation approval and
@@ -399,8 +397,8 @@ export default function WorkforceClient() {
         ) : (
           <EmptyState
             title="No agent states"
-            reason="Bootstrap the workforce to initialise the 38 executable agents."
-            configuration="Catalog agents only — no fabricated personas."
+            reason="Bootstrap runtime definitions when needed. Capacity seats are separate from the smaller executable runtime catalogue."
+            configuration="Catalog agents only — no fabricated personas. Do not treat runtime definitions as 445 persisted seats."
             nextAction="Open Founder Control and bootstrap, or run a simulation."
             projectLabel={projectId || "all"}
           />
