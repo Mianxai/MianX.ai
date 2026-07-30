@@ -20,7 +20,8 @@
     "typecheck": "tsc -p jsconfig.json --noEmit",
     "verify:navbar": "node scripts/verify-navbar-geometry.mjs",
     "verify:browser": "node scripts/verify-browser-harness.mjs",
-    "runtime:tick": "node scripts/runtime-tick.mjs"
+    "runtime:tick": "node scripts/runtime-tick.mjs",
+    "agents:live-smoke": "node scripts/agents-live-smoke.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
