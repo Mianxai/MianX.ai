@@ -638,40 +638,66 @@ export const POST = withErrorHandling(async (req) => {
     action === "return_for_changes"
   ) {
     const stage = (await hydrateRun(body.run_id))?.current_stage;
-    let run;
-    if (
-      action === "return_plan_for_corrections" ||
-      stage === "simulation_approval_required"
-    ) {
-      if (action === "return_plan_for_corrections" || body.regenerate_plan !== false) {
-        run = returnPlanForCorrections(body.run_id, {
-          actor,
-          note: body.note || body.reason || undefined,
-          idempotency_key: body.idempotency_key || null,
-          expected_stage: body.expected_stage || "simulation_approval_required",
-          expected_version: body.expected_version ?? null,
-        });
+    try {
+      let run;
+      if (
+        action === "return_plan_for_corrections" ||
+        stage === "simulation_approval_required"
+      ) {
+        if (
+          action === "return_plan_for_corrections" ||
+          body.regenerate_plan !== false
+        ) {
+          run = returnPlanForCorrections(body.run_id, {
+            actor,
+            note: body.note || body.reason || undefined,
+            idempotency_key: body.idempotency_key || null,
+            expected_stage: body.expected_stage || "simulation_approval_required",
+            expected_status: body.expected_status || null,
+            expected_version: body.expected_version ?? null,
+            project_id: body.project_id || null,
+          });
+        } else {
+          run = decideSimulationApproval(body.run_id, "return_for_changes", {
+            actor,
+            note: body.note || "",
+          });
+        }
       } else {
-        run = decideSimulationApproval(body.run_id, "return_for_changes", {
+        run = decideFounderApproval(body.run_id, "return_for_changes", {
           actor,
           note: body.note || "",
         });
       }
-    } else {
-      run = decideFounderApproval(body.run_id, "return_for_changes", {
-        actor,
-        note: body.note || "",
+      await finish(run);
+      return NextResponse.json({
+        ok: true,
+        run,
+        duplicate_created: false,
+        provider_called: false,
+        simulation_approved: false,
+        simulation_started: false,
+        preserved_run_id: run.id,
+        preserved_project_id: run.project_id,
+        proof_status: mapProofStatusFromRun(run),
+        note:
+          "Plan corrected and durable task ownership saved. Review the corrected plan before approval. Simulation has not started.",
       });
+    } catch (err) {
+      if (err?.code === "CONFLICT") {
+        return NextResponse.json(
+          { ok: false, code: "CONFLICT", error: err.message },
+          { status: 409 }
+        );
+      }
+      if (err?.code === "NOT_FOUND") {
+        return NextResponse.json(
+          { ok: false, code: "NOT_FOUND", error: err.message },
+          { status: 404 }
+        );
+      }
+      throw err;
     }
-    await finish(run);
-    return NextResponse.json({
-      ok: true,
-      run,
-      duplicate_created: false,
-      provider_called: false,
-      preserved_run_id: run.id,
-      note: "Plan returned for corrections. Canonical run preserved.",
-    });
   }
   if (action === "start_simulation") {
     const run = startIntegrationSimulation(body.run_id, { actor });

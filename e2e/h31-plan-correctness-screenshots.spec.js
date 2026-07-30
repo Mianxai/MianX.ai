@@ -33,7 +33,18 @@ test.describe("H.3.1 Founder plan correctness screenshots", () => {
 
     const diagnostics = page.getByTestId("proof-diagnostics-panel");
     if (await diagnostics.count()) {
-      await diagnostics.locator("summary").click();
+      // H.3.2 nests diagnostics under collapsed Advanced / Technical details —
+      // expand parent before clicking the nested summary (otherwise not visible).
+      const tech = page.getByTestId("technical-details");
+      if (await tech.count()) {
+        const techSummary = tech.locator(":scope > summary");
+        if (await techSummary.count()) {
+          await techSummary.click();
+        }
+      }
+      const diagSummary = diagnostics.locator(":scope > summary");
+      await diagSummary.scrollIntoViewIfNeeded();
+      await diagSummary.click({ force: false });
       await shot(page, "03-founder-proof-diagnostics");
     }
 

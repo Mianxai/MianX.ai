@@ -1095,6 +1095,47 @@ no fabricated live AI completion, no auto Founder approval.
 
 ---
 
+## 23. Phase H.3.3 — CI recovery, durable plan correction, Founder guidance closeout (Draft PR)
+
+Branch: `cursor/phase-h33-ci-proof-guidance-closeout`  
+Base: `origin/main` @ `f162825` (merged PR #63).
+
+### PR #63 Playwright failure root cause
+
+GitHub Actions run `30533926850` / Playwright job `90843244011` — **2 failed**, 133 passed:
+
+1. **`e2e/admin-integration.spec.js`** — Expected `data-testid="agent-allocation"` (and recovery testid) on Simulation tab. H.3.2 removed those selectors when simplifying the Simulation panel. **Not flaky** — deterministic selector mismatch after UX compaction.
+
+2. **`e2e/h31-plan-correctness-screenshots.spec.js`** — Clicked `proof-diagnostics-panel` summary while it was nested under collapsed `TechnicalDetails`, so Playwright reported **element is not visible** (timeout / retry). **Not flaky** — nested collapsed `<details>` visibility.
+
+### Correction path
+
+- Restore allocation + deterministic recovery testids under Simulation technical details / progress.
+- Expand parent Advanced / Technical details before opening diagnostics in H.3.1 screenshot spec.
+- Harden `returnPlanForCorrections` (project scope, stage/version CONFLICT → 409).
+- Success notification + Review corrected plan CTA after return.
+- Founder Guided Panel order: current step → why → click → will/won’t.
+- Concurrency unit tests in `h33-ci-proof-guidance.test.js`.
+
+### Canonical state transitions (after Founder Return — not invoked by agents)
+
+`simulation_approval_required` / `awaiting_simulation_approval`  
+→ `founder_approval_required` / `awaiting_plan_approval`  
+(same run ID; durable Security/HR/Ops/QA assignments; no provider; no simulation start)
+
+### Remaining Founder action (after deploy)
+
+1. On production: **Return plan for corrections** (blocked readiness).  
+2. Review corrected plan → Approve plan.  
+3. Approve simulation boundary → Start simulation → evidence → memory/learning → final review.  
+4. Do not configure Anthropic for Level-1.
+
+### Explicit non-goals
+
+No merge, no production deploy, no production DB mutation, no Anthropic, no Phase I.
+
+---
+
 ## 22. Phase H.3.2 — Founder Proof state truth, safe plan correction, guided UX (Draft PR)
 
 Branch: `cursor/phase-h32-founder-proof-truth-guided-execution`  
