@@ -1,4 +1,4 @@
-/** Shared admin navigation — Founder-first IA, one canonical page per intent. */
+/** Shared admin navigation — Founder Mode primary IA, one canonical page per intent. */
 
 export const RUNTIME_TAB_PATHS = {
   overview: "/admin/runtime",
@@ -16,14 +16,13 @@ export const PATH_TO_RUNTIME_TAB = Object.fromEntries(
 
 export const ADMIN_NAV_GROUPS = [
   {
-    id: "control",
-    label: "Founder Control",
+    id: "founder",
+    label: "Founder Mode",
     items: [
-      { href: "/admin/command-center", label: "Command Center", match: "prefix", icon: "command" },
-      { href: "/admin/integration", label: "Founder Proof", match: "prefix", icon: "runtime" },
-      { href: "/admin/ceo-brief", label: "CEO Brief", match: "prefix", icon: "brief" },
+      { href: "/admin/command-center", label: "Home", match: "prefix", icon: "command" },
+      { href: "/admin/projects", label: "Projects", match: "prefix", icon: "projects" },
       { href: "/admin/objectives", label: "Objectives", match: "prefix", icon: "objectives" },
-      { href: "/admin/company-builder", label: "Company Builder", match: "prefix", icon: "workflows" },
+      { href: "/admin/integration", label: "Founder Proof", match: "prefix", icon: "runtime" },
       {
         href: "/admin/inbox",
         label: "Founder Inbox",
@@ -45,32 +44,16 @@ export const ADMIN_NAV_GROUPS = [
     ],
   },
   {
-    id: "business",
-    label: "Business",
+    id: "results",
+    label: "Results",
     items: [
-      {
-        href: "/admin/leads",
-        label: "Leads",
-        match: "prefix",
-        icon: "submissions",
-        badgeKey: "newCount",
-        scope: "organisation",
-      },
-      { href: "/admin/projects", label: "Projects", match: "prefix", icon: "projects" },
-      { href: "/admin/runtime/approvals", label: "Approvals", match: "prefix", icon: "approvals" },
-    ],
-  },
-  {
-    id: "intelligence",
-    label: "Intelligence",
-    items: [
-      { href: "/admin/knowledge", label: "Knowledge", match: "prefix", icon: "knowledge" },
-      { href: "/admin/templates", label: "Templates", match: "prefix", icon: "workflows" },
-      { href: "/admin/planning", label: "Planning", match: "prefix", icon: "objectives" },
-      { href: "/admin/memory", label: "Memory", match: "prefix", icon: "knowledge" },
-      { href: "/admin/learning", label: "Learning", match: "prefix", icon: "objectives" },
       { href: "/admin/outputs", label: "Outputs", match: "prefix", icon: "outputs" },
       { href: "/admin/analytics", label: "Analytics", match: "prefix", icon: "analytics" },
+      { href: "/admin/knowledge", label: "Knowledge", match: "prefix", icon: "knowledge" },
+      { href: "/admin/memory", label: "Memory", match: "prefix", icon: "knowledge" },
+      { href: "/admin/learning", label: "Learning", match: "prefix", icon: "objectives" },
+      { href: "/admin/templates", label: "Templates", match: "prefix", icon: "workflows" },
+      { href: "/admin/planning", label: "Planning", match: "prefix", icon: "objectives" },
     ],
   },
   {
@@ -91,8 +74,44 @@ export const ADMIN_NAV_GROUPS = [
           { href: "/admin/runtime/runs", label: "Runs", match: "prefix" },
         ],
       },
-      { href: "/admin/runtime/audit", label: "Audit", match: "prefix", icon: "audit", badge: "Advanced" },
-      { href: "/admin/settings", label: "Settings", match: "prefix", icon: "settings", badge: "Advanced" },
+      {
+        href: "/admin/runtime/approvals",
+        label: "Runtime Approvals",
+        match: "prefix",
+        icon: "approvals",
+        badge: "Advanced",
+      },
+      {
+        href: "/admin/runtime/audit",
+        label: "Full Audit",
+        match: "prefix",
+        icon: "audit",
+        badge: "Advanced",
+      },
+      {
+        href: "/admin/settings",
+        label: "Technical Settings",
+        match: "prefix",
+        icon: "settings",
+        badge: "Advanced",
+      },
+      {
+        href: "/admin/company-builder",
+        label: "Company Builder",
+        match: "prefix",
+        icon: "workflows",
+        badge: "Advanced",
+      },
+      { href: "/admin/ceo-brief", label: "CEO Brief", match: "prefix", icon: "brief", badge: "Advanced" },
+      {
+        href: "/admin/leads",
+        label: "Leads",
+        match: "prefix",
+        icon: "submissions",
+        badgeKey: "newCount",
+        scope: "organisation",
+        badge: "Advanced",
+      },
     ],
   },
 ];

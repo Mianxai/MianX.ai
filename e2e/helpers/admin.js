@@ -116,6 +116,17 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
     },
   ]);
 
+  // Founder Mode tour must not block E2E clicks by default.
+  await page.addInitScript(() => {
+    try {
+      for (const id of ["anon", "e2e-admin"]) {
+        window.localStorage.setItem(`mianx.founder.tour.v1.${id}`, "dismissed");
+      }
+    } catch {
+      /* ignore */
+    }
+  });
+
   await page.route("**/api/**", async (route) => {
     const req = route.request();
     const url = new URL(req.url());

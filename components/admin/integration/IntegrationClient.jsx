@@ -46,6 +46,8 @@ import {
 } from "@/components/admin/integration/IntegrationArtifactCards";
 import FounderGuidedPanel from "@/components/admin/FounderGuidedPanel";
 import FounderQuickStart from "@/components/admin/FounderQuickStart";
+import ProofRecoveryPanel from "@/components/admin/integration/ProofRecoveryPanel";
+import ProofDiagnosticsPanel from "@/components/admin/integration/ProofDiagnosticsPanel";
 import { resolveIntegrationTab, tabForFounderProofStage } from "@/lib/core/integration/stage-tab";
 
 const TABS = [
@@ -473,7 +475,11 @@ export default function IntegrationClient() {
   }
 
   return (
-    <AdminShell title="Founder Proof">
+    <AdminShell
+      title="Founder Proof"
+      helpProjectName={selectedProject?.name || null}
+      helpProofState={opsSummary?.founder_proof_ui || null}
+    >
       <PageHeader
         title="Founder Proof"
         description="LEVEL 1 — Deterministic simulation proof. Not live AI execution. Founder-operated: no provider calls, no automatic approvals."
@@ -549,6 +555,34 @@ export default function IntegrationClient() {
           />
           {projectId ? (
             <>
+              {(opsSummary?.founder_proof_ui &&
+                (Number(activeFounderProofRunCount) === 0 ||
+                  ["resolver_error", "persistence_error", "no_proof"].includes(
+                    opsSummary.founder_proof_ui.state
+                  ) ||
+                  ["resumable_historical", "terminal_only", "empty"].includes(
+                    opsSummary.founder_proof_ui.caseId
+                  ))) ||
+              opsSummary?.proof_persistence?.ok === false ? (
+                <ProofRecoveryPanel
+                  founderProofUi={
+                    opsSummary?.founder_proof_ui || {
+                      state:
+                        opsSummary?.proof_persistence?.ok === false
+                          ? "persistence_error"
+                          : "no_proof",
+                      title: "Founder Proof status could not be verified",
+                      explanation:
+                        opsSummary?.proof_persistence?.error ||
+                        "Check diagnostics before starting a new proof.",
+                      severity: "error",
+                      primaryCta: { id: "retry", label: "Retry" },
+                    }
+                  }
+                  projectId={projectId}
+                  onRetry={load}
+                />
+              ) : null}
               <FounderGuidedPanel
                 summary={opsSummary}
                 projectId={projectId}
@@ -557,6 +591,7 @@ export default function IntegrationClient() {
                 onRefresh={load}
               />
               <FounderQuickStart run={run} hasProject={Boolean(projectId && selectedProject)} />
+              <ProofDiagnosticsPanel projectId={projectId} />
             </>
           ) : null}
           <IntegrationFlowStepper stepStates={stepStates} />

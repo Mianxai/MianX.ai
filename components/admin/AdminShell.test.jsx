@@ -36,6 +36,11 @@ describe("AdminShell", () => {
     pathname = "/admin";
     push.mockClear();
     mockMobile(false);
+    try {
+      window.localStorage.clear();
+    } catch {
+      /* ignore */
+    }
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -50,15 +55,13 @@ describe("AdminShell", () => {
 
     expect(screen.queryByRole("link", { name: /^Overview$/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /^Execution$/i })).toBeNull();
-    expect(screen.getByRole("link", { name: /^Leads$/i })).toHaveAttribute(
-      "href",
-      "/admin/leads"
-    );
+    // Leads / Company Builder live under Advanced Operations (collapsed).
+    expect(screen.queryByRole("link", { name: /^Leads$/i })).toBeNull();
     expect(screen.getByRole("link", { name: /^Projects$/i })).toHaveAttribute(
       "href",
       "/admin/projects"
     );
-    expect(screen.getByRole("link", { name: /Command Center/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /^Home$/i })).toHaveAttribute(
       "href",
       "/admin/command-center"
     );
@@ -66,14 +69,8 @@ describe("AdminShell", () => {
       "href",
       "/admin/objectives"
     );
-    expect(screen.getByRole("link", { name: /CEO Brief/i })).toHaveAttribute(
-      "href",
-      "/admin/ceo-brief"
-    );
-    expect(screen.getByRole("link", { name: /Company Builder/i })).toHaveAttribute(
-      "href",
-      "/admin/company-builder"
-    );
+    expect(screen.queryByRole("link", { name: /CEO Brief/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Company Builder/i })).toBeNull();
     expect(screen.getByRole("link", { name: /Founder Inbox/i })).toHaveAttribute(
       "href",
       "/admin/inbox"
@@ -124,11 +121,11 @@ describe("AdminShell", () => {
       "href",
       "/admin/runtime/runs"
     );
-    expect(screen.getByRole("link", { name: /Audit/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Full Audit/i })).toHaveAttribute(
       "href",
       "/admin/runtime/audit"
     );
-    expect(screen.getByRole("link", { name: /Settings/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Technical Settings/i })).toHaveAttribute(
       "href",
       "/admin/settings"
     );
@@ -161,7 +158,7 @@ describe("AdminShell", () => {
       "aria-current",
       "page"
     );
-    expect(screen.getByRole("link", { name: /Command Center/i })).not.toHaveAttribute(
+    expect(screen.getByRole("link", { name: /^Home$/i })).not.toHaveAttribute(
       "aria-current"
     );
   });
@@ -183,32 +180,38 @@ describe("AdminShell", () => {
     expect(aside.className).not.toContain("open");
   });
 
-  it("shows a newCount badge on Leads when provided", () => {
+  it("shows a newCount badge on Leads when provided", async () => {
+    const user = userEvent.setup();
     render(
       <AdminShell title="Command Center" newCount={3}>
         <p>body</p>
       </AdminShell>
     );
+    await user.click(screen.getByTestId("advanced-ops-toggle"));
     const badge = screen.getByTestId("submissions-badge");
     expect(badge).toHaveTextContent("3");
     expect(badge).toHaveAttribute("aria-label", "3 new submissions");
   });
 
-  it("hides the badge when newCount is 0", () => {
+  it("hides the badge when newCount is 0", async () => {
+    const user = userEvent.setup();
     render(
       <AdminShell title="Command Center" newCount={0}>
         <p>body</p>
       </AdminShell>
     );
+    await user.click(screen.getByTestId("advanced-ops-toggle"));
     expect(screen.queryByTestId("submissions-badge")).toBeNull();
   });
 
-  it("displays 99+ for counts above 99", () => {
+  it("displays 99+ for counts above 99", async () => {
+    const user = userEvent.setup();
     render(
       <AdminShell title="Command Center" newCount={150}>
         <p>body</p>
       </AdminShell>
     );
+    await user.click(screen.getByTestId("advanced-ops-toggle"));
     expect(screen.getByTestId("submissions-badge")).toHaveTextContent("99+");
   });
 });

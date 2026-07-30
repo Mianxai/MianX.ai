@@ -50,7 +50,8 @@ function mockVisibility(hidden) {
 
 describe("AdminNotificationProvider + badge persistence", () => {
   beforeEach(() => {
-    pathname = "/admin";
+    // Leads lives under Advanced Operations — active path keeps the group expanded.
+    pathname = "/admin/leads";
     resetCachedNewSubmissions();
     push.mockClear();
     mockVisibility(false);

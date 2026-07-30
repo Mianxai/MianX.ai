@@ -63,12 +63,13 @@ test.describe("admin primary actions", () => {
     await page.getByRole("button", { name: /open navigation/i }).click();
     const aside = page.locator("aside.admin-sidebar").first();
     await expect(aside).toHaveClass(/open/);
-    const leads = aside.getByRole("link", { name: /leads/i }).first();
-    await leads.evaluate((el) => {
+    // Founder Mode primary link (Leads lives under collapsed Advanced Operations).
+    const projects = aside.getByRole("link", { name: /^projects$/i }).first();
+    await projects.evaluate((el) => {
       el.scrollIntoView({ block: "center", inline: "nearest" });
       el.click();
     });
-    await expect(page).toHaveURL(/\/admin\/leads/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/admin\/projects/, { timeout: 15_000 });
   });
 
   test("logout control navigates to login when present", async ({ page }) => {

@@ -28,17 +28,17 @@ describe("admin navigation uniqueness", () => {
     expect(ADMIN_NAV.some((i) => i.href === "/admin/runtime/audit")).toBe(true);
   });
 
-  it("includes Templates under Intelligence without duplicates", () => {
-    const intel = ADMIN_NAV_GROUPS.find((g) => g.id === "intelligence");
-    const labels = intel.items.map((i) => i.label);
+  it("includes Templates under Results without duplicates", () => {
+    const results = ADMIN_NAV_GROUPS.find((g) => g.id === "results");
+    const labels = results.items.map((i) => i.label);
     expect(labels).toContain("Templates");
     expect(labels.filter((l) => l === "Templates")).toHaveLength(1);
     expect(primaryNavHrefs().filter((h) => h === "/admin/templates")).toHaveLength(1);
   });
 
-  it("includes Planning under Intelligence without duplicates", () => {
-    const intel = ADMIN_NAV_GROUPS.find((g) => g.id === "intelligence");
-    const labels = intel.items.map((i) => i.label);
+  it("includes Planning under Results without duplicates", () => {
+    const results = ADMIN_NAV_GROUPS.find((g) => g.id === "results");
+    const labels = results.items.map((i) => i.label);
     expect(labels).toContain("Planning");
     expect(labels.filter((l) => l === "Planning")).toHaveLength(1);
     expect(primaryNavHrefs().filter((h) => h === "/admin/planning")).toHaveLength(1);
@@ -52,23 +52,34 @@ describe("admin navigation uniqueness", () => {
     expect(primaryNavHrefs().filter((h) => h === "/admin/workforce")).toHaveLength(1);
   });
 
-  it("uses Founder Control IA without Overview or Execution in the primary sidebar", () => {
-    const control = ADMIN_NAV_GROUPS.find((g) => g.id === "control");
-    expect(control.label).toBe("Founder Control");
-    expect(control.items.map((i) => i.label)).toEqual([
-      "Command Center",
-      "Founder Proof",
-      "CEO Brief",
+  it("uses Founder Mode IA with Home primary and Advanced Operations collapsed", () => {
+    const founder = ADMIN_NAV_GROUPS.find((g) => g.id === "founder");
+    expect(founder.label).toBe("Founder Mode");
+    expect(founder.items.map((i) => i.label)).toEqual([
+      "Home",
+      "Projects",
       "Objectives",
-      "Company Builder",
+      "Founder Proof",
       "Founder Inbox",
     ]);
+    expect(founder.items[0].href).toBe("/admin/command-center");
     expect(primaryNavHrefs().filter((h) => h === "/admin/integration")).toHaveLength(1);
     expect(ADMIN_NAV.some((i) => i.href === "/admin")).toBe(false);
     expect(ADMIN_NAV.some((i) => i.href === "/admin/execution")).toBe(false);
     const ops = ADMIN_NAV_GROUPS.find((g) => g.id === "operations");
     expect(ops.label).toBe("Advanced Operations");
     expect(ops.collapsedByDefault).toBe(true);
+    expect(ops.items.map((i) => i.label)).toEqual(
+      expect.arrayContaining([
+        "Runtime Overview",
+        "Runtime Approvals",
+        "Full Audit",
+        "Technical Settings",
+        "Company Builder",
+      ])
+    );
+    const runtime = ops.items.find((i) => i.href === "/admin/runtime");
+    expect(runtime.badge).toBe("Advanced");
   });
 
   it("marks Leads active for legacy submissions/lead-pipeline paths", () => {

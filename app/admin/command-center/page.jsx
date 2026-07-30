@@ -7,7 +7,7 @@ import MianxLoader from "@/components/shared/MianxLoader";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Mianx.ai — Agent Command Center",
+  title: "Mianx.ai — Founder Home",
   robots: { index: false, follow: false },
 };
 
@@ -15,9 +15,9 @@ export default function CommandCenterPage() {
   return (
     <Suspense
       fallback={
-        <AdminShell title="Agent Command Center">
+        <AdminShell title="Founder Home">
           <AdminLoadingRegion>
-            <MianxLoader variant="section" label="Loading command center…" />
+            <MianxLoader variant="section" label="Loading Founder Home…" />
           </AdminLoadingRegion>
         </AdminShell>
       }
