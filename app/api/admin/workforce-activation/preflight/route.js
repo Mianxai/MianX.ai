@@ -11,16 +11,23 @@ export const dynamic = "force-dynamic";
 
 export const GET = withErrorHandling(async (req) => {
   await requireAdmin(req);
-  const preflight = buildActivationPreflight();
-  const verify = runWorkforceVerify();
+  const preflight = await buildActivationPreflight();
+  const verify = await runWorkforceVerify({ productionMode: true });
   return NextResponse.json({
     ok: preflight.ok,
     preflight,
     verifySummary: {
       capacityBaseline: verify.capacityBaseline,
       compiledSeats: verify.compiledSeats,
-      mappedSeats: verify.mappedSeats,
-      liveTestedCount: verify.liveTestedCount,
+      persistedSeats: verify.persistedSeats,
+      readyToAllocateSeats: verify.readyToAllocateSeats,
+      liveTestedSeats: verify.liveTestedSeats,
+      compilationReady: verify.compilationReady,
+      databaseReady: verify.databaseReady,
+      foundationReady: verify.foundationReady,
+      providerReady: verify.providerReady,
+      liveReady: verify.liveReady,
+      productionReady: verify.productionReady,
       claimVerification: verify.claimVerification,
     },
   });

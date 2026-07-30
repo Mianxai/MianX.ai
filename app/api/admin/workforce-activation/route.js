@@ -6,11 +6,10 @@ import {
   compileCapacitySeats,
   oneKeyActivationStatus,
   planProjectTeam,
-  listInstances,
-  listSeatsFromStore,
-  bootstrapWorkforceRegistryInMemory,
+  runWorkforceVerify,
+  buildActivationPreflight,
+  runSoftwareHouseTestDoubleE2E,
 } from "@/lib/core/workforce-i2";
-import { runSoftwareHouseTestDoubleE2E } from "@/lib/core/workforce-i2";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +18,6 @@ export const GET = withErrorHandling(async (req) => {
   const url = new URL(req.url);
   const action = url.searchParams.get("action") || "snapshot";
 
-  bootstrapWorkforceRegistryInMemory();
-
   if (action === "test_double_e2e") {
     const e2e = await runSoftwareHouseTestDoubleE2E();
     return NextResponse.json({ ok: e2e.ok, e2e, providerCallsMade: false });
@@ -28,11 +25,8 @@ export const GET = withErrorHandling(async (req) => {
 
   const checklist = buildWorkforceActivationChecklist();
   const seats = compileCapacitySeats();
-  const seatList = listSeatsFromStore();
-  const available = seatList.filter((s) => s.lifecycleState === "available").length;
-  const allocated = seatList.filter((s) =>
-    ["allocated", "active", "waiting", "reviewing"].includes(s.lifecycleState)
-  ).length;
+  const verify = await runWorkforceVerify({ productionMode: true });
+  const preflight = await buildActivationPreflight();
 
   return NextResponse.json({
     ok: true,
@@ -40,17 +34,24 @@ export const GET = withErrorHandling(async (req) => {
     oneKey: oneKeyActivationStatus(),
     capacity: {
       capacitySeats: seats.capacitySeats,
+      compiledSeats: verify.compiledSeats,
       mappedSeats: seats.mappedSeats,
       orphanSeats: seats.orphanSeats,
-      available,
-      allocated,
+      persistedSeats: verify.persistedSeats,
+      readyToAllocate: verify.readyToAllocateSeats,
+      available: verify.readyToAllocateSeats,
+      allocated: verify.allocatedSeats,
       primary: seats.primarySeats,
       reservePool: seats.reservePoolSeats,
     },
-    instances: listInstances(),
+    verify,
+    preflight,
+    foundationReady: verify.foundationReady,
+    providerReady: verify.providerReady,
     explanation:
-      "445 workforce seats are ready to allocate. They are not 445 continuously running processes. MianX activates only the specialists required for current project work.",
-    liveTested: 0,
+      "445 workforce seats are compiled capacity. Persisted seats come only from the database after migration and bootstrap. They are not 445 continuously running processes.",
+    liveTested: verify.liveTestedSeats,
+    providerFreeMessage: verify.providerFreeMessage,
   });
 });
 

@@ -1501,26 +1501,15 @@ No merge, no production migrate/deploy, no live provider calls, no Founder Proof
 
 ---
 
-## 27. Phase I.3 — Production activation closeout (Draft PR)
+## 27. Phase I.3 — Production activation closeout (merged PR #68)
 
-Branch: `cursor/phase-i3-real-workforce-activation-closeout`
-Base: `origin/main` `267bd65` after merged PR #67.
-Draft PR: https://github.com/Mianxai/MianX.ai/pull/68
-Tip: `30e13f1`
+Branch: `cursor/phase-i3-real-workforce-activation-closeout`  
+Base: `origin/main` `267bd65` after merged PR #67.  
+Draft/merged PR: https://github.com/Mianxai/MianX.ai/pull/68
 
 ### Completion truth
 
 445/445 source-backed · 148 archetypes validated · 20 depts · 13 workflows · migrations verified · bootstrap idempotent · free-only verified · activation scripts ready · LIVE TESTED: 0 · blocked only by Founder merge/migration/API key/controlled test
-
-### Gates (local)
-
-- Vitest: 1177 passed / 2 skipped (164 files)
-- Lint / typecheck / build: PASS
-- Browser harness: 28 passed / 2 skipped
-- Chrome harness: blocked in agent environment (Chrome CDP exit); Playwright admin-chromium PASS
-- `npm audit --omit=dev`: 0 vulnerabilities
-- Full `npm audit`: 13 high (no --force)
-- Live provider test: NOT RUN
 
 ### Deliverables
 
@@ -1532,4 +1521,19 @@ Tip: `30e13f1`
 - Additive RLS migration `20260730190000_phase_i3_workforce_rls.sql`
 - Production scripts prepared (not executed)
 - Docs: PHASE-I3 closeout, claim verification, deployment/OpenRouter/activation/acceptance/founder/incident guides
+
+---
+
+## 28. Phase I.4 — Durable bootstrap truth (Draft PR)
+
+Branch: `cursor/phase-i4-durable-bootstrap-truth`  
+Base: `origin/main` `9c49656`
+
+### Problem fixed
+
+Compiled in-memory seats were reported as `persistedSeats`. CLIs ran Vitest instead of application code.
+
+### Expected truth before Founder apply
+
+445 compiled · persisted null/0 · no false OK · foundation scripts ready · OpenRouter not required · LIVE TESTED: 0
 

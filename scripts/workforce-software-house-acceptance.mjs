@@ -26,7 +26,15 @@ if (!process.argv.includes("--confirm")) {
 const idx = process.argv.indexOf("--project");
 const projectId = idx >= 0 ? process.argv[idx + 1] : null;
 if (!projectId) {
-  console.error("Missing --project");
+  console.error("Missing --project. Example: --project 123e4567-e89b-12d3-a456-426614174000");
+  process.exit(2);
+}
+if (
+  !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    projectId
+  )
+) {
+  console.error("INVALID_PROJECT_UUID — do not paste placeholders like <DISPOSABLE_PROJECT_UUID>");
   process.exit(2);
 }
 
