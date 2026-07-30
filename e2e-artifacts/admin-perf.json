@@ -1,76 +1,73 @@
 {
-  "generatedAt": "2026-07-30T16:09:23.047Z",
+  "generatedAt": "2026-07-29T16:28:21.253Z",
   "results": [
     {
       "route": "/admin/command-center",
       "kind": "cold",
-      "ms": 897,
+      "ms": 859,
       "apiCalls": 0,
       "dupes": 0
     },
     {
       "route": "/admin/command-center",
       "kind": "warm",
-      "ms": 343,
-      "apiCalls": 2,
+      "ms": 80,
+      "apiCalls": 0,
       "dupes": 0,
-      "counts": {
-        "http://127.0.0.1:3100/api/admin/notifications": 1,
-        "http://127.0.0.1:3100/api/admin/command-center": 1
-      }
+      "counts": {}
     },
     {
       "route": "/admin/departments",
       "kind": "warm",
-      "ms": 174,
+      "ms": 119,
       "apiCalls": 1,
       "dupes": 0,
       "counts": {
-        "http://127.0.0.1:3100/api/admin/command-center": 1
+        "http://127.0.0.1:3101/api/admin/command-center": 1
       }
     },
     {
       "route": "/admin/workflows",
       "kind": "warm",
-      "ms": 913,
+      "ms": 85,
       "apiCalls": 1,
       "dupes": 0,
       "counts": {
-        "http://127.0.0.1:3100/api/admin/command-center": 1
+        "http://127.0.0.1:3101/api/admin/command-center": 1
       }
     },
     {
       "route": "/admin/leads",
       "kind": "warm",
-      "ms": 620,
+      "ms": 326,
       "apiCalls": 2,
       "dupes": 0,
       "counts": {
-        "http://127.0.0.1:3100/api/admin/notifications": 1,
-        "http://127.0.0.1:3100/api/leads": 1
+        "http://127.0.0.1:3101/api/admin/notifications": 1,
+        "http://127.0.0.1:3101/api/leads": 1
       }
     },
     {
       "route": "/admin/agents",
       "kind": "warm",
-      "ms": 90,
+      "ms": 87,
       "apiCalls": 1,
       "dupes": 0,
       "counts": {
-        "http://127.0.0.1:3100/api/admin/command-center": 1
+        "http://127.0.0.1:3101/api/admin/command-center": 1
       }
     },
     {
       "route": "/admin/runtime",
       "kind": "warm",
-      "ms": 429,
+      "ms": 365,
       "apiCalls": 4,
       "dupes": 0,
       "counts": {
-        "http://127.0.0.1:3100/api/admin/notifications": 1,
-        "http://127.0.0.1:3100/api/core/health": 1,
-        "http://127.0.0.1:3100/api/core/projects": 1,
-        "http://127.0.0.1:3100/api/admin/operations/summary": 1
+        "http://127.0.0.1:3101/api/admin/notifications": 1,
+        "http://127.0.0.1:3101/api/core/health": 1,
+        "http://127.0.0.1:3101/api/core/projects": 1,
+        "http://127.0.0.1:3101/api/admin/operations/summary": 1
       }
     }
   ]
