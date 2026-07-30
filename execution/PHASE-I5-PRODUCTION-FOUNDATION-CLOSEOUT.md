@@ -1,6 +1,6 @@
 # Phase I.5 — Production-safe workforce bootstrap and foundation closeout
 
-**Branch:** `cursor/phase-i5-production-foundation-closeout`  
+**Branch:** `cursor/phase-i5-production-foundation-closeout`
 **Base main:** `33e2180adaf221ab6f8b3fbb3c4e128d07623363`
 
 ## Pre-bootstrap Production truth (verified)

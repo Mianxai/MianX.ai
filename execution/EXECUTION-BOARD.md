@@ -1526,7 +1526,7 @@ Draft/merged PR: https://github.com/Mianxai/MianX.ai/pull/68
 
 ## 29. Phase I.5 — Production-safe workforce bootstrap (Draft PR)
 
-Branch: `cursor/phase-i5-production-foundation-closeout`  
+Branch: `cursor/phase-i5-production-foundation-closeout`
 Base: `origin/main` `33e2180`
 
 Secure Admin `POST /api/admin/workforce/bootstrap` (preflight/apply/idempotency).
