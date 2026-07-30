@@ -16,6 +16,7 @@ import {
   generateIntegrationPlan,
   decideFounderApproval,
   decideSimulationApproval,
+  returnPlanForCorrections,
   startIntegrationSimulation,
   decideFinalReview,
   pauseIntegrationRun,
@@ -575,19 +576,45 @@ export const POST = withErrorHandling(async (req) => {
     action === "approve_deterministic_simulation" ||
     action === "confirm_simulation"
   ) {
-    const run = decideSimulationApproval(body.run_id, body.decision || "approve", {
-      actor,
-      note: body.note || "",
-      auto_approve: false,
-    });
-    await finish(run);
-    return NextResponse.json({
-      ok: true,
-      run,
-      simulation_started: false,
-      provider_called: false,
-      note: "Deterministic simulation approved. Start remains a separate Founder action.",
-    });
+    try {
+      const run = decideSimulationApproval(body.run_id, body.decision || "approve", {
+        actor,
+        note: body.note || "",
+        auto_approve: false,
+        idempotency_key: body.idempotency_key || null,
+        expected_stage: body.expected_stage || null,
+        expected_status: body.expected_status || null,
+        expected_version: body.expected_version ?? null,
+      });
+      await finish(run);
+      return NextResponse.json({
+        ok: true,
+        run,
+        simulation_started: false,
+        provider_called: false,
+        note: "Deterministic simulation approved. Start remains a separate Founder action.",
+      });
+    } catch (err) {
+      if (err?.code === "PLAN_NOT_READY") {
+        return NextResponse.json(
+          {
+            ok: false,
+            code: "PLAN_NOT_READY",
+            error: err.message,
+            readiness: err.readiness || null,
+            primary_cta: "return_plan_for_corrections",
+          },
+          { status: 409 }
+        );
+      }
+      if (err?.code === "CONFLICT") {
+        return NextResponse.json(
+          { ok: false, code: "CONFLICT", error: err.message },
+          { status: 409 }
+        );
+      }
+      throw err;
+    }
   }
   if (action === "reject") {
     const stage = (await hydrateRun(body.run_id))?.current_stage;
@@ -606,14 +633,30 @@ export const POST = withErrorHandling(async (req) => {
     await finish(run);
     return NextResponse.json({ ok: true, run });
   }
-  if (action === "return_for_changes") {
+  if (
+    action === "return_plan_for_corrections" ||
+    action === "return_for_changes"
+  ) {
     const stage = (await hydrateRun(body.run_id))?.current_stage;
     let run;
-    if (stage === "simulation_approval_required") {
-      run = decideSimulationApproval(body.run_id, "return_for_changes", {
-        actor,
-        note: body.note || "",
-      });
+    if (
+      action === "return_plan_for_corrections" ||
+      stage === "simulation_approval_required"
+    ) {
+      if (action === "return_plan_for_corrections" || body.regenerate_plan !== false) {
+        run = returnPlanForCorrections(body.run_id, {
+          actor,
+          note: body.note || body.reason || undefined,
+          idempotency_key: body.idempotency_key || null,
+          expected_stage: body.expected_stage || "simulation_approval_required",
+          expected_version: body.expected_version ?? null,
+        });
+      } else {
+        run = decideSimulationApproval(body.run_id, "return_for_changes", {
+          actor,
+          note: body.note || "",
+        });
+      }
     } else {
       run = decideFounderApproval(body.run_id, "return_for_changes", {
         actor,
@@ -621,7 +664,14 @@ export const POST = withErrorHandling(async (req) => {
       });
     }
     await finish(run);
-    return NextResponse.json({ ok: true, run });
+    return NextResponse.json({
+      ok: true,
+      run,
+      duplicate_created: false,
+      provider_called: false,
+      preserved_run_id: run.id,
+      note: "Plan returned for corrections. Canonical run preserved.",
+    });
   }
   if (action === "start_simulation") {
     const run = startIntegrationSimulation(body.run_id, { actor });

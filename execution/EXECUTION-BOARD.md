@@ -1095,7 +1095,64 @@ no fabricated live AI completion, no auto Founder approval.
 
 ---
 
-## 21. Phase H.3.1 — Founder plan correctness + approval readiness (Draft PR)
+## 22. Phase H.3.2 — Founder Proof state truth, safe plan correction, guided UX (Draft PR)
+
+Branch: `cursor/phase-h32-founder-proof-truth-guided-execution`  
+Base: `origin/main` @ `6a25c72` (merged PR #62).
+
+### Current canonical production truth (do not mutate from this PR)
+
+- project_id: `61d3b1fd-c260-479b-9289-0c75f977e892`
+- run_id: `e8848aeb-388f-49b3-9b44-7ffbfa715110`
+- status: `awaiting_simulation_approval`
+- stage: `simulation_approval_required`
+- plan approval: completed
+- simulation approval: current / not approved
+- simulation / evidence / memory / learning / final: not produced
+- selected agents: 0; durable counts: 0; provider: unconfigured; duplicates: 0
+
+### Identified contradiction (root cause)
+
+Multiple independent progress mappers disagreed:
+
+1. `deriveStepStates` (FlowStepper chips) skipped `simulation_approval_required`, marked simulation approval + simulation + evidence + memory as completed with zero durable counts.
+2. `IntegrationFounderWorkflowGuide` fell through to Objective as current.
+3. Quick Start correctly showed Plan Approval completed / Simulation Approval current.
+
+### Canonical state model
+
+`lib/core/integration/founder-proof-view-model.js` — `buildFounderProofViewModel` is the single server-derived progress + next-action model. Surfaces must consume it (or delegates that call it). Artifact gates: simulation/evidence/memory/learning cannot show completed without durable counts. Invariants fail closed.
+
+### Safe correction path
+
+`returnPlanForCorrections` (API `return_plan_for_corrections`):
+
+- Preserves project ID, canonical run ID, objective, audit lineage, deterministic mode, Founder gates, production_deployment block
+- Regenerates durable per-task department + primary agent assignments
+- Returns to Plan Review (`founder_approval_required`)
+- Never creates a second proof; idempotent; concurrency/version aware
+- **Agents must not invoke this against production**
+
+### Simulation approval boundary
+
+Approve is blocked until durable readiness passes (`validateSimulationDurableReadiness`). Approving authorizes simulation eligibility only — Start remains a separate Founder action. No provider call.
+
+### No production mutation from this PR
+
+Code + tests + screenshots only. No merge, deploy, DB write, Return/Approve/Start against production, Anthropic, or Phase I.
+
+### Exact Founder steps after future deployment
+
+1. Open Founder Proof on the canonical project/run.
+2. Confirm workflow shows Simulation Approval as current (not Objective; not fabricated later completions).
+3. If Plan / simulation readiness is blocked: **Return plan for corrections** with the reason template → review regenerated plan → approve plan again.
+4. When ready: **Approve deterministic simulation boundary** (does not start).
+5. Separately: **Start deterministic simulation**.
+6. Continue evidence → memory/learning → final review. Do not configure Anthropic for Level-1 deterministic proof.
+
+---
+
+
 
 Branch: `cursor/phase-h31-founder-plan-correctness-closeout`  
 Base: `origin/main` @ `4e1ab86` (includes merged PR #61).

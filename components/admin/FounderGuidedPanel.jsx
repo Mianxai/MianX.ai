@@ -38,6 +38,7 @@ export default function FounderGuidedPanel({
   projectName,
   projects = [],
   onRefresh,
+  proofViewModel = null,
 }) {
   const [dupBusy, setDupBusy] = useState(false);
   const [dupMessage, setDupMessage] = useState("");
@@ -152,13 +153,28 @@ export default function FounderGuidedPanel({
 
   if (!summary?.ok) return null;
 
-  const next = summary.next_founder_action;
+  const vmNext = proofViewModel?.nextFounderAction;
+  const next = vmNext
+    ? {
+        id: vmNext.id,
+        label: vmNext.label,
+        href: vmNext.href,
+        reason: vmNext.explanation || vmNext.reason,
+        severity: vmNext.severity || "action_required",
+        will_happen: Array.isArray(vmNext.willHappen)
+          ? vmNext.willHappen.join(" ")
+          : vmNext.willHappen,
+        will_not_happen: Array.isArray(vmNext.willNotHappen)
+          ? vmNext.willNotHappen.join(" ")
+          : vmNext.willNotHappen,
+      }
+    : summary.next_founder_action;
   const canonical = summary.canonical_integration_run;
   const objective =
     summary.objectives?.find((o) => o.is_canonical || o.source_type === "integration_proof") ||
     summary.objectives?.[0] ||
     null;
-  const runId = canonical?.id || null;
+  const runId = proofViewModel?.runId || canonical?.id || null;
   const resolveDuplicates = next?.id === "resolve_duplicates" || hasDuplicates;
   const primaryHref =
     next?.href && next.severity === "action_required" && !resolveDuplicates
@@ -166,13 +182,16 @@ export default function FounderGuidedPanel({
       : null;
 
   const stageLabel =
+    proofViewModel?.founderStageLabel ||
     canonical?.stage_label ||
     humanStageLabel(canonical?.stage || canonical?.current_stage) ||
     "Not started";
-  const statusLabel = humanStatusLabel(
-    canonical?.proof_status || canonical?.status,
-    canonical?.stage || canonical?.current_stage
-  );
+  const statusLabel =
+    proofViewModel?.founderStatusLabel ||
+    humanStatusLabel(
+      canonical?.proof_status || canonical?.status,
+      canonical?.stage || canonical?.current_stage
+    );
 
   const willHappen =
     next?.will_happen ||
