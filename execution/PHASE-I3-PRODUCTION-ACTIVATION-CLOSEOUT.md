@@ -58,7 +58,7 @@ npm run workforce:software-house-acceptance -- --project <uuid> --confirm
 | 1 | Current main SHA | `267bd65f8dc176c2e480c4acd7e39e18eab9715e` |
 | 2 | PR #67 state | MERGED |
 | 3 | Branch used | `cursor/phase-i3-real-workforce-activation-closeout` |
-| 4 | Commit SHA | `eb03acfebe81043bfcc8b226bc6495352f387534` |
+| 4 | Commit SHA | `30e13f1b4854465919d055cea38d6ca5126bcce3` |
 | 5 | Draft PR URL | https://github.com/Mianxai/MianX.ai/pull/68 |
 | 6 | Preview URL | Pending Vercel Preview after Draft PR checks |
 | 7 | Changed files | Phase I.3 closeout set (code, migration, scripts, docs) |
