@@ -139,8 +139,33 @@ test.describe("admin authenticated route sweep", () => {
     await page.goto("/admin/workforce");
     await expect(page).toHaveURL(/\/admin\/workforce/);
     await expect(page.getByRole("heading", { name: /real autonomous workforce/i })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: /primary/i }).getByRole("link", { name: /live workforce/i })).toHaveCount(1);
-    await expect(page.getByText(/38 executable/i).first()).toBeVisible();
+    await expect(
+      page.getByRole("navigation", { name: /primary/i }).getByRole("link", { name: /live workforce/i })
+    ).toHaveCount(1);
+
+    const dashboard = page.getByTestId("workforce-dashboard");
+    await expect(dashboard).toBeVisible();
+    await expect(page.getByTestId("workforce-status-cards")).toBeVisible();
+
+    // Phase I.4 capacity truth — not the stale "38 executable" catalogue copy
+    await expect(page.getByTestId("wf-card-capacity-seats")).toBeVisible();
+    await expect(page.getByTestId("wf-card-capacity-seats")).toContainText("445");
+    await expect(page.getByTestId("wf-card-persisted")).toBeVisible();
+    await expect(page.getByTestId("wf-card-persisted")).toContainText(/n\/a|0/i);
+    await expect(page.getByTestId("wf-card-ready-to-allocate")).toBeVisible();
+    await expect(page.getByTestId("wf-card-ready-to-allocate")).toContainText("0");
+    await expect(page.getByTestId("wf-card-live-tested")).toBeVisible();
+    await expect(page.getByTestId("wf-card-live-tested")).toContainText("0");
+
+    // Must not falsely claim 445 active/running agents or 445 persisted without DB
+    await expect(page.getByText(/445 active agents/i)).toHaveCount(0);
+    await expect(page.getByText(/445 running/i)).toHaveCount(0);
+    await expect(page.getByTestId("wf-card-persisted")).not.toContainText(/^445$/);
+    // Stale Founder contract removed
+    await expect(page.getByText(/38 executable/i)).toHaveCount(0);
+
+    await expect(page.getByRole("heading", { name: /workforce error/i })).toHaveCount(0);
+    await expect(page.locator("body")).not.toContainText(/Application error|Hydration failed/i);
   });
 });
 
