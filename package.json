@@ -21,7 +21,11 @@
     "verify:navbar": "node scripts/verify-navbar-geometry.mjs",
     "verify:browser": "node scripts/verify-browser-harness.mjs",
     "runtime:tick": "node scripts/runtime-tick.mjs",
-    "agents:live-smoke": "node scripts/agents-live-smoke.mjs"
+    "agents:live-smoke": "node scripts/agents-live-smoke.mjs",
+    "workforce:bootstrap": "vitest run lib/core/workforce-i2/cli-bootstrap.test.js",
+    "workforce:verify": "vitest run lib/core/workforce-i2/phase-i2.test.js -t \"compiles exactly 445\"",
+    "workforce:test-double": "vitest run lib/core/workforce-i2/phase-i2.test.js -t \"software-house test-double\"",
+    "workforce:live-activation-check": "node scripts/workforce-live-activation-check.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
