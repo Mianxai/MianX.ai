@@ -444,6 +444,80 @@ export async function installAdminMocks(page, { projectId = "proj-1", proofStage
         },
       });
     }
+    if (path.startsWith("/api/admin/workforce/bootstrap")) {
+      if (method === "POST") {
+        let body = {};
+        try {
+          body = route.request().postDataJSON() || {};
+        } catch {
+          body = {};
+        }
+        if (body.mode === "preflight") {
+          return json(route, 200, {
+            ok: true,
+            mode: "preflight",
+            wrote: false,
+            compilationOk: true,
+            schemaReady: true,
+            bootstrapRequired: true,
+            compiledSeats: 445,
+            uniqueSeatIds: 445,
+            mappedSeats: 445,
+            orphanSeats: 0,
+            duplicateSeats: 0,
+            departmentCount: 20,
+            archetypeCount: 148,
+            workflowFamilyCount: 13,
+            workflowFamiliesRequired: 13,
+            persistedSeats: 0,
+            readyToAllocateSeats: 0,
+            allocatedSeats: 0,
+            activeInstances: 0,
+            liveTestedSeats: 0,
+            schemaPresent: true,
+            databaseConfigured: true,
+            providerConfigured: false,
+            liveExecutionReady: false,
+            planned: { created: 445, updated: 0, unchanged: 0 },
+            confirmationRequired: "BOOTSTRAP 445",
+          });
+        }
+        if (body.confirmation !== "BOOTSTRAP 445") {
+          return json(route, 400, {
+            ok: false,
+            code: "INVALID_CONFIRMATION",
+            errors: ['confirmation must be exactly "BOOTSTRAP 445"'],
+          });
+        }
+        return json(route, 200, {
+          ok: true,
+          mode: body.mode || "apply",
+          wrote: true,
+          created: body.mode === "idempotency" ? 0 : 445,
+          updated: body.mode === "idempotency" ? 445 : 0,
+          duplicates: 0,
+          compiledSeats: 445,
+          mappedSeats: 445,
+          orphanSeats: 0,
+          persistedSeats: 445,
+          readyToAllocateSeats: 445,
+          allocatedSeats: 0,
+          activeInstances: 0,
+          liveTestedSeats: 0,
+          providerConfigured: false,
+          liveExecutionReady: false,
+          idempotent: body.mode === "idempotency",
+        });
+      }
+      return json(route, 200, {
+        ok: true,
+        mode: "preflight",
+        compiledSeats: 445,
+        persistedSeats: 0,
+        schemaReady: true,
+        bootstrapRequired: true,
+      });
+    }
     if (path.startsWith("/api/admin/workforce")) {
       return json(route, 200, {
         ok: true,

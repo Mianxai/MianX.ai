@@ -102,6 +102,8 @@ export async function GET() {
       productionReady: false,
       compilationReady: v.compilationReady,
       databaseReady: v.databaseReady,
+      providerReady: Boolean(oneKey.keyPresent),
+      liveExecutionReady: Boolean(oneKey.keyPresent) && v.foundationReady === true,
       providerFreeMessage: v.providerFreeMessage,
     };
     provider = {
@@ -119,6 +121,7 @@ export async function GET() {
       leaseDurable: v.leasesDurable,
       rateLimitDurable: v.rateLimitDurable || rate.durableReady,
       schedulerStatus: v.schedulerStatus || config.scheduler,
+      expectedIntervalMs: config.scheduler?.expectedIntervalMs ?? 300000,
       lastTickAt: lastTick?.at || null,
       claimed: lastTick?.claimed ?? null,
       succeeded: lastTick?.succeeded ?? null,
