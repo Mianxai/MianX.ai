@@ -102,7 +102,7 @@ function json(route, status, body) {
 /**
  * Install API mocks + session cookie for an authenticated admin shell.
  */
-export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
+export async function installAdminMocks(page, { projectId = "proj-1", proofStage = null } = {}) {
   const token = makeStructurallyValidToken();
   await page.context().addCookies([
     {
@@ -218,22 +218,40 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
       });
     }
     if (path.startsWith("/api/admin/operations/summary")) {
+      const awaitingSim = proofStage === "simulation_approval_required";
       return json(route, 200, {
         ok: true,
         project_id: url.searchParams.get("project_id") || projectId,
         project_name: "MianX Internal Production Proof",
-        next_founder_action: {
-          label: "Review Plan",
-          reason: "Waiting for Founder Plan Approval",
-          href: "/admin/integration?tab=plan",
-          severity: "action_required",
-        },
+        next_founder_action: awaitingSim
+          ? {
+              id: "return_plan_for_corrections",
+              label: "Return plan for corrections",
+              reason:
+                "Durable plan assignments are incomplete. Return the plan for corrections before approving simulation.",
+              href: "/admin/integration?tab=simulation",
+              severity: "action_required",
+            }
+          : {
+              label: "Review Plan",
+              reason: "Waiting for Founder Plan Approval",
+              href: "/admin/integration?tab=plan",
+              severity: "action_required",
+            },
         canonical_integration_run: {
           id: "irun-e2e-1",
-          stage: "founder_approval_required",
-          proof_status: "awaiting_plan_approval",
-          stage_label: "Waiting for Founder Plan Approval",
-          current_stage: "founder_approval_required",
+          stage: awaitingSim
+            ? "simulation_approval_required"
+            : "founder_approval_required",
+          proof_status: awaitingSim
+            ? "awaiting_simulation_approval"
+            : "awaiting_plan_approval",
+          stage_label: awaitingSim
+            ? "Waiting for Simulation Approval"
+            : "Waiting for Founder Plan Approval",
+          current_stage: awaitingSim
+            ? "simulation_approval_required"
+            : "founder_approval_required",
         },
         integration: { duplicate_warning: false, duplicate_count: 0, duplicate_runs: [] },
       });
@@ -518,54 +536,69 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
       }
       const action = url.searchParams.get("action") || "dashboard";
       if (action === "run") {
-        const awaitingPlan = qsProject === "proj-proof-1";
+        const awaitingSim = proofStage === "simulation_approval_required";
+        const awaitingPlan =
+          qsProject === "proj-proof-1" && !awaitingSim;
+        const current_stage = awaitingSim
+          ? "simulation_approval_required"
+          : awaitingPlan
+            ? "founder_approval_required"
+            : "founder_final_review";
+        const status = awaitingSim
+          ? "awaiting_simulation_approval"
+          : awaitingPlan
+            ? "awaiting_plan_approval"
+            : "awaiting_final_review";
         return json(route, 200, {
           ok: true,
           run: {
             id: "irun-e2e-1",
-            current_stage: awaitingPlan
-              ? "founder_approval_required"
-              : "founder_final_review",
-            status: awaitingPlan ? "awaiting_plan_approval" : "awaiting_final_review",
+            current_stage,
+            status,
             execution_mode: "deterministic_simulation",
             project_id: qsProject,
+            version: 3,
+            proof: { is_production_proof: true },
             objective: {
               title: "Secure Internal Employee Onboarding Workflow",
               business_purpose: "Secure internal employee onboarding with least privilege.",
               protected_actions: ["production_deployment"],
+              is_production_proof: true,
             },
             correlation_id: "corr-e2e",
             trace_id: "trace-e2e",
             allocation: {
-              count: 5,
+              count: awaitingSim ? 0 : 5,
               activated_all_36: false,
-              selected_agents: [
-                {
-                  slug: "executive-ceo",
-                  role: "Executive Orchestrator",
-                  reason: "Hierarchical delegation anchor for the Founder Proof.",
-                },
-                {
-                  slug: "hr-workforce-planner",
-                  role: "HR Workforce Planner",
-                  reason: "Owns employee lifecycle and onboarding policy design.",
-                },
-                {
-                  slug: "platform-security",
-                  role: "Platform Security Reviewer",
-                  reason: "Reviews identity, least privilege and access revocation controls.",
-                },
-                {
-                  slug: "ops-coordinator",
-                  role: "Operations Coordinator",
-                  reason: "Coordinates onboarding operations and provisioning runbooks.",
-                },
-                {
-                  slug: "qa-review",
-                  role: "QA Review Agent",
-                  reason: "Verifies evidence completeness for the proof pack.",
-                },
-              ],
+              selected_agents: awaitingSim
+                ? []
+                : [
+                    {
+                      slug: "executive-ceo",
+                      role: "Executive Orchestrator",
+                      reason: "Hierarchical delegation anchor for the Founder Proof.",
+                    },
+                    {
+                      slug: "hr-workforce-planner",
+                      role: "HR Workforce Planner",
+                      reason: "Owns employee lifecycle and onboarding policy design.",
+                    },
+                    {
+                      slug: "platform-security",
+                      role: "Platform Security Reviewer",
+                      reason: "Reviews identity, least privilege and access revocation controls.",
+                    },
+                    {
+                      slug: "ops-coordinator",
+                      role: "Operations Coordinator",
+                      reason: "Coordinates onboarding operations and provisioning runbooks.",
+                    },
+                    {
+                      slug: "qa-review",
+                      role: "QA Review Agent",
+                      reason: "Verifies evidence completeness for the proof pack.",
+                    },
+                  ],
             },
             planning_plan: {
               id: "plan-e2e-1",
@@ -573,27 +606,50 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
                 tasks: [
                   {
                     id: "task-1",
-                    title: "Identity and access",
+                    title: "Identity and Access",
                     purpose: "Define least-privilege identity controls.",
+                    ...(awaitingSim
+                      ? {}
+                      : {
+                          proposed_agent: "platform-security",
+                          agent_role: "Platform Security Reviewer",
+                        }),
                   },
                   {
                     id: "task-2",
-                    title: "Organisation management",
+                    title: "Organisation and Employee Lifecycle Management",
                     purpose: "Map roles and onboarding ownership.",
+                    ...(awaitingSim
+                      ? {}
+                      : {
+                          proposed_agent: "hr-workforce-planner",
+                          agent_role: "HR Workforce Planner",
+                        }),
                   },
                   {
                     id: "task-3",
-                    title: "Onboarding operations",
-                    purpose: "Operationalise provisioning runbooks.",
+                    title: "Security Controls and Access Governance",
+                    purpose: "Security control coverage.",
+                    ...(awaitingSim
+                      ? {}
+                      : {
+                          proposed_agent: "platform-security",
+                          agent_role: "Platform Security Reviewer",
+                        }),
                   },
                   {
                     id: "task-4",
-                    title: "Verification and evidence",
-                    purpose: "Collect simulation evidence.",
+                    title: "Operational Onboarding Coordination",
+                    purpose: "Operationalise provisioning runbooks.",
+                    ...(awaitingSim
+                      ? {}
+                      : {
+                          proposed_agent: "ops-coordinator",
+                          agent_role: "Ops Coordinator",
+                        }),
                   },
                 ],
                 edges: [
-                  { from: "program-1", to: "epic-1", kind: "contains" },
                   { from: "task-1", to: "task-2", kind: "depends_on" },
                   { from: "task-2", to: "task-3", kind: "depends_on" },
                   { from: "task-3", to: "task-4", kind: "depends_on" },
@@ -611,8 +667,8 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
             },
             approval_package: {
               created_at: "2026-07-29T12:00:00.000Z",
+              decision: awaitingSim ? "approve_plan" : null,
               dependencies: [
-                { from: "program-1", to: "epic-1", kind: "contains" },
                 { from: "task-1", to: "task-2", kind: "depends_on" },
                 { from: "task-2", to: "task-3", kind: "depends_on" },
                 { from: "task-3", to: "task-4", kind: "depends_on" },
@@ -639,9 +695,12 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
                 },
               ],
             },
-            evidence: { count: awaitingPlan ? 0 : 4 },
-            memory: { count: awaitingPlan ? 0 : 3 },
-            learning: { count: awaitingPlan ? 0 : 8, auto_applied: false },
+            evidence: { count: awaitingPlan || awaitingSim ? 0 : 4 },
+            memory: { count: awaitingPlan || awaitingSim ? 0 : 3 },
+            learning: {
+              count: awaitingPlan || awaitingSim ? 0 : 8,
+              auto_applied: false,
+            },
             proof_pack: { secrets_included: false },
           },
         });
@@ -703,20 +762,47 @@ export async function installAdminMocks(page, { projectId = "proj-1" } = {}) {
             id: "irun-e2e-1",
             project_id: qsProject,
             stage:
-              qsProject === "proj-proof-1"
-                ? "founder_approval_required"
-                : "founder_final_review",
+              proofStage === "simulation_approval_required"
+                ? "simulation_approval_required"
+                : qsProject === "proj-proof-1"
+                  ? "founder_approval_required"
+                  : "founder_final_review",
             status:
-              qsProject === "proj-proof-1"
-                ? "awaiting_plan_approval"
-                : "awaiting_final_review",
+              proofStage === "simulation_approval_required"
+                ? "awaiting_simulation_approval"
+                : qsProject === "proj-proof-1"
+                  ? "awaiting_plan_approval"
+                  : "awaiting_final_review",
             mode: "deterministic_simulation",
             objective_title: "Secure Internal Employee Onboarding Workflow",
-            evidence_count: qsProject === "proj-proof-1" ? 0 : 4,
-            memory_count: qsProject === "proj-proof-1" ? 0 : 3,
-            learning_count: qsProject === "proj-proof-1" ? 0 : 8,
+            evidence_count: 0,
+            memory_count: 0,
+            learning_count: 0,
             is_canonical_active: true,
+            is_production_proof: true,
           },
+          ...(proofStage === "simulation_approval_required"
+            ? [
+                {
+                  id: "irun-cancelled-hist",
+                  project_id: qsProject,
+                  stage: "cancelled",
+                  status: "cancelled",
+                  mode: "deterministic_simulation",
+                  objective_title: "Cancelled duplicate proof (history)",
+                  is_canonical_active: false,
+                },
+                {
+                  id: "irun-live-other",
+                  project_id: qsProject,
+                  stage: "workforce_allocated",
+                  status: "simulating",
+                  mode: "live_provider",
+                  objective_title: "Unrelated live-provider objective",
+                  is_canonical_active: false,
+                },
+              ]
+            : []),
         ],
         canonicalFounderProofRunId: "irun-e2e-1",
       });

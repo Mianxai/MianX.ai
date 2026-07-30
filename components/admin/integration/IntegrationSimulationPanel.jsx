@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import StatusBadge from "@/components/admin/StatusBadge";
 import EmptyState from "@/components/admin/EmptyState";
 import {
@@ -11,6 +11,8 @@ import {
   extractPlanTasks,
   extractProposedAgents,
 } from "@/lib/core/integration/founder-labels";
+import { validateSimulationDurableReadiness } from "@/lib/core/integration/durable-plan-assignments";
+import { DEFAULT_CORRECTION_REASON } from "@/lib/core/integration/durable-plan-assignments";
 
 /**
  * Simulation approval (separate from plan) + start + progress.
@@ -20,14 +22,43 @@ export default function IntegrationSimulationPanel({
   busy,
   onApproveSimulation,
   onStartSimulation,
+  onReturnPlanForCorrections,
   onPause,
   onResume,
   onCancel,
   onRecoveryTest,
   onOpenPlan,
   guidance = null,
+  projectName = null,
 }) {
   const [confirmStart, setConfirmStart] = useState(false);
+  const [confirmApprove, setConfirmApprove] = useState(false);
+  const [returnModal, setReturnModal] = useState(false);
+  const [returnReason, setReturnReason] = useState(DEFAULT_CORRECTION_REASON);
+  const reasonId = useId();
+  const returnDialogRef = useRef(null);
+
+  const readiness = useMemo(
+    () => (run ? validateSimulationDurableReadiness(run) : null),
+    [run]
+  );
+
+  useEffect(() => {
+    if (!returnModal) return;
+    const prev = document.activeElement;
+    const dialog = returnDialogRef.current;
+    const focusable = dialog?.querySelector("textarea, button");
+    focusable?.focus();
+    function onKey(e) {
+      if (e.key === "Escape") setReturnModal(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (prev && typeof prev.focus === "function") prev.focus();
+    };
+  }, [returnModal]);
+
   if (!run && guidance) {
     return (
       <EmptyState
@@ -52,6 +83,7 @@ export default function IntegrationSimulationPanel({
   const agents = extractProposedAgents(run);
   const needsSimApproval = stage === "simulation_approval_required";
   const canStart = stage === "approved_for_simulation";
+  const blocked = needsSimApproval && readiness?.status === "blocked";
   const running = [
     "workforce_allocated",
     "tasks_claimed",
@@ -84,76 +116,111 @@ export default function IntegrationSimulationPanel({
       {(needsSimApproval || canStart) && (
         <section className="cc-card" data-testid="simulation-approval-card">
           <h3>
-            {needsSimApproval ? "Approve deterministic simulation" : "Start deterministic simulation"}
+            {needsSimApproval
+              ? blocked
+                ? "Plan corrections required before simulation approval"
+                : "Approve deterministic simulation boundary"
+              : "Start deterministic simulation"}
           </h3>
-          <dl className="cc-detail-dl founder-plan-grid">
-            <div>
-              <dt>Proposed tasks</dt>
-              <dd>{tasks.length}</dd>
+
+          {blocked ? (
+            <div
+              className="founder-sim-blocked"
+              data-testid="simulation-approval-blocked"
+              role="status"
+            >
+              <p>
+                Simulation Approval is blocked because the durable plan is missing required
+                per-task agent assignments. Display-only agent suggestions are not enough.
+              </p>
+              <ul>
+                {(readiness?.reasons || []).slice(0, 4).map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
+              <p className="cc-muted">
+                {(readiness?.recommended_corrections || [])[0] ||
+                  "Return the plan for corrections to regenerate durable assignments."}
+              </p>
             </div>
-            <div>
-              <dt>Proposed agents</dt>
-              <dd>
-                {agents.length
-                  ? agents.map((a) => a.role).join(", ")
-                  : "Selected at start from routable workforce"}
-              </dd>
-            </div>
-            <div>
-              <dt>Estimated steps</dt>
-              <dd>Allocate → claim → collaborate → verify → memory → learning → final review</dd>
-            </div>
-            <div>
-              <dt>Simulation boundary</dt>
-              <dd>{humanExecutionModeLabel(run.execution_mode)}</dd>
-            </div>
-            <div>
-              <dt>Protected actions</dt>
-              <dd>production_deployment — blocked</dd>
-            </div>
-            <div>
-              <dt>Evidence expected</dt>
-              <dd>Yes — task and verification artefacts</dd>
-            </div>
-            <div>
-              <dt>Memory expected</dt>
-              <dd>Yes — candidates only (no auto-promote)</dd>
-            </div>
-            <div>
-              <dt>Learning expected</dt>
-              <dd>Yes — proposals only (no auto-apply)</dd>
-            </div>
-            <div>
-              <dt>Recovery test</dt>
-              <dd>Available after start (deterministic checkpoint)</dd>
-            </div>
-            <div>
-              <dt>Provider status</dt>
-              <dd>Unconfigured / not called</dd>
-            </div>
-            <div>
-              <dt>Cost</dt>
-              <dd>£0 provider spend for deterministic simulation</dd>
-            </div>
-            <div>
-              <dt>Production mutation</dt>
-              <dd>Blocked</dd>
-            </div>
-          </dl>
+          ) : (
+            <dl className="cc-detail-dl founder-plan-grid">
+              <div>
+                <dt>Proposed tasks</dt>
+                <dd>{tasks.length}</dd>
+              </div>
+              <div>
+                <dt>Proposed agents</dt>
+                <dd>
+                  {agents.length
+                    ? agents.map((a) => a.role).join(", ")
+                    : "Selected at start from routable workforce"}
+                </dd>
+              </div>
+              <div>
+                <dt>Simulation boundary</dt>
+                <dd>{humanExecutionModeLabel(run.execution_mode)}</dd>
+              </div>
+              <div>
+                <dt>Protected actions</dt>
+                <dd>production_deployment — blocked</dd>
+              </div>
+              <div>
+                <dt>Provider status</dt>
+                <dd>Not required for Level-1 deterministic proof</dd>
+              </div>
+              <div>
+                <dt>Agents allocated</dt>
+                <dd>
+                  Agents are proposed but will not be allocated until Simulation Approval and
+                  explicit Start
+                </dd>
+              </div>
+            </dl>
+          )}
 
           {needsSimApproval ? (
             <div className="admin-actions">
-              <button
-                type="button"
-                className="header-btn"
-                data-testid="approve-deterministic-simulation"
-                disabled={busy}
-                onClick={() => onApproveSimulation?.()}
-              >
-                Approve deterministic simulation
-              </button>
+              {blocked ? (
+                <button
+                  type="button"
+                  className="header-btn"
+                  data-testid="return-plan-for-corrections"
+                  disabled={busy}
+                  onClick={() => {
+                    setReturnReason(DEFAULT_CORRECTION_REASON);
+                    setReturnModal(true);
+                  }}
+                >
+                  Return plan for corrections
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="header-btn"
+                    data-testid="approve-deterministic-simulation"
+                    disabled={busy}
+                    onClick={() => setConfirmApprove(true)}
+                  >
+                    Approve deterministic simulation boundary
+                  </button>
+                  <button
+                    type="button"
+                    className="header-btn-ghost"
+                    data-testid="return-plan-for-corrections-secondary"
+                    disabled={busy}
+                    onClick={() => {
+                      setReturnReason(DEFAULT_CORRECTION_REASON);
+                      setReturnModal(true);
+                    }}
+                  >
+                    Return plan for corrections
+                  </button>
+                </>
+              )}
               <p className="integration-disabled-reason" role="status">
-                Approving does not start the simulation.
+                Approving does not start the simulation. Live AI execution remains disabled.
               </p>
             </div>
           ) : null}
@@ -173,6 +240,117 @@ export default function IntegrationSimulationPanel({
           ) : null}
         </section>
       )}
+
+      {confirmApprove ? (
+        <div
+          className="integration-confirm-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="sim-approve-title"
+          data-testid="simulation-approve-confirm"
+        >
+          <h3 id="sim-approve-title">Approve deterministic simulation boundary?</h3>
+          <p>
+            <strong>Approving:</strong> authorizes deterministic simulation eligibility; approves
+            the bounded simulation workforce; approves simulation-only task allocation.
+          </p>
+          <p>
+            <strong>Not approving:</strong> simulation start; live provider usage; production
+            deployment; external side effects; final proof completion.
+          </p>
+          <p>
+            <strong>Next:</strong> a separate explicit “Start simulation” action is required.
+          </p>
+          <div className="admin-actions">
+            <button
+              type="button"
+              className="header-btn"
+              data-testid="confirm-approve-simulation"
+              disabled={busy}
+              onClick={async () => {
+                await onApproveSimulation?.();
+                setConfirmApprove(false);
+              }}
+            >
+              Confirm approval
+            </button>
+            <button
+              type="button"
+              className="header-btn-ghost"
+              onClick={() => setConfirmApprove(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {returnModal ? (
+        <div
+          className="integration-confirm-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="return-plan-title"
+          data-testid="return-plan-corrections-modal"
+          ref={returnDialogRef}
+        >
+          <h3 id="return-plan-title">Return plan for corrections</h3>
+          <p>
+            This regenerates and persists durable per-task assignments on the canonical proof. It
+            does not create a second Founder Proof, start simulation, call a provider, or deploy
+            production.
+          </p>
+          <dl className="cc-detail-dl">
+            <div>
+              <dt>Project</dt>
+              <dd>{projectName || run.project_id}</dd>
+            </div>
+            <div>
+              <dt>Canonical run</dt>
+              <dd>
+                <code>{run.id}</code>
+              </dd>
+            </div>
+            <div>
+              <dt>Current stage</dt>
+              <dd>{humanStageLabel(stage)}</dd>
+            </div>
+          </dl>
+          <label htmlFor={reasonId}>
+            Reason <span aria-hidden="true">*</span>
+          </label>
+          <textarea
+            id={reasonId}
+            data-testid="return-plan-reason"
+            required
+            rows={6}
+            value={returnReason}
+            onChange={(e) => setReturnReason(e.target.value)}
+            aria-required="true"
+          />
+          <div className="admin-actions">
+            <button
+              type="button"
+              className="header-btn"
+              data-testid="confirm-return-plan-corrections"
+              disabled={busy || !String(returnReason || "").trim()}
+              onClick={async () => {
+                await onReturnPlanForCorrections?.(String(returnReason).trim());
+                setReturnModal(false);
+              }}
+            >
+              Confirm return for corrections
+            </button>
+            <button
+              type="button"
+              className="header-btn-ghost"
+              onClick={() => setReturnModal(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {confirmStart ? (
         <div className="integration-confirm-dialog" role="dialog" aria-modal="true">
@@ -205,119 +383,40 @@ export default function IntegrationSimulationPanel({
         </div>
       ) : null}
 
-      <section className="cc-card" data-testid="agent-allocation" aria-labelledby="agent-alloc-h">
-        <h3 id="agent-alloc-h">Agent allocation</h3>
-        {run.allocation ? (
-          <dl className="cc-detail-dl founder-plan-grid">
-            <div>
-              <dt>Allocated count</dt>
-              <dd>{run.allocation.count ?? "—"}</dd>
-            </div>
-            <div>
-              <dt>activated_all_36</dt>
-              <dd data-testid="allocation-activated-all-36">
-                {String(Boolean(run.allocation.activated_all_36))}
-              </dd>
-            </div>
-            <div>
-              <dt>Policy</dt>
-              <dd>Necessary routable agents only — not the full 36</dd>
-            </div>
-          </dl>
-        ) : (
+      {(running || doneForReview) && (
+        <section className="cc-card" data-testid="simulation-progress">
+          <h3>Simulation progress</h3>
           <p className="cc-muted">
-            Not allocated until simulation starts. Plan approval and simulation approval do not
-            allocate agents.
+            Stage: {humanStageLabel(stage)}. Evidence and memory appear only when durable records
+            exist.
           </p>
-        )}
-      </section>
-
-      <section className="cc-card" data-testid="simulation-progress">
-        <h3>{doneForReview ? "Simulation completed" : "Simulation progress"}</h3>
-        <dl className="cc-detail-dl founder-plan-grid">
-          <div>
-            <dt>Current stage</dt>
-            <dd>{humanStageLabel(stage)}</dd>
+          <div className="admin-actions">
+            {running ? (
+              <>
+                <button type="button" className="header-btn-ghost" disabled={busy} onClick={onPause}>
+                  Pause
+                </button>
+                <button
+                  type="button"
+                  className="header-btn-ghost"
+                  disabled={busy}
+                  onClick={onRecoveryTest}
+                >
+                  Recovery test
+                </button>
+                <button type="button" className="header-btn-ghost" disabled={busy} onClick={onCancel}>
+                  Cancel proof
+                </button>
+              </>
+            ) : null}
+            {stage === "paused" ? (
+              <button type="button" className="header-btn" disabled={busy} onClick={onResume}>
+                Resume
+              </button>
+            ) : null}
           </div>
-          <div>
-            <dt>Evidence count</dt>
-            <dd>{run.evidence?.count ?? 0}</dd>
-          </div>
-          <div>
-            <dt>Memory candidates</dt>
-            <dd>{run.memory?.count ?? 0}</dd>
-          </div>
-          <div>
-            <dt>Learning proposals</dt>
-            <dd>{run.learning?.count ?? 0}</dd>
-          </div>
-          <div>
-            <dt>Recovery count</dt>
-            <dd>{run.recovery_count ?? 0}</dd>
-          </div>
-          <div>
-            <dt>Provider called</dt>
-            <dd>{run.provider_called ? "Yes" : "No"}</dd>
-          </div>
-          <div>
-            <dt>Fabricated execution</dt>
-            <dd>{run.fabricated_execution ? "Yes" : "No"}</dd>
-          </div>
-        </dl>
-        {doneForReview ? (
-          <p className="cc-banner" role="status">
-            Simulation completed. Review evidence, then open Final Review on the Proof Pack tab.
-          </p>
-        ) : null}
-        {!running && !doneForReview ? (
-          <p className="cc-muted">
-            Progress updates after you approve and start deterministic simulation.
-          </p>
-        ) : null}
-      </section>
-
-      {run && !["completed", "rejected", "cancelled"].includes(stage) ? (
-        <div className="admin-actions">
-          <button type="button" className="header-btn-ghost" disabled={busy} onClick={onPause}>
-            Pause
-          </button>
-          <button type="button" className="header-btn-ghost" disabled={busy} onClick={onResume}>
-            Resume
-          </button>
-          <button
-            type="button"
-            className="header-btn-ghost"
-            data-testid="deterministic-recovery-test"
-            disabled={busy}
-            onClick={onRecoveryTest}
-          >
-            Deterministic recovery test
-          </button>
-          <button type="button" className="header-btn-ghost" disabled={busy} onClick={onCancel}>
-            Cancel run
-          </button>
-        </div>
-      ) : null}
-
-      <p className="admin-note" role="note">
-        Deterministic recovery test creates/restores a checkpoint without simulating a live outage.
-      </p>
-
-      <details className="cc-card">
-        <summary>Technical details</summary>
-        <pre className="admin-pre">
-          {JSON.stringify(
-            {
-              stage: run.current_stage,
-              status: run.status,
-              simulation_approval: run.simulation_approval,
-              allocation: run.allocation,
-            },
-            null,
-            2
-          )}
-        </pre>
-      </details>
+        </section>
+      )}
     </div>
   );
 }

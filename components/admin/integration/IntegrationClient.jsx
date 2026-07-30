@@ -30,6 +30,11 @@ import {
   normalizeListField,
   parseListField,
 } from "@/lib/core/integration/founder-flow";
+import { buildFounderProofViewModel } from "@/lib/core/integration/founder-proof-view-model";
+import {
+  isFounderProductionProofRun,
+  isTerminalFounderProofRun,
+} from "@/lib/core/integration/founder-proof-canonical";
 import IntegrationContextBanner from "@/components/admin/integration/IntegrationContextBanner";
 import IntegrationFlowStepper from "@/components/admin/integration/IntegrationFlowStepper";
 import IntegrationRunSelector from "@/components/admin/integration/IntegrationRunSelector";
@@ -49,6 +54,7 @@ import FounderQuickStart from "@/components/admin/FounderQuickStart";
 import ProofRecoveryPanel from "@/components/admin/integration/ProofRecoveryPanel";
 import ProofDiagnosticsPanel from "@/components/admin/integration/ProofDiagnosticsPanel";
 import { resolveIntegrationTab, tabForFounderProofStage } from "@/lib/core/integration/stage-tab";
+import TechnicalDetails from "@/components/admin/integration/TechnicalDetails";
 
 const TABS = [
   { id: "dashboard", label: "Control Room" },
@@ -226,6 +232,64 @@ export default function IntegrationClient() {
     [dash?.runs, projectId]
   );
 
+  const evidenceCount = useMemo(() => {
+    if (evidence?.items?.length) return evidence.items.length;
+    if (evidence?.entries?.length) return evidence.entries.length;
+    return Number(run?.evidence?.count || 0) || 0;
+  }, [evidence, run]);
+
+  const memoryCount = useMemo(
+    () => (Array.isArray(memory) ? memory.length : Number(run?.memory?.count || 0) || 0),
+    [memory, run]
+  );
+
+  const learningCount = useMemo(
+    () => (Array.isArray(learning) ? learning.length : Number(run?.learning?.count || 0) || 0),
+    [learning, run]
+  );
+
+  const proofViewModel = useMemo(
+    () =>
+      buildFounderProofViewModel({
+        projectId,
+        projectName: selectedProject?.name,
+        hasProject: Boolean(projectId && selectedProject),
+        run,
+        evidenceCount,
+        memoryCount,
+        learningCount,
+        selectedAgentCount: Number(run?.allocation?.count || 0) || 0,
+        duplicateCount: Number(dash?.nonCanonicalActiveFounderProofRunIds?.length || 0),
+        providerConfigured: Boolean(dash?.live_execution_ready),
+        liveExecutionReady: Boolean(dash?.live_execution_ready),
+      }),
+    [
+      projectId,
+      selectedProject,
+      run,
+      evidenceCount,
+      memoryCount,
+      learningCount,
+      dash?.nonCanonicalActiveFounderProofRunIds,
+      dash?.live_execution_ready,
+    ]
+  );
+
+  const canonicalRuns = useMemo(() => {
+    const canonicalId = dash?.canonicalFounderProofRunId || run?.id;
+    return projectRuns.filter(
+      (r) =>
+        r.id === canonicalId ||
+        r.is_canonical_active ||
+        (isFounderProductionProofRun(r) && !isTerminalFounderProofRun(r) && !r.is_duplicate_active)
+    );
+  }, [projectRuns, dash?.canonicalFounderProofRunId, run?.id]);
+
+  const otherRuns = useMemo(() => {
+    const canonIds = new Set(canonicalRuns.map((r) => r.id));
+    return projectRuns.filter((r) => !canonIds.has(r.id));
+  }, [projectRuns, canonicalRuns]);
+
   const flowCtx = useMemo(
     () => ({
       hasProject: Boolean(projectId && selectedProject),
@@ -233,18 +297,30 @@ export default function IntegrationClient() {
       proofStatus: run ? mapProofStatusFromRun(run) : proofStatus,
       runStage: run?.current_stage,
       runStatus: run?.status,
-      evidenceAvailable: Boolean(
-        evidence?.items?.length ||
-          evidence?.entries?.length ||
-          run?.evidence?.count > 0
-      ),
-      memoryCount: Array.isArray(memory) ? memory.length : run?.memory?.count || 0,
-      learningCount: Array.isArray(learning) ? learning.length : run?.learning?.count || 0,
+      run,
+      evidenceAvailable: evidenceCount > 0,
+      evidenceCount,
+      memoryCount,
+      learningCount,
+      selectedAgentCount: Number(run?.allocation?.count || 0) || 0,
+      isProductionProof: Boolean(run?.proof?.is_production_proof),
+      objectiveTitle: run?.objective?.title,
     }),
-    [projectId, selectedProject, run, proofStatus, evidence, memory, learning]
+    [
+      projectId,
+      selectedProject,
+      run,
+      proofStatus,
+      evidenceCount,
+      memoryCount,
+      learningCount,
+    ]
   );
 
-  const stepStates = useMemo(() => deriveStepStates(flowCtx), [flowCtx]);
+  const stepStates = useMemo(
+    () => proofViewModel.stepSets || deriveStepStates(flowCtx),
+    [proofViewModel, flowCtx]
+  );
 
   const createObjectiveDisabledReason = getCreateObjectiveDisabledReason({
     projectsLoading,
@@ -522,9 +598,13 @@ export default function IntegrationClient() {
       </div>
 
       <IntegrationFounderWorkflowGuide
+        run={run}
         runStage={run?.current_stage}
         proofStatus={proofStatus}
         hasRun={Boolean(run?.id || hasActiveFounderProofRun)}
+        evidenceCount={evidenceCount}
+        memoryCount={memoryCount}
+        learningCount={learningCount}
       />
 
       <div className="admin-tabs" role="tablist" aria-label="Integration views">
@@ -589,28 +669,66 @@ export default function IntegrationClient() {
                 projectName={selectedProject?.name}
                 projects={selectableProjects}
                 onRefresh={load}
+                proofViewModel={proofViewModel}
               />
               <FounderQuickStart run={run} hasProject={Boolean(projectId && selectedProject)} />
-              <ProofDiagnosticsPanel
-                projectId={projectId}
-                runId={runIdParam || run?.id || null}
-              />
+              {proofViewModel?.planCorrectionRequired ||
+              proofViewModel?.simulationReadiness?.status === "blocked" ? (
+                <section
+                  className="cc-card"
+                  data-testid="plan-readiness-summary"
+                  aria-labelledby="plan-ready-h"
+                >
+                  <h2 id="plan-ready-h">Plan / simulation readiness</h2>
+                  <p role="status">
+                    Simulation Approval is blocked until durable per-task agent assignments are
+                    regenerated.
+                  </p>
+                  <ul>
+                    {(proofViewModel.simulationReadiness?.reasons || [])
+                      .slice(0, 3)
+                      .map((r) => (
+                        <li key={r}>{r}</li>
+                      ))}
+                  </ul>
+                </section>
+              ) : null}
+              <section
+                className="cc-card founder-proof-progress-summary"
+                data-testid="proof-progress-summary"
+              >
+                <h2>Proof progress</h2>
+                <p>
+                  {proofViewModel.founderStageLabel} — {proofViewModel.founderStatusLabel}
+                </p>
+                <p className="cc-muted">
+                  Tasks {proofViewModel.taskCount} · Evidence {proofViewModel.evidenceCount} ·
+                  Memory {proofViewModel.memoryCount} · Learning {proofViewModel.learningCount} ·
+                  Agents allocated {proofViewModel.selectedAgentCount} (proposed only until Start)
+                </p>
+              </section>
+              <TechnicalDetails title="Advanced / Technical details">
+                <ProofDiagnosticsPanel
+                  projectId={projectId}
+                  runId={runIdParam || run?.id || null}
+                />
+                <IntegrationFlowStepper stepStates={stepStates} />
+                {projectId && projectRuns.length > 0 ? (
+                  <IntegrationRunSelector
+                    runs={projectRuns}
+                    value={runIdParam || run?.id || ""}
+                    onChange={(id) => {
+                      const target = projectRuns.find((r) => r.id === id);
+                      if (target?.is_duplicate_active && dash?.canonicalFounderProofRunId) {
+                        setTab(tab, { run_id: dash.canonicalFounderProofRunId });
+                        return;
+                      }
+                      setTab(tab, { run_id: id });
+                    }}
+                  />
+                ) : null}
+              </TechnicalDetails>
             </>
-          ) : null}
-          <IntegrationFlowStepper stepStates={stepStates} />
-          {projectId && projectRuns.length > 0 ? (
-            <IntegrationRunSelector
-              runs={projectRuns}
-              value={runIdParam || run?.id || ""}
-              onChange={(id) => {
-                const target = projectRuns.find((r) => r.id === id);
-                if (target?.is_duplicate_active && dash?.canonicalFounderProofRunId) {
-                  setTab(tab, { run_id: dash.canonicalFounderProofRunId });
-                  return;
-                }
-                setTab(tab, { run_id: id });
-              }}
-            />
           ) : null}
         </>
       ) : null}
@@ -638,8 +756,7 @@ export default function IntegrationClient() {
           <p>
             Routable agents:{" "}
             <strong>{dash?.routable_agent_audit?.actual_routable ?? "—"}</strong> / 36 expected.
-            Live execution ready:{" "}
-            <StatusBadge status={dash?.live_execution_ready ? "ready" : "blocked"} />
+            Live AI execution remains disabled unless separately configured.
           </p>
 
           {!projectRuns.length && projectId ? (
@@ -648,17 +765,41 @@ export default function IntegrationClient() {
               description="Create a Founder objective or start the production proof below."
             />
           ) : null}
-          {projectRuns.length > 0 ? (
-            <ul className="admin-list">
-              {projectRuns.map((r) => (
+          {canonicalRuns.length > 0 ? (
+            <ul className="admin-list" data-testid="control-room-canonical-runs">
+              {canonicalRuns.map((r) => (
                 <li key={r.id}>
                   <button type="button" onClick={() => setTab("plan", { run_id: r.id })}>
                     {r.objective_title || r.id}
                   </button>{" "}
-                  <StatusBadge status={r.status} /> stage={r.stage || r.current_stage} mode={r.mode}
+                  <StatusBadge status={r.status} />{" "}
+                  {proofViewModel.founderStageLabel || r.stage || r.current_stage}
                 </li>
               ))}
             </ul>
+          ) : null}
+          {otherRuns.length > 0 ? (
+            <TechnicalDetails
+              title="Other objectives / history — not part of this Founder Proof"
+              testId="control-room-other-runs"
+            >
+              <p className="cc-muted" data-testid="other-objectives-label">
+                Other objectives — not part of this Founder Proof. These do not count toward Founder
+                Proof progress.
+              </p>
+              <ul className="admin-list">
+                {otherRuns.map((r) => (
+                  <li key={r.id}>
+                    <button type="button" onClick={() => setTab("plan", { run_id: r.id })}>
+                      {r.objective_title || r.id}
+                    </button>{" "}
+                    <StatusBadge status={r.status} /> stage={r.stage || r.current_stage} mode={r.mode}
+                    {r.status === "cancelled" || r.stage === "cancelled" ? " · history" : ""}
+                    {r.mode === "live_provider" ? " · live-provider (unrelated)" : ""}
+                  </li>
+                ))}
+              </ul>
+            </TechnicalDetails>
           ) : null}
           </>
           ) : null}
@@ -1161,6 +1302,7 @@ export default function IntegrationClient() {
           <IntegrationSimulationPanel
             run={run}
             busy={busy}
+            projectName={selectedProject?.name}
             guidance={getSimulationGuidance(flowCtx)}
             onOpenPlan={() => setTab("plan")}
             onApproveSimulation={() =>
@@ -1168,6 +1310,21 @@ export default function IntegrationClient() {
                 action: "approve_deterministic_simulation",
                 run_id: run.id,
                 project_id: projectId,
+                expected_stage: run.current_stage,
+                expected_status: run.status,
+                expected_version: run.version ?? null,
+                idempotency_key: `sim-approve:${run.id}:${run.version || 0}`,
+              })
+            }
+            onReturnPlanForCorrections={(note) =>
+              act({
+                action: "return_plan_for_corrections",
+                run_id: run.id,
+                project_id: projectId,
+                note,
+                expected_stage: "simulation_approval_required",
+                expected_version: run.version ?? null,
+                idempotency_key: `return-corrections:${run.id}:${run.version || 0}`,
               })
             }
             onStartSimulation={() =>
