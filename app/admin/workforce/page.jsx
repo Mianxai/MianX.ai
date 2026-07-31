@@ -3,7 +3,7 @@ import WorkforceClient from "@/components/admin/workforce/WorkforceClient";
 import MianxLoader from "@/components/shared/MianxLoader";
 
 export const metadata = {
-  title: "Live Workforce · Admin · MianX.ai",
+  title: "Workforce ops · Admin · MianX.ai",
 };
 
 export default function AdminWorkforcePage() {

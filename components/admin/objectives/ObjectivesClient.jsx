@@ -59,13 +59,13 @@ function newIdempotencyKey() {
 
 const PROTECTED_OPTIONS = [
   { value: "", label: "None (analysis only)" },
-  { value: "production_deploy", label: "PRODUCTION DEPLOY" },
-  { value: "financial_transfer", label: "PAYMENT" },
-  { value: "legal_commitment", label: "LEGAL COMMITMENT" },
-  { value: "secret_change", label: "SECRET CHANGE" },
-  { value: "permission_ownership_change", label: "PERMISSION CHANGE" },
-  { value: "send_protected_communication", label: "EXTERNAL SEND" },
-  { value: "production_destructive_mutation", label: "DESTRUCTIVE MUTATION" },
+  { value: "production_deploy", label: "Protected: production deploy (gated — does not deploy)" },
+  { value: "financial_transfer", label: "Protected: payment (gated)" },
+  { value: "legal_commitment", label: "Protected: legal commitment (gated)" },
+  { value: "secret_change", label: "Protected: secret change (gated)" },
+  { value: "permission_ownership_change", label: "Protected: permission change (gated)" },
+  { value: "send_protected_communication", label: "Protected: external send (gated)" },
+  { value: "production_destructive_mutation", label: "Protected: destructive mutation (gated)" },
 ];
 
 export default function ObjectivesClient() {

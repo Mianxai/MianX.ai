@@ -100,7 +100,7 @@ function DepartmentDetailDrawer({ detail, projectId, hrefWithProject, onClose })
               <dd>{detail.capacity} planned slots (not created agents)</dd>
             </div>
             <div>
-              <dt>Live agents</dt>
+              <dt>Assigned instances</dt>
               <dd>
                 {detail.agents.length
                   ? detail.agents
@@ -124,11 +124,11 @@ function DepartmentDetailDrawer({ detail, projectId, hrefWithProject, onClose })
             </ul>
           ) : (
             <EmptyState
-              title="No live assignments"
+              title="No assigned instances"
               reason={
                 projectId
                   ? "No agents currently mapped to this department for the selected project."
-                  : "Select a project to see live assignments."
+                  : "Select a project to see assigned instances."
               }
               projectLabel={projectId || "All projects"}
               cta={

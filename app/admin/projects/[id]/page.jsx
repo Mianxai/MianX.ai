@@ -164,7 +164,7 @@ export default function ProjectDetailPage() {
                 <Link href={`/admin/company-builder${runtimeQs}`}>Company Builder</Link>
               </li>
               <li>
-                <Link href={`/admin/workforce${runtimeQs}`}>Live Workforce</Link>
+                <Link href={`/admin/workforce${runtimeQs}`}>Workforce ops</Link>
               </li>
             </ul>
           </section>

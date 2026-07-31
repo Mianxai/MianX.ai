@@ -497,7 +497,7 @@ export default function WorkforceActivationClient() {
               idempotencyResult,
               foundationReady: verify.foundationReady,
               providerReady: verify.providerReady,
-              liveExecutionReady: false,
+              liveExecutionReady: verify.liveExecutionReady === true,
             },
             null,
             2

@@ -49,7 +49,7 @@ export const ADMIN_NAV_GROUPS = [
         icon: "network",
       },
       { href: "/admin/agents", label: "Agents", match: "prefix", icon: "network" },
-      { href: "/admin/workforce", label: "Live Workforce", match: "prefix", icon: "runtime" },
+      { href: "/admin/workforce", label: "Workforce ops", match: "prefix", icon: "runtime" },
       { href: "/admin/departments", label: "Departments", match: "prefix", icon: "departments" },
       { href: "/admin/workflows", label: "Workflows", match: "prefix", icon: "workflows" },
       { href: "/admin/schedule", label: "Schedule", match: "prefix", icon: "schedule" },
@@ -99,6 +99,13 @@ export const ADMIN_NAV_GROUPS = [
         match: "prefix",
         icon: "audit",
         badge: "Advanced",
+      },
+      {
+        href: "/admin/execution",
+        label: "Execution",
+        match: "prefix",
+        icon: "runtime",
+        badge: "Best-effort",
       },
       {
         href: "/admin/settings",

@@ -124,12 +124,12 @@ export default function WorkforceReadinessClient() {
   const capacityMetrics = [
     {
       label: "Documented / capacity seats",
-      value: foundation.capacitySeats ?? 445,
+      value: foundation.capacitySeats ?? "—",
       testId: "wr-capacity",
     },
     {
       label: "Compiled seats",
-      value: foundation.compiledSeats ?? 445,
+      value: foundation.compiledSeats ?? "—",
       testId: "wr-compiled",
     },
     {
@@ -179,13 +179,13 @@ export default function WorkforceReadinessClient() {
   const executableMetrics = [
     {
       label: "Catalogue entries",
-      value: executable.catalogueEntries ?? totals?.catalogue ?? 43,
+      value: executable.catalogueEntries ?? totals?.catalogue ?? "—",
       testId: "wr-catalogue-entries",
       hint: "Includes intentionally non-executable superseded definitions",
     },
     {
       label: "Executable definitions",
-      value: executable.executableDefinitions ?? totals?.executable ?? 38,
+      value: executable.executableDefinitions ?? totals?.executable ?? "—",
       testId: "wr-executable-count",
       hint: "Runtime-capable catalogue subset — not capacity seats",
     },
@@ -193,11 +193,9 @@ export default function WorkforceReadinessClient() {
       label: "Intentionally non-executable",
       value:
         executable.intentionallyNonExecutable ??
-        Math.max(
-          0,
-          (executable.catalogueEntries ?? totals?.catalogue ?? 43) -
-            (executable.executableDefinitions ?? totals?.executable ?? 38)
-        ),
+        (executable.catalogueEntries != null && executable.executableDefinitions != null
+          ? Math.max(0, executable.catalogueEntries - executable.executableDefinitions)
+          : "—"),
       testId: "wr-non-executable",
     },
     {
@@ -229,9 +227,9 @@ export default function WorkforceReadinessClient() {
         </StatusBadge>
         <span className="cc-muted" data-testid="wr-445-explanation">
           Executable definitions (
-          {executable.executableDefinitions ?? totals?.executable ?? 38}) are not capacity seats.
+          {executable.executableDefinitions ?? totals?.executable ?? "—"}) are not capacity seats.
           Catalogue entries (
-          {executable.catalogueEntries ?? totals?.catalogue ?? 43}) include superseded non-executable
+          {executable.catalogueEntries ?? totals?.catalogue ?? "—"}) include superseded non-executable
           definitions.
         </span>
       </div>

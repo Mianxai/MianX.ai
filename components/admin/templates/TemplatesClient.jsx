@@ -200,7 +200,7 @@ export default function TemplatesClient() {
         description="Global Template Catalogue — reusable industry, capability, module, and risk definitions. Organisation/platform-scoped; not filtered by project."
       />
       <p className="cc-muted" data-testid="templates-catalogue-label" style={{ marginTop: "-0.35rem" }}>
-        Global Template Catalogue
+        Global Template Catalogue — deterministic seed catalog via API (not live project outputs).
       </p>
 
       <div

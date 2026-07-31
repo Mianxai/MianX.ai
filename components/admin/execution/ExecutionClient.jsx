@@ -132,6 +132,11 @@ export default function ExecutionClient() {
           Autonomous execution programs from approved Company Builder blueprints.
           No fabricated AI progress. Provider unconfigured → runs fail truthfully.
         </p>
+        <p className="cc-muted" data-testid="execution-persistence-note" role="note">
+          Persistence: execution programs are best-effort in-process memory with optional task
+          snapshot hydrate — not a durable Production job store. Redeploy may clear programs.
+          Tick actions are real API calls against that ephemeral engine.
+        </p>
         {loading && !data ? (
           <DelayedLoader delayMs={200}>
             <MianxLoader variant="section" label="Loading execution…" />

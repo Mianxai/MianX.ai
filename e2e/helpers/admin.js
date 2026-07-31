@@ -48,6 +48,7 @@ export const CANONICAL_ADMIN_ROUTES = [
   "/admin/runtime/queue",
   "/admin/runtime/runs",
   "/admin/runtime/audit",
+  "/admin/execution",
   "/admin/settings",
 ];
 

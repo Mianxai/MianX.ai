@@ -445,11 +445,11 @@ export default function CommandCenterClient({ title = "Founder Home" }) {
                   <dl className="cc-detail-dl founder-plan-grid">
                     <div>
                       <dt>Executable</dt>
-                      <dd>{executableCount ?? 38}</dd>
+                      <dd>{executableCount ?? "—"}</dd>
                     </div>
                     <div>
                       <dt>Routable</dt>
-                      <dd>{data?.agentInventory?.routable ?? executableCount ?? 38}</dd>
+                      <dd>{data?.agentInventory?.routable ?? executableCount ?? "—"}</dd>
                     </div>
                     <div>
                       <dt>Departments</dt>
@@ -482,7 +482,7 @@ export default function CommandCenterClient({ title = "Founder Home" }) {
                       }
                       className="header-btn-ghost"
                     >
-                      Open Live Workforce
+                      Open Workforce ops
                     </Link>
                   </div>
                 </details>
@@ -529,11 +529,11 @@ export default function CommandCenterClient({ title = "Founder Home" }) {
                 >
                   <div>
                     <dt>Executable</dt>
-                    <dd>{executableCount ?? 38}</dd>
+                    <dd>{executableCount ?? "—"}</dd>
                   </div>
                   <div>
                     <dt>Routable</dt>
-                    <dd>{routableCount ?? executableCount ?? 38}</dd>
+                    <dd>{routableCount ?? executableCount ?? "—"}</dd>
                   </div>
                   <div>
                     <dt>Active</dt>

@@ -170,7 +170,7 @@ export default function WorkforceClient() {
 
   const counts = dash?.counts || {};
   const capacityTruth = normalizeCapacityTruth(dash?.capacityTruth || {});
-  const executableCount = dash?.executable_agents ?? 38;
+  const executableCount = dash?.executable_agents;
   const assignedCount = Number(dash?.assigned_count ?? counts.busy ?? 0);
   const simState =
     simResult?.simulation?.status ||
@@ -248,10 +248,10 @@ export default function WorkforceClient() {
 
   return (
     <AdminShell
-      title="Live Workforce"
+      title="Workforce ops"
       breadcrumbs={[
         { href: "/admin/command-center", label: "Admin" },
-        { label: "Live Workforce" },
+        { label: "Workforce ops" },
       ]}
       actions={
         <ProjectPicker
