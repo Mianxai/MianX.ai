@@ -1526,7 +1526,7 @@ Draft/merged PR: https://github.com/Mianxai/MianX.ai/pull/68
 
 ## 31. Phase I.6 — Foundation truth and operational closeout (Draft PR)
 
-Branch: `cursor/phase-i6-foundation-truth-closeout`  
+Branch: `cursor/phase-i6-foundation-truth-closeout`
 Base: `origin/main` `dccec77`
 
 Root cause: Readiness labeled `canonicalRolesCompiled` (92 named/runtime role
@@ -1541,7 +1541,7 @@ See `execution/PHASE-I6-FOUNDATION-ACCEPTANCE.md` and metric dictionary.
 
 ## 30. Workforce UI foundation closeout (merged)
 
-Branch: `cursor/workforce-ui-foundation-closeout`  
+Branch: `cursor/workforce-ui-foundation-closeout`
 Base: `origin/main` `082a61d` (PR #71 merge)
 
 AdminShell for `/admin/workforce-activation` + `/admin/workforce-readiness`.
@@ -1554,7 +1554,7 @@ See `execution/WORKFORCE-UI-FOUNDATION-CLOSEOUT.md`.
 
 ## 29. Phase I.5 — Production-safe workforce bootstrap (merged)
 
-Branch: `cursor/phase-i5-production-foundation-closeout`  
+Branch: `cursor/phase-i5-production-foundation-closeout`
 Base: `origin/main` `33e2180`
 
 Secure Admin `POST /api/admin/workforce/bootstrap` (preflight/apply/idempotency).

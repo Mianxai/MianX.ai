@@ -1,6 +1,6 @@
 # Phase I.6 — Foundation acceptance matrix
 
-**Branch:** `cursor/phase-i6-foundation-truth-closeout`  
+**Branch:** `cursor/phase-i6-foundation-truth-closeout`
 **Base main:** `dccec77b79376969d291939c6b4386b46b44d51a`
 
 ## A. Foundation acceptance
