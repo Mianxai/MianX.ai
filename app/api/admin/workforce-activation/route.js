@@ -6,9 +6,10 @@ import {
   compileCapacitySeats,
   oneKeyActivationStatus,
   planProjectTeam,
-  runWorkforceVerify,
   buildActivationPreflight,
   runSoftwareHouseTestDoubleE2E,
+  buildFoundationMetrics,
+  sanitizeFoundationMetrics,
 } from "@/lib/core/workforce-i2";
 
 export const dynamic = "force-dynamic";
@@ -25,33 +26,36 @@ export const GET = withErrorHandling(async (req) => {
 
   const checklist = buildWorkforceActivationChecklist();
   const seats = compileCapacitySeats();
-  const verify = await runWorkforceVerify({ productionMode: true });
+  const foundation = sanitizeFoundationMetrics(
+    await buildFoundationMetrics({ productionMode: true })
+  );
   const preflight = await buildActivationPreflight();
 
   return NextResponse.json({
     ok: true,
     checklist,
     oneKey: oneKeyActivationStatus(),
+    foundation,
     capacity: {
-      capacitySeats: seats.capacitySeats,
-      compiledSeats: verify.compiledSeats,
+      capacitySeats: foundation.capacitySeats,
+      compiledSeats: foundation.compiledSeats,
       mappedSeats: seats.mappedSeats,
       orphanSeats: seats.orphanSeats,
-      persistedSeats: verify.persistedSeats,
-      readyToAllocate: verify.readyToAllocateSeats,
-      available: verify.readyToAllocateSeats,
-      allocated: verify.allocatedSeats,
+      persistedSeats: foundation.persistedSeats,
+      readyToAllocate: foundation.readyToAllocateSeats,
+      available: foundation.readyToAllocateSeats,
+      allocated: foundation.allocatedSeats,
       primary: seats.primarySeats,
       reservePool: seats.reservePoolSeats,
     },
-    verify,
+    verify: foundation,
     preflight,
-    foundationReady: verify.foundationReady,
-    providerReady: verify.providerReady,
+    foundationReady: foundation.foundationReady,
+    providerReady: foundation.providerConfigured,
     explanation:
       "445 workforce seats are compiled capacity. Persisted seats come only from the database after migration and bootstrap. They are not 445 continuously running processes.",
-    liveTested: verify.liveTestedSeats,
-    providerFreeMessage: verify.providerFreeMessage,
+    liveTested: foundation.liveTestedSeats,
+    providerFreeMessage: foundation.providerFreeMessage,
   });
 });
 

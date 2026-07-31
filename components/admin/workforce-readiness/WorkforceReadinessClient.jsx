@@ -6,11 +6,12 @@ import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import StatusBadge from "@/components/admin/StatusBadge";
 
-function MetricCard({ label, value, testId }) {
+function MetricCard({ label, value, testId, hint }) {
   return (
     <div className="workforce-status-card" data-testid={testId}>
       <span className="workforce-status-label">{label}</span>
       <strong className="workforce-status-value">{value}</strong>
+      {hint ? <span className="wa-metric-hint">{hint}</span> : null}
     </div>
   );
 }
@@ -51,10 +52,10 @@ export default function WorkforceReadinessClient() {
     };
   }, [load]);
 
+  const foundation = data?.foundation || real?.foundation || data?.verify || real?.verify || {};
+  const executable = foundation.executable || {};
   const totals = data?.matrix?.totals;
   const readiness = real?.report?.readiness;
-  const capacity = real?.report?.capacity || real?.compiled;
-  const verify = real?.report?.verify || real?.verify || data?.verify || {};
   const agents = useMemo(() => {
     const list = real?.report?.agents || data?.matrix?.agents || [];
     const q = filter.trim().toLowerCase();
@@ -89,20 +90,14 @@ export default function WorkforceReadinessClient() {
     }
     setReal(json);
     setCheckNote(
-      json.providerCallsMade === false
-        ? "Real Agent Readiness Check completed — no provider calls made."
-        : "Check completed."
+      "Foundation readiness refresh completed — no AI provider call, no database mutation, no live smoke."
     );
   }
 
-  const providerConfigured = Boolean(real?.openrouter?.configured);
-  const persisted =
-    verify.persistedSeats ?? capacity?.persistedSeats ?? capacity?.documentedSlots ?? 445;
-  const ready =
-    verify.readyToAllocateSeats ?? capacity?.readyToAllocateSeats ?? persisted;
-  const foundationReady = Boolean(
-    verify.foundationReady ?? (Number(persisted) === 445 && Number(ready) === 445)
+  const providerConfigured = Boolean(
+    foundation.providerConfigured || real?.openrouter?.configured
   );
+  const foundationReady = Boolean(foundation.foundationReady);
 
   const shell = (body) => (
     <AdminShell
@@ -129,47 +124,93 @@ export default function WorkforceReadinessClient() {
   const capacityMetrics = [
     {
       label: "Documented / capacity seats",
-      value: capacity?.documentedSlots || totals?.capacitySlots || 445,
+      value: foundation.capacitySeats ?? 445,
       testId: "wr-capacity",
     },
     {
       label: "Compiled seats",
-      value: real?.compiled?.canonicalRolesCompiled ?? verify.compiledSeats ?? 445,
+      value: foundation.compiledSeats ?? 445,
       testId: "wr-compiled",
     },
-    { label: "Persisted seats", value: persisted, testId: "wr-persisted" },
-    { label: "Ready to allocate", value: ready, testId: "wr-ready" },
+    {
+      label: "Persisted seats",
+      value: foundation.persistedSeats ?? "n/a",
+      testId: "wr-persisted",
+    },
+    {
+      label: "Ready to allocate",
+      value: foundation.readyToAllocateSeats ?? 0,
+      testId: "wr-ready",
+    },
     {
       label: "Allocated seats",
-      value: verify.allocatedSeats ?? 0,
+      value: foundation.allocatedSeats ?? 0,
       testId: "wr-allocated",
     },
     {
       label: "Active instances",
-      value: real?.instanceSummary?.running ?? verify.activeInstances ?? 0,
+      value: foundation.activeInstances ?? 0,
       testId: "wr-active",
     },
     {
       label: "Live-tested seats",
-      value: readiness?.live_tested ?? 0,
+      value: foundation.liveTestedSeats ?? readiness?.live_tested ?? 0,
       testId: "wr-live-tested",
     },
     {
       label: "Archetypes",
-      value: verify.archetypeCount ?? real?.compiled?.archetypeCount ?? 148,
+      value: foundation.archetypes ?? foundation.archetypeCount ?? 148,
       testId: "wr-archetypes",
     },
     {
       label: "Departments",
-      value: verify.departmentCount ?? 20,
+      value: foundation.departments ?? foundation.departmentCount ?? 20,
       testId: "wr-departments",
     },
     {
       label: "Workflow families",
-      value: `${real?.workflows?.founderFamiliesMapped ?? 13} / ${
-        real?.workflows?.founderFamiliesRequired ?? 13
+      value: `${foundation.workflowFamilies ?? foundation.workflowFamilyCount ?? 13} / ${
+        foundation.workflowFamiliesRequired ?? 13
       }`,
       testId: "wr-workflows",
+    },
+  ];
+
+  const executableMetrics = [
+    {
+      label: "Catalogue entries",
+      value: executable.catalogueEntries ?? totals?.catalogue ?? 43,
+      testId: "wr-catalogue-entries",
+      hint: "Includes intentionally non-executable superseded definitions",
+    },
+    {
+      label: "Executable definitions",
+      value: executable.executableDefinitions ?? totals?.executable ?? 38,
+      testId: "wr-executable-count",
+      hint: "Runtime-capable catalogue subset — not capacity seats",
+    },
+    {
+      label: "Intentionally non-executable",
+      value:
+        executable.intentionallyNonExecutable ??
+        Math.max(
+          0,
+          (executable.catalogueEntries ?? totals?.catalogue ?? 43) -
+            (executable.executableDefinitions ?? totals?.executable ?? 38)
+        ),
+      testId: "wr-non-executable",
+    },
+    {
+      label: "Named/runtime role registry entries",
+      value: executable.namedRoleRegistryEntries ?? "—",
+      testId: "wr-named-role-registry",
+      hint: "Org + runtime inventory count — not compiled seats",
+    },
+    {
+      label: "Capacity-reserve gaps (named inventory)",
+      value: executable.capacityReserveGaps ?? "—",
+      testId: "wr-capacity-gaps",
+      hint: "Documented reserves without separate named personas — valid mapped seats still count in 445",
     },
   ];
 
@@ -177,7 +218,7 @@ export default function WorkforceReadinessClient() {
     <>
       <PageHeader
         title="Workforce Readiness"
-        description="445 capacity seats are allocatable workforce capacity — not 445 always-on agents. Foundation and live execution are shown separately."
+        description="445 capacity seats are allocatable workforce capacity — not 445 always-on agents. Foundation metrics come from the shared seat registry; executable catalogue metrics are a smaller runtime subset."
       />
       <div className="wa-header-meta">
         <StatusBadge tone={foundationReady ? "healthy" : "warning"}>
@@ -187,8 +228,11 @@ export default function WorkforceReadinessClient() {
           {providerConfigured ? "Provider configured" : "AI provider unconfigured"}
         </StatusBadge>
         <span className="cc-muted" data-testid="wr-445-explanation">
-          Executable catalogue ({totals?.executable ?? "—"}) is a smaller runtime subset than capacity
-          seats.
+          Executable definitions (
+          {executable.executableDefinitions ?? totals?.executable ?? 38}) are not capacity seats.
+          Catalogue entries (
+          {executable.catalogueEntries ?? totals?.catalogue ?? 43}) include superseded non-executable
+          definitions.
         </span>
       </div>
 
@@ -201,30 +245,42 @@ export default function WorkforceReadinessClient() {
         </div>
       </section>
 
+      <section aria-label="Executable runtime metrics">
+        <h2 className="wa-section-title">Executable / runtime catalogue</h2>
+        <div className="workforce-status-grid" data-testid="wr-executable-cards">
+          {executableMetrics.map((c) => (
+            <MetricCard key={c.testId} {...c} />
+          ))}
+        </div>
+        <p className="cc-muted" data-testid="wr-executable-note">
+          Catalogue entries and executable definitions are different concepts. Never read either as
+          compiled seats.
+        </p>
+      </section>
+
       <section className="wa-panel" aria-label="Foundation status">
         <h2 className="wa-section-title">Foundation</h2>
         <ul className="wa-status-list" data-testid="wr-foundation-list">
           <li>
             Database ready:{" "}
-            <strong>{verify.databaseReady || foundationReady ? "Yes" : "No"}</strong>
+            <strong>{foundation.databaseReady ? "Yes" : "No"}</strong>
           </li>
           <li>
             Workforce bootstrap ready:{" "}
-            <strong>{Number(persisted) === 445 ? "Yes" : "No"}</strong>
+            <strong>{Number(foundation.persistedSeats) === 445 ? "Yes" : "No"}</strong>
           </li>
           <li>
-            Queue durable:{" "}
-            <strong>{verify.queueDurable || foundationReady ? "Yes" : "No"}</strong>
+            Queue durable: <strong>{foundation.queueDurable ? "Yes" : "No"}</strong>
           </li>
           <li>
             Leases durable:{" "}
             <strong>
-              {verify.leaseDurable || verify.leasesDurable || foundationReady ? "Yes" : "No"}
+              {foundation.leaseDurable || foundation.leasesDurable ? "Yes" : "No"}
             </strong>
           </li>
           <li>
             Rate limiter durable:{" "}
-            <strong>{verify.rateLimitDurable || foundationReady ? "Yes" : "No"}</strong>
+            <strong>{foundation.rateLimitDurable ? "Yes" : "No"}</strong>
           </li>
         </ul>
       </section>
@@ -233,14 +289,23 @@ export default function WorkforceReadinessClient() {
         <h2 className="wa-section-title">Live execution</h2>
         <ul className="wa-status-list" data-testid="wr-live-list">
           <li data-testid="wr-provider-status">
-            Provider: <strong>{providerConfigured ? "Configured" : "AI provider unconfigured"}</strong>
+            Provider:{" "}
+            <strong>
+              {providerConfigured ? "Configured" : "AI provider unconfigured"}
+            </strong>
           </li>
-          <li>Controlled live activation: <strong>Not run</strong></li>
           <li>
-            Live-tested: <strong data-testid="wr-live-tested-inline">{readiness?.live_tested ?? 0}</strong>
+            Controlled live activation: <strong>Not run</strong>
           </li>
           <li>
-            liveExecutionReady: <strong data-testid="wr-live-exec">false</strong>
+            Live-tested:{" "}
+            <strong data-testid="wr-live-tested-inline">
+              {foundation.liveTestedSeats ?? 0}
+            </strong>
+          </li>
+          <li>
+            liveExecutionReady:{" "}
+            <strong data-testid="wr-live-exec">false</strong>
           </li>
         </ul>
       </section>
@@ -253,7 +318,7 @@ export default function WorkforceReadinessClient() {
             data-testid="wr-run-readiness-check"
             onClick={runReadinessCheck}
           >
-            Run Real Agent Readiness Check
+            Refresh Foundation Readiness
           </button>
           <Link href="/admin/workforce-activation" className="header-btn-ghost">
             Workforce Setup
@@ -263,19 +328,14 @@ export default function WorkforceReadinessClient() {
           </Link>
         </div>
         {checkNote ? <p data-testid="wr-check-note">{checkNote}</p> : null}
-        <p className="cc-muted">
-          Readiness Check refreshes contracts and queue truth without calling an AI provider. Live
-          smoke stays Founder-gated and is not run from this page.
+        <p className="cc-muted" data-testid="wr-action-disclaimer">
+          Refresh Foundation Readiness validates runtime contracts and queue truth only. It does not
+          call an AI provider, run live smoke, activate agents, or allocate Production seats.
         </p>
       </section>
 
-      <section className="wa-panel" aria-label="Agent catalogue">
-        <h2 className="wa-section-title">Executable catalogue</h2>
-        <p className="cc-muted">
-          Catalogue <strong>{totals?.catalogue ?? "—"}</strong> · Executable definitions{" "}
-          <strong data-testid="wr-executable-count">{totals?.executable ?? "—"}</strong> (not the same
-          as Real Agent Ready).
-        </p>
+      <section className="wa-panel" aria-label="Agent catalogue table">
+        <h2 className="wa-section-title">Executable catalogue browser</h2>
         <label className="wr-filter">
           Search agents
           <input
@@ -343,12 +403,11 @@ export default function WorkforceReadinessClient() {
         <pre className="wr-json" data-testid="wr-technical-json">
           {JSON.stringify(
             {
-              completionTruth: real?.report?.completionTruth,
+              foundation,
+              executable,
               openrouter: { configured: providerConfigured },
               liveSmoke: real?.liveSmoke,
-              compiledNote: real?.compiled?.note,
               instanceSummary: real?.instanceSummary,
-              queue: real?.queue,
               workflows: real?.workflows,
             },
             null,

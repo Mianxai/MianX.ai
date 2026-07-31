@@ -190,9 +190,15 @@ test.describe("admin authenticated route sweep", () => {
     await page.goto("/admin/workforce-readiness");
     await expect(page.getByTestId("workforce-readiness")).toBeVisible();
     await expect(page.locator("aside.admin-sidebar, [aria-label='Admin navigation']").first()).toBeVisible();
+    await expect(page.getByTestId("wr-compiled")).toContainText("445");
+    await expect(page.getByTestId("wr-compiled")).not.toContainText("92");
     await expect(page.getByTestId("wr-persisted")).toContainText("445");
+    await expect(page.getByTestId("wr-catalogue-entries")).toContainText("43");
+    await expect(page.getByTestId("wr-executable-count")).toContainText("38");
+    await expect(page.getByTestId("wr-named-role-registry")).toContainText("92");
     await expect(page.getByTestId("wr-provider-status")).toContainText(/AI provider unconfigured/i);
     await expect(page.getByTestId("wr-live-exec")).toContainText("false");
+    await expect(page.getByTestId("wr-run-readiness-check")).toContainText(/Refresh Foundation Readiness/i);
     await expect(page.getByText(/Anthropic provider/i)).toHaveCount(0);
   });
 });
