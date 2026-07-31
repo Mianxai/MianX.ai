@@ -1,6 +1,6 @@
 # Workforce UI foundation closeout
 
-**Branch:** `cursor/workforce-ui-foundation-closeout`  
+**Branch:** `cursor/workforce-ui-foundation-closeout`
 **Base main:** `082a61dddf71a5689a85b488f1495beb0937ea60` (PR #71 merge)
 
 ## Verified Production bootstrap truth (do not mutate)
