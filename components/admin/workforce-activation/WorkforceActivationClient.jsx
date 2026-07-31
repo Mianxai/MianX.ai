@@ -273,7 +273,7 @@ export default function WorkforceActivationClient() {
     <AdminShell
       title="Workforce Setup"
       breadcrumbs={[
-        { href: "/admin/command-center", label: "Admin" },
+        { href: "/admin", label: "Admin" },
         { label: "Workforce Setup" },
       ]}
     >

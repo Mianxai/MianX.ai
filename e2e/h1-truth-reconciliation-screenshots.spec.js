@@ -21,7 +21,7 @@ test.describe("H.1 truth reconciliation Preview screenshots", () => {
   test("capture truth-reconciliation surfaces", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
 
-    await page.goto("/admin/command-center?project_id=proj-proof-1");
+    await page.goto("/admin?project_id=proj-proof-1");
     await page.waitForLoadState("domcontentloaded");
     await shot(page, "01-command-center");
 
@@ -89,7 +89,7 @@ test.describe("H.1 truth reconciliation Preview screenshots", () => {
     await page.waitForLoadState("domcontentloaded");
     await shot(page, "17-analytics");
 
-    await page.goto("/admin/command-center?project_id=proj-proof-1");
+    await page.goto("/admin?project_id=proj-proof-1");
     await page.waitForLoadState("domcontentloaded");
     const adv = page.getByTestId("advanced-ops-toggle").first();
     await expect(adv).toHaveAttribute("aria-expanded", /false|true/);

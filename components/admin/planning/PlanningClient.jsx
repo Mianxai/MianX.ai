@@ -213,7 +213,7 @@ export default function PlanningClient() {
     <AdminShell
       title="Planning"
       breadcrumbs={[
-        { href: "/admin/command-center", label: "Admin" },
+        { href: "/admin", label: "Admin" },
         { label: "Planning" },
       ]}
       actions={

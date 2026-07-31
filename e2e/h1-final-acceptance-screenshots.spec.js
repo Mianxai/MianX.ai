@@ -25,7 +25,7 @@ test.describe("H.1 final acceptance Preview screenshots", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
 
     // 1. Command Center top
-    await page.goto("/admin/command-center?project_id=proj-proof-1");
+    await page.goto("/admin?project_id=proj-proof-1");
     await page.waitForLoadState("domcontentloaded");
     await expect(page.getByTestId("founder-quick-start")).toBeVisible();
     await shot(page, "01-command-center-top");
@@ -93,7 +93,7 @@ test.describe("H.1 final acceptance Preview screenshots", () => {
     await shot(page, "14-company-builder");
 
     // 15–16 Advanced Operations
-    await page.goto("/admin/command-center?project_id=proj-proof-1");
+    await page.goto("/admin?project_id=proj-proof-1");
     await page.waitForLoadState("domcontentloaded");
     const adv = page.getByTestId("advanced-ops-toggle").first();
     await expect(adv).toHaveAttribute("aria-expanded", "false");

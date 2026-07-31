@@ -28,7 +28,7 @@ test.describe("H.3 Founder guided admin screenshots", () => {
   test("capture Founder Mode surfaces @ 1440", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
 
-    await page.goto("/admin/command-center?project_id=proj-proof-1");
+    await page.goto("/admin?project_id=proj-proof-1");
     await page.waitForLoadState("domcontentloaded");
     await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
     await shot(page, "01-founder-home");
@@ -53,7 +53,7 @@ test.describe("H.3 Founder guided admin screenshots", () => {
     await page.waitForLoadState("domcontentloaded");
     await shot(page, "06-readiness-centre");
 
-    await page.goto("/admin/command-center?project_id=proj-proof-1");
+    await page.goto("/admin?project_id=proj-proof-1");
     await page.waitForLoadState("domcontentloaded");
     await page.getByRole("button", { name: /^Help$/i }).click();
     await expect(page.getByTestId("founder-help-drawer")).toBeVisible();
@@ -114,7 +114,7 @@ test.describe("H.3 Founder guided admin screenshots", () => {
       });
     });
 
-    await page.goto("/admin/command-center?project_id=proj-proof-1");
+    await page.goto("/admin?project_id=proj-proof-1");
     await page.waitForLoadState("domcontentloaded");
     await shot(page, "09-no-active-proof");
 
@@ -151,7 +151,7 @@ test.describe("H.3 Founder guided admin screenshots", () => {
         }),
       });
     });
-    await page.goto("/admin/command-center?project_id=proj-proof-1");
+    await page.goto("/admin?project_id=proj-proof-1");
     await page.waitForLoadState("domcontentloaded");
     await shot(page, "10-resumable-proof");
   });
@@ -166,7 +166,7 @@ test.describe("H.3 Founder guided admin screenshots", () => {
     ];
     for (const vp of viewports) {
       await page.setViewportSize({ width: vp.w, height: vp.h });
-      await page.goto("/admin/command-center?project_id=proj-proof-1");
+      await page.goto("/admin?project_id=proj-proof-1");
       await page.waitForLoadState("domcontentloaded");
       await shot(page, `responsive-${vp.name}-home`);
       if (vp.w <= 768) {

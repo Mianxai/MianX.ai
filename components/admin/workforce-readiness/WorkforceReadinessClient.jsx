@@ -103,7 +103,7 @@ export default function WorkforceReadinessClient() {
     <AdminShell
       title="Workforce Readiness"
       breadcrumbs={[
-        { href: "/admin/command-center", label: "Admin" },
+        { href: "/admin", label: "Admin" },
         { href: "/admin/workforce-activation", label: "Workforce Setup" },
         { label: "Readiness detail" },
       ]}

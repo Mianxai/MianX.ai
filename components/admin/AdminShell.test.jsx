@@ -63,7 +63,7 @@ describe("AdminShell", () => {
     );
     expect(screen.getByRole("link", { name: /^Home$/i })).toHaveAttribute(
       "href",
-      "/admin/command-center"
+      "/admin"
     );
     expect(screen.getByRole("link", { name: /^Objectives$/i })).toHaveAttribute(
       "href",

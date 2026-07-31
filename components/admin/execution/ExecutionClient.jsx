@@ -105,6 +105,17 @@ export default function ExecutionClient() {
   }
 
   const snap = data?.snapshot;
+  const providerConfigured =
+    snap?.provider?.configured === true ||
+    (typeof snap?.provider?.configured === "string" &&
+      !["unconfigured", "unavailable", "none", "false", ""].includes(
+        String(snap.provider.configured).toLowerCase()
+      ));
+  const hasPrograms = Number(snap?.activePrograms || 0) > 0;
+  const tickBlocked = !providerConfigured || !hasPrograms;
+  const tickBlockedReason = !providerConfigured
+    ? "Run Orchestrator Tick is disabled — provider is unconfigured."
+    : "Run Orchestrator Tick is disabled — no programs exist yet.";
 
   return (
     <AdminShell
@@ -187,12 +198,26 @@ export default function ExecutionClient() {
           <button
             type="button"
             className="header-btn-ghost"
-            disabled={Boolean(busy)}
+            disabled={Boolean(busy) || tickBlocked}
+            title={tickBlocked ? tickBlockedReason : undefined}
+            data-testid="execution-run-tick"
             onClick={() => act("tick")}
           >
             {busy === "tick" ? "Ticking…" : "Run orchestrator tick"}
           </button>
-          <Link href="/admin/company-builder" className="header-btn-ghost">
+          {tickBlocked ? (
+            <p className="cc-muted" data-testid="execution-tick-blocked-reason" role="note">
+              {tickBlockedReason}
+            </p>
+          ) : null}
+          <Link
+            href={
+              projectId
+                ? `/admin/company-builder?project_id=${encodeURIComponent(projectId)}`
+                : "/admin/company-builder"
+            }
+            className="header-btn-ghost"
+          >
             Company Builder
           </Link>
         </div>

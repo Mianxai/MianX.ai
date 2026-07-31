@@ -19,6 +19,7 @@ export function makeStructurallyValidToken(payload = {}) {
 }
 
 export const CANONICAL_ADMIN_ROUTES = [
+  "/admin",
   "/admin/command-center",
   "/admin/ceo-brief",
   "/admin/objectives",
@@ -61,6 +62,7 @@ export const VIEWPORTS = [
 ];
 
 export const SCREENSHOT_ROUTES = [
+  "/admin",
   "/admin/command-center",
   "/admin/agents",
   "/admin/departments",

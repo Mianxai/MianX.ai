@@ -24,7 +24,7 @@ test.describe("H.3.2 Founder Proof truth + guided execution screenshots", () => 
   test("capture truth-guided Founder surfaces", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
 
-    await page.goto("/admin/command-center?project_id=proj-proof-1");
+    await page.goto("/admin?project_id=proj-proof-1");
     await page.waitForLoadState("domcontentloaded");
     await shot(page, "01-founder-home-current-action");
 

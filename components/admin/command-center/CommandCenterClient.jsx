@@ -60,14 +60,20 @@ async function fetchJson(path, router, loginFallback) {
   return { ok: res.ok, status: res.status, data };
 }
 
-export default function CommandCenterClient({ title = "Founder Home" }) {
+export default function CommandCenterClient({
+  title = "Founder Home",
+  basePath: basePathProp = null,
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
   const department = searchParams?.get("department") || "all";
   const agentSlug = searchParams?.get("agent") || "";
   const agentsPage = title === "Agents";
-  const loginFallback = agentsPage ? "/admin/agents" : "/admin/command-center";
+  const basePath =
+    basePathProp ||
+    (agentsPage ? "/admin/agents" : title === "Command Center" ? "/admin/command-center" : "/admin");
+  const loginFallback = basePath;
 
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -133,11 +139,10 @@ export default function CommandCenterClient({ title = "Founder Home" }) {
         else next.set(k, v);
       }
       const qs = next.toString();
-      const base =
-        title === "Agents" ? "/admin/agents" : "/admin/command-center";
+      const base = basePath;
       router.replace(qs ? `${base}?${qs}` : base);
     },
-    [router, searchParams, title]
+    [router, searchParams, basePath]
   );
 
   const ceoAgent = useMemo(() => {
