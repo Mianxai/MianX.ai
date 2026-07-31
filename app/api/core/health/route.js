@@ -138,11 +138,31 @@ export async function GET() {
   }
 
   let durableScheduler = null;
+  let schedulerContract = null;
   try {
     const { buildSchedulerSurfaceSnapshot } = await import(
       "@/lib/core/scheduler-surface"
     );
-    durableScheduler = await buildSchedulerSurfaceSnapshot({ lastTick });
+    durableScheduler = await buildSchedulerSurfaceSnapshot({
+      lastTick,
+      providerName: provider.providerName || "none",
+      liveExecutionReady: false,
+    });
+    schedulerContract = durableScheduler.healthContract || {
+      primaryScheduler: durableScheduler.primaryScheduler,
+      schedulerActive: durableScheduler.schedulerActive,
+      schedulerTransitionState: durableScheduler.schedulerTransitionState,
+      schedulerHealth: durableScheduler.schedulerHealth,
+      latestSource: durableScheduler.latestSource || durableScheduler.schedulerSource,
+      lastAttemptAt: durableScheduler.lastAttemptAt,
+      lastSuccessAt: durableScheduler.lastSuccessAt,
+      schedulerDelayMs: durableScheduler.schedulerDelayMs,
+      configuredCadenceMs: durableScheduler.configuredCadenceMs,
+      canonicalJobName: durableScheduler.canonicalJobName || durableScheduler.schedulerJobName,
+      liveExecutionReady: false,
+      providerName: provider.providerName || "none",
+      githubFallbackShouldSkip: Boolean(durableScheduler.githubFallbackShouldSkip),
+    };
     runtime = {
       ...runtime,
       schedulerStatus: durableScheduler,
@@ -155,6 +175,8 @@ export async function GET() {
       schedulerSource: durableScheduler.schedulerSource,
       schedulerHealth: durableScheduler.schedulerHealth,
       primaryScheduler: durableScheduler.primaryScheduler,
+      schedulerTransitionState: durableScheduler.schedulerTransitionState,
+      schedulerActive: durableScheduler.schedulerActive,
     };
   } catch {
     /* keep defaults */
@@ -184,6 +206,22 @@ export async function GET() {
         }
       : null,
     scheduler: durableScheduler,
+    /** Stable public contract for GitHub gapless fallback (no secrets). */
+    schedulerContract: schedulerContract || {
+      primaryScheduler: "supabase_cron",
+      schedulerActive: false,
+      schedulerTransitionState: "github_fallback_active",
+      schedulerHealth: "never_run",
+      latestSource: lastTick?.source || "never_run",
+      lastAttemptAt: null,
+      lastSuccessAt: lastTick?.at || null,
+      schedulerDelayMs: null,
+      configuredCadenceMs: 300000,
+      canonicalJobName: "mianx-runtime-tick-5m",
+      liveExecutionReady: false,
+      providerName: provider.providerName || "none",
+      githubFallbackShouldSkip: false,
+    },
     agents: executable.length,
     agentsExecutable: executable.length,
     agentsCatalogTotal: listAgentDefinitions().length,

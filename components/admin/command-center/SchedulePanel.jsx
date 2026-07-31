@@ -41,18 +41,34 @@ export default function SchedulePanel({ schedule, readiness, provider, rateLimit
     <section className="cc-card" aria-labelledby="cc-sched-h" data-testid="schedule-panel">
       <h2 id="cc-sched-h">Schedule</h2>
       <p className="cc-muted">
-        Primary scheduler is Supabase Cron (<code>mianx-runtime-tick-5m</code>, every 5 minutes).
-        GitHub Actions is diagnostic fallback only — not the reliable primary.
-        Zero claimed/succeeded/failed is a successful no-op, not a failure. No fake countdown.
+        Intended primary: Supabase Cron (<code>mianx-runtime-tick-5m</code>, every 5 minutes).
+        GitHub Actions <code>*/5</code> schedule remains the gapless fallback until Production
+        cutover proves <code>supabase_primary_active</code>. Zero claimed/succeeded/failed is a
+        successful no-op. No fake countdown. Preview must not claim Production Vault/job/Healthy
+        Supabase until verified.
       </p>
       <dl className="cc-kv-grid" data-testid="scheduler-primary-summary">
         <div>
-          <dt>Primary scheduler</dt>
+          <dt>Intended primary</dt>
           <dd data-testid="scheduler-primary">Supabase Cron</dd>
         </div>
         <div>
-          <dt>Fallback / diagnostic</dt>
-          <dd data-testid="scheduler-fallback">GitHub Actions (workflow_dispatch)</dd>
+          <dt>Gapless fallback</dt>
+          <dd data-testid="scheduler-fallback">GitHub Actions (schedule + workflow_dispatch)</dd>
+        </div>
+        <div>
+          <dt>Transition state</dt>
+          <dd data-testid="scheduler-transition-state">
+            {durable.schedulerTransitionState ||
+              schedule.schedulerTransitionState ||
+              "github_fallback_active"}
+          </dd>
+        </div>
+        <div>
+          <dt>Transition label</dt>
+          <dd data-testid="scheduler-transition-label">
+            {durable.transitionLabel || schedule.transitionLabel || "GitHub fallback active"}
+          </dd>
         </div>
         <div>
           <dt>Canonical job</dt>
@@ -64,6 +80,18 @@ export default function SchedulePanel({ schedule, readiness, provider, rateLimit
           <dt>Latest source</dt>
           <dd data-testid="scheduler-source">
             {durable.schedulerSource || schedule.schedulerSource || "legacy_or_unknown"}
+          </dd>
+        </div>
+        <div>
+          <dt>Scheduler active (Supabase primary)</dt>
+          <dd data-testid="scheduler-active">
+            {durable.schedulerActive || schedule.schedulerActive ? "Yes" : "No"}
+          </dd>
+        </div>
+        <div>
+          <dt>Production cutover</dt>
+          <dd data-testid="scheduler-cutover-pending">
+            {durable.productionCutoverPending === false ? "Complete" : "Pending"}
           </dd>
         </div>
       </dl>

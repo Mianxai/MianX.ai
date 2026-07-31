@@ -1,4 +1,4 @@
-# Phase I.9 — Durable Supabase scheduler closeout
+# Phase I.9 — Durable Supabase scheduler closeout (gapless cutover)
 
 **Branch:** `cursor/phase-i9-durable-production-scheduler`  
 **Base `origin/main`:** `ef409485dd9449d81109332e03258ae055932807`  
@@ -7,128 +7,125 @@
 
 ---
 
+## Critical cutover gap (corrected)
+
+Earlier PR tip removed the GitHub Actions `*/5` schedule before Production Vault,
+migration, verified `supabase_cron` tick, and `RUNTIME_SCHEDULER_ACTIVE=1`.
+**Merging that shape would open a scheduler availability gap.**
+
+**Fix:** restore `schedule: "*/5 * * * *"` as a **conditional gapless fallback**.
+Scheduled runs query public `/api/core/health` → `schedulerContract` and **skip**
+the tick only when `githubFallbackShouldSkip` is true (`supabase_primary_active`
++ healthy recent `supabase_cron`). `workflow_dispatch` always invokes.
+
+---
+
 ## A. Current application acceptance — Verified
 
-- Workforce foundation truth unchanged: 445 capacity/compiled/persisted/ready · allocated/active/liveTested 0 · durables true · `providerName: none` · `liveExecutionReady: false`
-- Founder Proof: `awaiting_final_review` / `founder_final_review` · Memory & Learning completed · Final Review waiting · auto-approval forbidden
-- Schedule / Command Center / Runtime Overview / `/api/core/health` share `buildDurableSchedulerViewModel` via `buildSchedulerSurfaceSnapshot`
-- GitHub Actions refactored to **diagnostic fallback** (`workflow_dispatch` only) — not claimed as reliable primary
-- Quality gates run on this branch (see PR / final report)
+- Workforce: 445 capacity/compiled/persisted/ready · allocated/active/liveTested 0 · durables true · `providerName: none` · `liveExecutionReady: false`
+- Founder Proof: `awaiting_final_review` / Final Review waiting · auto-approval forbidden
+- Shared durable view model + transition states across Schedule / CC / health / Runtime
+- GHA `*/5` + `workflow_dispatch` retained with health-gated skip
+- Quality gates on this branch (see PR / final report)
 
 ## B. Durable scheduler implementation — Pending Production cutover
 
 - Migration shipped (not applied): `supabase/migrations/20260731180000_phase_i9_supabase_cron_scheduler.sql`
-- Canonical job: `mianx-runtime-tick-5m` · expression `*/5 * * * *`
-- Vault names (values Founder-only): `mianx_runtime_tick_url`, `mianx_runtime_tick_secret`
-- Until Vault + migration are live on Production, UI may show **Setup required** / **Stale** / legacy sources honestly
+- Canonical job: `mianx-runtime-tick-5m` · `*/5 * * * *`
+- Vault names only: `mianx_runtime_tick_url`, `mianx_runtime_tick_secret`
+- Until cutover completes, UI truthfully shows **GitHub fallback active** / cutover pending — Preview must not claim Production Vault/job/Healthy Supabase
 
 ## C. Live AI execution — Blocked
 
-- No provider configured; do not configure Anthropic/OpenRouter in this phase
-- Do not approve Founder Proof Final Review
-- Do not bootstrap/allocate workforce seats
+Provider none; no Founder Proof approval; no bootstrap in this phase.
 
 ---
 
-## Current GitHub schedule-gap evidence
+## Transition states
 
-| Field | Value |
-|-------|-------|
-| Last scheduled GHA run | `2026-07-31T08:19:12Z` |
-| Conclusion | success |
-| Tick counters | claimed/succeeded/failed `0/0/0` (successful no-op) |
-| Problem | Multi-hour private-repo schedule delivery gaps |
-| UI | Truthfully **Stale** under legacy primary-as-GHA model |
+| State | Meaning |
+|-------|---------|
+| `github_fallback_active` | Default / Preview / Vault-or-job missing — GHA schedule invokes |
+| `supabase_configured_unverified` | Vault + job present; no durable `supabase_cron` success yet |
+| `supabase_verified` | Durable `supabase_cron` success; ACTIVE not yet primary |
+| `supabase_primary_active` | ACTIVE + platform + vault + job + recent healthy `supabase_cron` |
+| `supabase_degraded` | Declared active but stale/failing/delayed — GHA **invokes** protected fallback |
+| `rollback_to_github` | Paused or platform `github_actions` — GHA path |
 
-Root cause: relying on GitHub Actions `*/5` as sole Production tick delivery is unreliable for private repos. Empty-queue ticks were succeeding when the workflow ran; gaps were in **schedule delivery**, not in queue/lease logic.
-
----
-
-## Architecture decision
-
-**Primary:** Supabase Cron (`pg_cron`) → `pg_net` HTTP POST → existing protected `/api/internal/runtime/tick` → durable queue + leases + rate limits + tick evidence.
-
-**Fallback:** GitHub Actions `workflow_dispatch` only (Option A — disable scheduled trigger after Supabase Cron is configured). Avoids two independent five-minute Production tickers.
-
-Does **not** duplicate `runTick` / claim logic.
+**Degraded policy:** invoke GitHub fallback tick (not skip). Job leases + CAS prevent duplicate claims if Supabase still fires.
 
 ---
 
-## Vault / secret model
+## Architecture
 
-| Name | Purpose |
-|------|---------|
-| `mianx_runtime_tick_url` | Full Production tick URL |
-| `mianx_runtime_tick_secret` | Same Bearer token as host `INTERNAL_RUNTIME_SECRET` (≥16 chars) |
-| Host `INTERNAL_RUNTIME_SECRET` / `CRON_SECRET` | Endpoint auth (unchanged) |
-| GitHub `INTERNAL_RUNTIME_SECRET`, `RUNTIME_TICK_BASE_URL` | Diagnostic fallback only |
+Supabase Cron (`pg_cron`) → `pg_net` POST → `/api/internal/runtime/tick` → durable queue/leases.
 
-No secret literals in migrations, logs, API responses, or tests.
+GitHub Actions: gapless `*/5` until `supabase_primary_active`; then scheduled skip; dispatch remains diagnostic.
 
 ---
 
-## Transition plan (post-merge — ordered, no gap)
+## Gapless Founder cutover order
 
-1. **Keep** current Production behavior until step 4: existing GHA schedule may still be on `main` until this PR merges; after merge, GHA schedule is removed — so **complete Vault + migration first on a coordinated window**, or briefly accept Founder `workflow_dispatch` only.
-2. **Create Vault secrets** in Production Supabase (Dashboard or SQL) — values never committed.
-3. **Dry-run** then **apply** migration `20260731180000_phase_i9_supabase_cron_scheduler.sql` (Founder). If Vault ready, job schedules; if not, NOTICE and inactive.
-4. **Confirm** one `supabase_cron` tick (source header + durable tick record; counters may be 0/0/0).
-5. **Confirm** GHA has **no** `schedule:` (this PR) — only `workflow_dispatch`.
-6. Set host env `RUNTIME_SCHEDULER_PLATFORM=supabase_cron` and only after a verified tick `RUNTIME_SCHEDULER_ACTIVE=1`.
-7. Do **not** re-enable a second 5-minute GHA schedule.
+1. Merge and deploy PR **while GitHub scheduled fallback remains active**.
+2. Create Production Vault secrets `mianx_runtime_tick_url` + `mianx_runtime_tick_secret` (values never in repo).
+3. Apply approved additive migration after dry-run.
+4. Confirm exactly one `cron.job` with name `mianx-runtime-tick-5m`.
+5. Wait for a genuine scheduled Supabase Cron execution.
+6. Verify `cron.job_run_details` success.
+7. Verify durable tick evidence `source=supabase_cron`.
+8. Verify HTTP success and truthful 0/0/0 no-op or real work.
+9. Set `RUNTIME_SCHEDULER_PLATFORM=supabase_cron`.
+10. Set `RUNTIME_SCHEDULER_ACTIVE=1`.
+11. Redeploy Production if required for env changes.
+12. Verify GitHub scheduled workflow **skips** (`Supabase Cron is active and healthy; fallback tick skipped.`).
+13. Verify two consecutive Supabase Cron runs ~5 minutes apart.
+14. Only then mark durable scheduler acceptance complete.
 
-During a brief dual-fire window, **job leases** prevent duplicate claims.
-
----
-
-## Rollback
-
-1. `select cron.unschedule(jobid) from cron.job where jobname = 'mianx-runtime-tick-5m';` (or Dashboard).
-2. Optionally clear Vault entries (Founder).
-3. Re-enable a temporary GHA `schedule: "*/5 * * * *"` **only** if needed (Founder PR) — or use `workflow_dispatch` until restored.
-4. Unset `RUNTIME_SCHEDULER_ACTIVE` / revert platform env if desired.
-5. Functions `mianx_invoke_runtime_tick` / `mianx_scheduler_status` are safe to leave; they do not mutate business data.
+**No scheduler gap is permitted** — GHA schedule stays until step 12 succeeds.
 
 ---
 
-## Observability
+## Rollback order
 
-Canonical fields: `schedulerSource`, `schedulerJobName`, `configuredCadenceMs`, attempt/success/failure times, `latestHttpStatus`, claimed/succeeded/failed, `noOp`, `consecutiveFailures`, `schedulerHealth`, `schedulerDelayMs`.
-
-Sources: `supabase_cron` | `github_actions` | `manual_diagnostic` | `never_run` | `legacy_or_unknown`.
-
-Healthy **only** after recent successful **supabase_cron** tick. GHA success alone ≠ primary Healthy. Empty claim is successful no-op.
-
-Safe RPC: `mianx_scheduler_status()` — no Vault plaintext, no Authorization headers.
-
----
-
-## Security
-
-- Vault-only DB-side secret source for cron HTTP
-- Endpoint rejects missing/invalid Bearer
-- Rate limit on admin tick; leases + CAS on claims
-- Project isolation unchanged; no provider invocation from scheduler path itself (worker still fails closed without provider)
+1. Set `RUNTIME_SCHEDULER_ACTIVE=0` (and redeploy if needed).
+2. Confirm GitHub fallback resumes protected ticks (`githubFallbackShouldSkip=false`).
+3. Unschedule **only** `mianx-runtime-tick-5m`.
+4. Preserve `cron.job_run_details` evidence.
+5. Do not delete unrelated cron jobs.
+6. Keep Vault entries unless Founder explicitly removes them.
+7. Verify GitHub source + truthful scheduler health / transition.
+8. Do not invoke a provider.
 
 ---
 
-## Exact Founder setup steps
+## Health contract (public `/api/core/health` → `schedulerContract`)
 
-1. Create Vault secrets (names above) with Production URL + existing tick Bearer.
-2. `npx supabase db push --dry-run` then apply migration (Founder).
-3. Verify `select * from cron.job where jobname = 'mianx-runtime-tick-5m';`
-4. Watch Schedule UI / health for `supabase_cron` + Healthy/Delayed (not Setup required).
-5. Set `RUNTIME_SCHEDULER_PLATFORM=supabase_cron` + `RUNTIME_SCHEDULER_ACTIVE=1` after verified tick.
-6. Keep GHA secrets for rare diagnostics only.
+Machine-readable, no secrets:
 
-## Exact Production acceptance steps
+`primaryScheduler`, `schedulerActive`, `schedulerTransitionState`, `schedulerHealth`,
+`latestSource`, `lastAttemptAt`, `lastSuccessAt`, `schedulerDelayMs`,
+`configuredCadenceMs`, `canonicalJobName`, `githubFallbackShouldSkip`,
+`liveExecutionReady`, `providerName`.
 
-1. Schedule shows Primary = Supabase Cron, job `mianx-runtime-tick-5m`, cadence 5 minutes.
-2. Latest source `supabase_cron` within healthy window (or Delayed/Stale honestly).
-3. No-op 0/0/0 still success.
-4. `/api/core/health` `schedulerHealth` / `primaryScheduler` agree with Schedule.
-5. Provider still `none`; `liveExecutionReady` false; Founder Proof not auto-approved.
+---
+
+## Migration safety
+
+- Alters only `mianx-runtime-tick-5m`
+- Both Vault entries required before schedule; otherwise canonical job left unscheduled
+- Repeat apply → exactly one canonical job
+- No business/workforce/Founder Proof mutation; no secret literals
+
+---
+
+## Observability / security
+
+Healthy primary only after recent `supabase_cron`. GHA alone ≠ Healthy.
+Empty claim = successful no-op. Vault never returned via API/logs/tests.
+Auth rejects missing/invalid Bearer. Concurrent dual-source ticks cannot double-claim.
+
+---
 
 ## Remaining provider blocker
 
-Live AI execution remains blocked until Founder configures a provider under a separate authorization. Phase I.9 does not configure or call any provider.
+Live AI execution blocked until separate Founder authorization configures a provider.

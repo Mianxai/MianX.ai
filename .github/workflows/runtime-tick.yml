@@ -1,24 +1,28 @@
-# Production runtime tick — GitHub Actions DIAGNOSTIC FALLBACK (Phase I.9).
+# Production runtime tick — GitHub Actions GAPLESS FALLBACK (Phase I.9).
 #
-# Primary Production scheduler is Supabase Cron job `mianx-runtime-tick-5m`
+# Intended primary: Supabase Cron job `mianx-runtime-tick-5m`
 # (pg_cron → pg_net → /api/internal/runtime/tick). See:
 #   execution/PHASE-I9-DURABLE-SCHEDULER-CLOSEOUT.md
 #
-# This workflow MUST NOT run as an independent every-5-minute Production tick
-# after Supabase Cron cutover. Schedule trigger is intentionally removed.
-# Retain workflow_dispatch for Founder-controlled diagnostics only.
+# CRITICAL: Keep schedule `*/5 * * * *` until Production cutover proves
+# supabase_primary_active + healthy. Removing the schedule before Vault,
+# migration, verified supabase_cron tick, and ACTIVE flags would open a gap.
+#
+# Scheduled runs query public /api/core/health and SKIP the tick only when
+# the machine-readable contract says githubFallbackShouldSkip=true.
+# workflow_dispatch always invokes (Founder diagnostic).
 #
 # Secrets (Founder-configured; never commit values):
 #   INTERNAL_RUNTIME_SECRET  (or CRON_SECRET) — Bearer token for tick auth
 #   RUNTIME_TICK_BASE_URL    — production alias, e.g. https://mian-x-ai.vercel.app
 #
-# Cutover: apply Vault + migration on Production BEFORE relying on this PR's
-# removal of the scheduled trigger. Lease protection prevents duplicate claims
-# if both fire briefly during cutover.
+# Concurrent Supabase + GitHub arrivals are safe: job leases + CAS claims.
 
-name: Runtime tick (diagnostic fallback)
+name: Runtime tick (gapless fallback)
 
 on:
+  schedule:
+    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       reason:
@@ -36,18 +40,19 @@ permissions:
 
 jobs:
   tick:
-    name: POST /api/internal/runtime/tick (diagnostic)
+    name: Conditional POST /api/internal/runtime/tick
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Invoke bounded runtime tick (diagnostic)
+      - name: Decide fallback vs skip, then tick if needed
         env:
           RUNTIME_TICK_BASE_URL: ${{ secrets.RUNTIME_TICK_BASE_URL }}
           INTERNAL_RUNTIME_SECRET: ${{ secrets.INTERNAL_RUNTIME_SECRET }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
-          echo "NOTE: GitHub Actions is diagnostic fallback only. Primary = Supabase Cron."
+          echo "NOTE: GitHub Actions is gapless fallback until supabase_primary_active."
           BASE="${RUNTIME_TICK_BASE_URL:-}"
           if [ -z "${BASE}" ]; then
             echo "RUNTIME_TICK_BASE_URL secret is not configured." >&2
@@ -60,6 +65,74 @@ jobs:
               exit 1
               ;;
           esac
+
+          HEALTH_URL="${BASE%/}/api/core/health"
+          SKIP="0"
+          TRANSITION="unknown"
+          HEALTH_STATUS="unknown"
+          LATEST_SOURCE="unknown"
+          ACTIVE="false"
+
+          # Public health — no Authorization header (never log secrets).
+          HEALTH_CODE=$(curl -sS -o /tmp/mianx-health.json -w "%{http_code}" \
+            -X GET "${HEALTH_URL}" \
+            -H "Accept: application/json" \
+            --connect-timeout 15 \
+            --max-time 30 || true)
+          echo "health_http_status=${HEALTH_CODE}"
+
+          if [ "${HEALTH_CODE}" = "200" ] && command -v python3 >/dev/null 2>&1; then
+            eval "$(python3 - <<'PY'
+          import json, shlex
+          try:
+            data = json.load(open("/tmp/mianx-health.json"))
+          except Exception:
+            print("SKIP=0")
+            print("TRANSITION=health_parse_error")
+            raise SystemExit(0)
+          c = data.get("schedulerContract") if isinstance(data, dict) else None
+          if not isinstance(c, dict):
+            sched = data.get("scheduler") if isinstance(data, dict) else None
+            c = sched.get("healthContract") if isinstance(sched, dict) else {}
+          if not isinstance(c, dict):
+            c = {}
+          skip = bool(c.get("githubFallbackShouldSkip")) and str(c.get("schedulerTransitionState") or "") == "supabase_primary_active"
+          print(f"SKIP={'1' if skip else '0'}")
+          print("TRANSITION=" + shlex.quote(str(c.get("schedulerTransitionState") or "unknown")))
+          print("HEALTH_STATUS=" + shlex.quote(str(c.get("schedulerHealth") or "unknown")))
+          print("LATEST_SOURCE=" + shlex.quote(str(c.get("latestSource") or "unknown")))
+          print("ACTIVE=" + shlex.quote(str(bool(c.get("schedulerActive"))).lower()))
+          PY
+          )"
+          fi
+
+          {
+            echo "## Runtime tick decision (GitHub gapless fallback)"
+            echo ""
+            echo "- event: \`${GITHUB_EVENT_NAME}\`"
+            echo "- health_http_status: \`${HEALTH_CODE}\`"
+            echo "- schedulerTransitionState: \`${TRANSITION}\`"
+            echo "- schedulerHealth: \`${HEALTH_STATUS}\`"
+            echo "- latestSource: \`${LATEST_SOURCE}\`"
+            echo "- schedulerActive: \`${ACTIVE}\`"
+            echo "- githubFallbackShouldSkip: \`${SKIP}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          # Scheduled only: skip when Supabase primary is active and healthy.
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ] && [ "${SKIP}" = "1" ]; then
+            echo "Supabase Cron is active and healthy; fallback tick skipped."
+            {
+              echo ""
+              echo "- decision: \`skip\`"
+              echo "- message: \`Supabase Cron is active and healthy; fallback tick skipped.\`"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ] && [ "${TRANSITION}" = "supabase_degraded" ]; then
+            echo "Supabase degraded — invoking protected fallback tick (leases prevent duplicate claims)."
+          fi
+
           TOKEN="${INTERNAL_RUNTIME_SECRET:-}"
           if [ -z "${TOKEN}" ]; then
             TOKEN="${CRON_SECRET:-}"
@@ -69,7 +142,7 @@ jobs:
             exit 1
           fi
 
-          REQ_ID="gha-diag-$(date -u +%Y%m%dT%H%M%SZ)-$RANDOM"
+          REQ_ID="gha-fb-$(date -u +%Y%m%dT%H%M%SZ)-$RANDOM"
           URL="${BASE%/}/api/internal/runtime/tick"
           ATTEMPTS=3
           CODE="000"
@@ -101,13 +174,12 @@ jobs:
           done
 
           {
-            echo "## Runtime tick summary (GitHub diagnostic fallback)"
             echo ""
+            echo "- decision: \`invoke\`"
             echo "- request_id: \`${REQ_ID}\`"
             echo "- http_status: \`${CODE}\`"
             echo "- attempts: \`${attempt}\`"
             echo "- source: \`github_actions\`"
-            echo "- primary_scheduler: \`supabase_cron\`"
             echo "- target: production tick endpoint (host redacted)"
           } >> "${GITHUB_STEP_SUMMARY}"
 

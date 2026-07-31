@@ -33,10 +33,13 @@
 
 ## Phase I.9 target
 
-| Primary | Supabase Cron job `mianx-runtime-tick-5m` → `pg_net` → same endpoint |
-| Fallback | GitHub Actions `workflow_dispatch` only (no dual 5-minute Production ticks after cutover) |
+| Intended primary | Supabase Cron job `mianx-runtime-tick-5m` → `pg_net` → same endpoint |
+| Gapless fallback | GitHub Actions `*/5` + `workflow_dispatch` until `supabase_primary_active` + healthy; scheduled runs skip via `schedulerContract.githubFallbackShouldSkip` |
 | Vault names | `mianx_runtime_tick_url`, `mianx_runtime_tick_secret` |
+| Health contract | `/api/core/health` → `schedulerContract` (no secrets) |
 
 ## Observed GHA gap evidence (I.8)
 
 Last scheduled success `2026-07-31T08:19:12Z` HTTP 200 · 0/0/0; multi-hour delivery gaps on private repo; UI correctly Stale.
+
+**Cutover defect corrected:** do not remove GHA schedule before Vault + migration + verified supabase_cron + ACTIVE.

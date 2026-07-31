@@ -145,7 +145,11 @@ $$;
 revoke all on function public.mianx_invoke_runtime_tick() from public;
 grant execute on function public.mianx_invoke_runtime_tick() to service_role;
 
--- Idempotent schedule: only when Vault is ready; replace only canonical job.
+-- Idempotent schedule: only when BOTH Vault secrets are ready.
+-- Scope: ONLY jobname = 'mianx-runtime-tick-5m' (never other cron jobs).
+-- Incomplete Vault: unschedules the canonical job only (no broken active job).
+-- Supabase/pg_cron: scheduling the same case-sensitive name replaces the job;
+-- we still unschedule exact-name duplicates first for safe re-apply.
 do $$
 declare
   v_url_ok boolean := false;
@@ -167,7 +171,7 @@ begin
     v_secret_ok := false;
   end;
 
-  -- Always unscheduling duplicate names keeps at most one canonical job.
+  -- Exact canonical name only — never wildcard / unrelated jobs.
   for v_existing in
     select jobid from cron.job where jobname = 'mianx-runtime-tick-5m'
   loop
@@ -182,7 +186,7 @@ begin
     );
     raise notice 'mianx-runtime-tick-5m scheduled (Vault configured).';
   else
-    raise notice 'mianx-runtime-tick-5m NOT scheduled: create Vault secrets mianx_runtime_tick_url and mianx_runtime_tick_secret, then re-run schedule setup or re-apply this migration.';
+    raise notice 'mianx-runtime-tick-5m NOT scheduled: create Vault secrets mianx_runtime_tick_url and mianx_runtime_tick_secret, then re-run schedule setup or re-apply this migration. Canonical job left unscheduled (no broken active job).';
   end if;
 end;
 $$;

@@ -1572,29 +1572,30 @@ See `execution/PHASE-I8-FINAL-PRODUCTION-CLOSEOUT.md`.
 
 ---
 
-## 34. Phase I.9 — Durable Supabase scheduler and Production cadence (Draft PR)
+## 34. Phase I.9 — Durable Supabase scheduler and Production cadence (Draft PR #76)
 
 Branch: `cursor/phase-i9-durable-production-scheduler`  
 Base: `origin/main` `ef409485dd9449d81109332e03258ae055932807`
 
-Replace GitHub Actions as sole Production tick scheduler with Supabase Cron
-(`pg_cron` → `pg_net` → existing `/api/internal/runtime/tick`). GHA becomes
-`workflow_dispatch` diagnostic fallback only.
+Replace GitHub Actions as *sole reliable* Production tick with Supabase Cron
+(`pg_cron` → `pg_net` → `/api/internal/runtime/tick`), while **retaining**
+GHA `*/5` as **gapless conditional fallback** until `supabase_primary_active`
+is verified (critical cutover-gap correction on PR #76).
 
 Contract: `execution/PHASE-I9-SCHEDULER-CONTRACT.md`  
 Closeout: `execution/PHASE-I9-DURABLE-SCHEDULER-CLOSEOUT.md`  
-Migration (not applied in Draft PR):
+Migration (not applied):
 `supabase/migrations/20260731180000_phase_i9_supabase_cron_scheduler.sql`
 
 ### Acceptance (separated)
 
 | Lane | Status |
 |------|--------|
-| **A. Current application acceptance** | **Verified** (this PR: shared durable view model, Schedule UI, health consistency, GHA fallback labelling, tests/gates) |
-| **B. Durable scheduler implementation** | **Pending Production cutover** (Vault secrets + apply migration + verify `supabase_cron` tick — Founder-only) |
-| **C. Live AI execution** | **Blocked** (`providerName: none`, `liveExecutionReady: false`) |
+| **A. Current application acceptance** | **Verified** (gapless GHA schedule + health skip contract + shared view model + tests/gates) |
+| **B. Durable scheduler implementation** | **Pending Production cutover** (Vault + migration + verified supabase_cron + ACTIVE — Founder-only) |
+| **C. Live AI execution** | **Blocked** |
 
-Do not merge/apply migration/create Vault values/dispatch Production tick from agents without separate Founder authorization.
+Do not remove GHA schedule until step 12 of the gapless cutover succeeds.
 
 ---
 
