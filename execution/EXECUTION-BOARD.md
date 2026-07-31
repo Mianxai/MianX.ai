@@ -1524,10 +1524,10 @@ Draft/merged PR: https://github.com/Mianxai/MianX.ai/pull/68
 
 ---
 
-## 31. Phase I.6 — Foundation truth and operational closeout (Draft PR)
+## 31. Phase I.6 — Foundation truth and operational closeout (merged PR #73)
 
-Branch: `cursor/phase-i6-foundation-truth-closeout`
-Base: `origin/main` `dccec77`
+Branch: `cursor/phase-i6-foundation-truth-closeout`  
+Base: `origin/main` → merge `b298fe3`
 
 Root cause: Readiness labeled `canonicalRolesCompiled` (92 named/runtime role
 registry entries) as “Compiled seats”. Canonical compiled seats remain 445 from
@@ -1536,6 +1536,24 @@ registry entries) as “Compiled seats”. Canonical compiled seats remain 445 f
 Shared builder: `lib/core/workforce-i2/foundation-metrics.js`.
 
 See `execution/PHASE-I6-FOUNDATION-ACCEPTANCE.md` and metric dictionary.
+
+---
+
+## 32. Phase I.7 — Current build operational closeout (Draft PR)
+
+Branch: `cursor/phase-i7-current-build-operational-closeout`  
+Base: `origin/main` `b298fe3` (PR #73)
+
+Bring every already-built Admin surface to a truthful operational state:
+Verified, Blocked, Hidden, or N/A — no fake completion. No provider. No live
+activation. No Production DB mutation. No Founder Proof auto-approval.
+
+Key honesty fixes: Workforce ops rename; Execution Best-effort nav + persistence
+note; Planning/Learning/Templates honesty; remove misleading hardcoded catalogue
+fallbacks; project-isolation contracts; full route Playwright includes Execution.
+
+See `execution/PHASE-I7-CURRENT-BUILD-INVENTORY.md` and
+`execution/PHASE-I7-CURRENT-BUILD-ACCEPTANCE.md`.
 
 ---
 

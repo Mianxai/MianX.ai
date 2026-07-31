@@ -81,7 +81,7 @@ test.describe("H.1 final acceptance Preview screenshots", () => {
     await shot(page, "11-agents-summary-filters");
     await shot(page, "12-agents-paginated-list");
 
-    // 13 Live Workforce
+    // 13 Workforce ops
     await page.goto("/admin/workforce?project_id=proj-proof-1");
     await page.waitForLoadState("domcontentloaded");
     await expect(page.getByTestId("founder-quick-start")).toHaveCount(0);

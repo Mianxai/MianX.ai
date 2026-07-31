@@ -126,6 +126,11 @@ export default function LearningClient() {
           Verified learning candidates. Unsafe capability or prompt self-modification
           proposals are rejected. Promotion never rewrites agent system prompts.
         </p>
+        <p className="cc-muted" data-testid="learning-persistence-note" role="note">
+          Scope: proposals versus applied learning are distinct. Approve/reject persists via
+          the learning API; nothing auto-applies policy changes. Empty lists are honest zeros,
+          not sample data.
+        </p>
         <FounderActionBanner summary={opsSummary} projectId={projectId} />
         {loading && !data ? (
           <DelayedLoader delayMs={200}>

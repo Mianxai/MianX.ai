@@ -140,7 +140,7 @@ export function buildPageTips(pathname, { projectName, proofState } = {}) {
       "Workforce Readiness shows exact catalogue vs executable vs 445 capacity counts — not filler agents."
     );
     tips.push(
-      "Definitions are contracts; Live Workforce shows project-scoped instances only when allocated."
+      "Definitions are contracts; Workforce ops shows project-scoped instances only when allocated."
     );
   } else if (path.startsWith("/admin/integration")) {
     tips.push(

@@ -43,7 +43,7 @@ export default function DepartmentRail({
                 {d.agentCount}
               </span>
               {d.activeInstances > 0 ? (
-                <span className="cc-dept-live">{d.activeInstances} live</span>
+                <span className="cc-dept-live">{d.activeInstances} active</span>
               ) : null}
               {d.approvalState === "approval_required" ? (
                 <span className="cc-dept-flag">Approval</span>

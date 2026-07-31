@@ -135,12 +135,12 @@ test.describe("admin authenticated route sweep", () => {
     await expect(page.getByText(/nothing executes/i).first()).toBeVisible();
   });
 
-  test("Live Workforce page loads dashboard", async ({ page }) => {
+  test("Workforce ops page loads dashboard", async ({ page }) => {
     await page.goto("/admin/workforce");
     await expect(page).toHaveURL(/\/admin\/workforce/);
     await expect(page.getByRole("heading", { name: /real autonomous workforce/i })).toBeVisible();
     await expect(
-      page.getByRole("navigation", { name: /primary/i }).getByRole("link", { name: /live workforce/i })
+      page.getByRole("navigation", { name: /primary/i }).getByRole("link", { name: /workforce ops/i })
     ).toHaveCount(1);
 
     const dashboard = page.getByTestId("workforce-dashboard");

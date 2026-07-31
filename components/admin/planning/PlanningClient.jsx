@@ -231,6 +231,11 @@ export default function PlanningClient() {
         title="Planning Intelligence"
         description="Deterministic planning between Template Intelligence and Execution. Structure and preview only — nothing executes. Founder approval required."
       />
+      <p className="cc-muted" data-testid="planning-persistence-note" role="note">
+        Persistence: planning packages are stored in-process on this server until a durable
+        planning migration is Founder-applied. Refresh or redeploy may clear packages. This is
+        not Production database persistence.
+      </p>
       <FounderActionBanner summary={opsSummary} projectId={projectId} />
 
       {activeProof ? (

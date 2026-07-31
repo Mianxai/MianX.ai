@@ -44,12 +44,13 @@ describe("admin navigation uniqueness", () => {
     expect(primaryNavHrefs().filter((h) => h === "/admin/planning")).toHaveLength(1);
   });
 
-  it("includes Live Workforce under Workforce without duplicates", () => {
+  it("includes Workforce ops under Workforce without duplicates", () => {
     const wf = ADMIN_NAV_GROUPS.find((g) => g.id === "workforce");
     const labels = wf.items.map((i) => i.label);
-    expect(labels).toContain("Live Workforce");
-    expect(labels.filter((l) => l === "Live Workforce")).toHaveLength(1);
+    expect(labels).toContain("Workforce ops");
+    expect(labels.filter((l) => l === "Workforce ops")).toHaveLength(1);
     expect(primaryNavHrefs().filter((h) => h === "/admin/workforce")).toHaveLength(1);
+    expect(labels).not.toContain("Live Workforce");
   });
 
   it("uses Founder Mode IA with Home primary and Advanced Operations collapsed", () => {
@@ -65,7 +66,7 @@ describe("admin navigation uniqueness", () => {
     expect(founder.items[0].href).toBe("/admin/command-center");
     expect(primaryNavHrefs().filter((h) => h === "/admin/integration")).toHaveLength(1);
     expect(ADMIN_NAV.some((i) => i.href === "/admin")).toBe(false);
-    expect(ADMIN_NAV.some((i) => i.href === "/admin/execution")).toBe(false);
+    expect(ADMIN_NAV.some((i) => i.href === "/admin/execution")).toBe(true);
     const ops = ADMIN_NAV_GROUPS.find((g) => g.id === "operations");
     expect(ops.label).toBe("Advanced Operations");
     expect(ops.collapsedByDefault).toBe(true);
@@ -74,12 +75,15 @@ describe("admin navigation uniqueness", () => {
         "Runtime Overview",
         "Runtime Approvals",
         "Full Audit",
+        "Execution",
         "Technical Settings",
         "Company Builder",
       ])
     );
     const runtime = ops.items.find((i) => i.href === "/admin/runtime");
     expect(runtime.badge).toBe("Advanced");
+    const exec = ops.items.find((i) => i.href === "/admin/execution");
+    expect(exec.badge).toBe("Best-effort");
   });
 
   it("marks Leads active for legacy submissions/lead-pipeline paths", () => {
