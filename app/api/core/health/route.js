@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import {
   runtimeConfigStatus,
   providerOperationalStatus,
-  isProviderConfigured,
 } from "@/lib/core/config";
 import {
   listAgentDefinitions,
@@ -13,8 +12,8 @@ import { productionReadinessStatusAsync } from "@/lib/core/production-readiness"
 import { buildIntegrationReadinessAsync } from "@/lib/core/integration";
 import * as repo from "@/lib/core/repo";
 import {
-  runWorkforceVerify,
-  oneKeyActivationStatus,
+  buildFoundationMetrics,
+  sanitizeFoundationMetrics,
   durableRateLimitStatus,
 } from "@/lib/core/workforce-i2";
 
@@ -39,6 +38,7 @@ export async function GET() {
     lastTickAt: lastTick?.at || null,
   });
 
+  let foundation = null;
   let workforce = {
     capacitySeats: 445,
     compiledSeats: 445,
@@ -56,10 +56,11 @@ export async function GET() {
     bootstrapStatus: "unknown",
     foundationReady: false,
     productionReady: false,
+    liveExecutionReady: false,
   };
   let provider = {
-    configured: isProviderConfigured("openrouter"),
-    providerName: isProviderConfigured("openrouter") ? "openrouter" : "none",
+    configured: false,
+    providerName: "none",
     freeOnly: true,
     paidFallbackEnabled: false,
     modelPolicyStatus: "free_only_default",
@@ -72,6 +73,7 @@ export async function GET() {
     leaseDurable: false,
     rateLimitDurable: false,
     schedulerStatus: config.scheduler,
+    expectedIntervalMs: config.scheduler?.expectedIntervalMs ?? 300000,
     lastTickAt: lastTick?.at || null,
     claimed: lastTick?.claimed ?? null,
     succeeded: lastTick?.succeeded ?? null,
@@ -80,35 +82,38 @@ export async function GET() {
   };
 
   try {
-    const v = await runWorkforceVerify({ productionMode: true });
-    const oneKey = oneKeyActivationStatus();
+    const metrics = await buildFoundationMetrics({ productionMode: true });
+    foundation = sanitizeFoundationMetrics(metrics);
     const rate = durableRateLimitStatus();
     workforce = {
-      capacitySeats: v.capacityBaseline,
-      compiledSeats: v.compiledSeats,
-      persistedSeats: v.persistedSeats,
-      mappedSeats: v.mappedSeats,
-      readyToAllocateSeats: v.readyToAllocateSeats,
-      allocatedSeats: v.allocatedSeats,
-      activeInstances: v.activeInstances,
-      reviewingInstances: v.reviewingInstances,
-      blockedSeats: v.blockedSeats,
-      liveTestedSeats: v.liveTestedSeats,
-      archetypeCount: v.archetypeCount,
-      departmentCoverage: v.departmentCoverage,
-      workflowCoverage: v.workflowCoverage,
-      bootstrapStatus: v.bootstrapStatus,
-      foundationReady: v.foundationReady,
+      capacitySeats: metrics.capacitySeats,
+      compiledSeats: metrics.compiledSeats,
+      persistedSeats: metrics.persistedSeats,
+      mappedSeats: metrics.mappedSeats,
+      readyToAllocateSeats: metrics.readyToAllocateSeats,
+      allocatedSeats: metrics.allocatedSeats,
+      activeInstances: metrics.activeInstances,
+      reviewingInstances: 0,
+      blockedSeats: 0,
+      liveTestedSeats: metrics.liveTestedSeats,
+      archetypeCount: metrics.archetypeCount,
+      departmentCount: metrics.departmentCount,
+      departmentCoverage: metrics.departmentCoverage,
+      workflowFamilyCount: metrics.workflowFamilyCount,
+      workflowCoverage: metrics.workflowCoverage,
+      bootstrapStatus: metrics.bootstrapStatus,
+      foundationReady: metrics.foundationReady,
       productionReady: false,
-      compilationReady: v.compilationReady,
-      databaseReady: v.databaseReady,
-      providerReady: Boolean(oneKey.keyPresent),
-      liveExecutionReady: Boolean(oneKey.keyPresent) && v.foundationReady === true,
-      providerFreeMessage: v.providerFreeMessage,
+      compilationReady: metrics.compilationReady,
+      databaseReady: metrics.databaseReady,
+      providerReady: metrics.providerConfigured,
+      liveExecutionReady: false,
+      providerFreeMessage: metrics.providerFreeMessage,
+      executable: foundation.executable,
     };
     provider = {
-      configured: Boolean(oneKey.keyPresent),
-      providerName: oneKey.keyPresent ? "openrouter" : "none",
+      configured: metrics.providerConfigured,
+      providerName: metrics.providerName,
       freeOnly: true,
       paidFallbackEnabled: false,
       modelPolicyStatus: "free_only_default",
@@ -116,11 +121,11 @@ export async function GET() {
       lastControlledTestResult: null,
     };
     runtime = {
-      databaseDurable: v.databaseDurable,
-      queueDurable: v.queueDurable,
-      leaseDurable: v.leasesDurable,
-      rateLimitDurable: v.rateLimitDurable || rate.durableReady,
-      schedulerStatus: v.schedulerStatus || config.scheduler,
+      databaseDurable: metrics.databaseDurable,
+      queueDurable: metrics.queueDurable,
+      leaseDurable: metrics.leaseDurable,
+      rateLimitDurable: metrics.rateLimitDurable || rate.durableReady,
+      schedulerStatus: config.scheduler,
       expectedIntervalMs: config.scheduler?.expectedIntervalMs ?? 300000,
       lastTickAt: lastTick?.at || null,
       claimed: lastTick?.claimed ?? null,
@@ -158,6 +163,7 @@ export async function GET() {
     agentsRoutable: executable.length,
     integration,
     workforce,
+    foundation,
     provider,
     runtime,
     security: {
