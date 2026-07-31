@@ -21,6 +21,8 @@ export const GET = withErrorHandling(async (req) => {
       compiledSeats: verify.compiledSeats,
       persistedSeats: verify.persistedSeats,
       readyToAllocateSeats: verify.readyToAllocateSeats,
+      allocatedSeats: verify.allocatedSeats,
+      activeInstances: verify.activeInstances,
       liveTestedSeats: verify.liveTestedSeats,
       compilationReady: verify.compilationReady,
       databaseReady: verify.databaseReady,
@@ -29,6 +31,13 @@ export const GET = withErrorHandling(async (req) => {
       liveReady: verify.liveReady,
       productionReady: verify.productionReady,
       claimVerification: verify.claimVerification,
+      databaseDurable: verify.databaseDurable,
+      queueDurable: verify.queueDurable,
+      leaseDurable: verify.leasesDurable,
+      leasesDurable: verify.leasesDurable,
+      rateLimitDurable: verify.rateLimitDurable,
+      archetypeCount: verify.archetypeCount,
+      departmentCount: verify.departmentCoverage?.count ?? verify.departmentCount ?? null,
     },
   });
 });

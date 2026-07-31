@@ -1524,7 +1524,20 @@ Draft/merged PR: https://github.com/Mianxai/MianX.ai/pull/68
 
 ---
 
-## 29. Phase I.5 — Production-safe workforce bootstrap (Draft PR)
+## 30. Workforce UI foundation closeout (Draft PR)
+
+Branch: `cursor/workforce-ui-foundation-closeout`
+Base: `origin/main` `082a61d` (PR #71 merge)
+
+AdminShell for `/admin/workforce-activation` + `/admin/workforce-readiness`.
+Fixed duplicated `1. 1.` checklist numbering. Post-bootstrap action states.
+Gates: lint/typecheck/build PASS · Vitest 1217 · Playwright 140 · browser 5/5.
+
+See `execution/WORKFORCE-UI-FOUNDATION-CLOSEOUT.md`.
+
+---
+
+## 29. Phase I.5 — Production-safe workforce bootstrap (merged)
 
 Branch: `cursor/phase-i5-production-foundation-closeout`
 Base: `origin/main` `33e2180`

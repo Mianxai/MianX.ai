@@ -147,25 +147,53 @@ test.describe("admin authenticated route sweep", () => {
     await expect(dashboard).toBeVisible();
     await expect(page.getByTestId("workforce-status-cards")).toBeVisible();
 
-    // Phase I.4 capacity truth — not the stale "38 executable" catalogue copy
+    // Post-bootstrap capacity truth (Playwright mocks mirror Production foundation)
     await expect(page.getByTestId("wf-card-capacity-seats")).toBeVisible();
     await expect(page.getByTestId("wf-card-capacity-seats")).toContainText("445");
     await expect(page.getByTestId("wf-card-persisted")).toBeVisible();
-    await expect(page.getByTestId("wf-card-persisted")).toContainText(/n\/a|0/i);
+    await expect(page.getByTestId("wf-card-persisted")).toContainText("445");
     await expect(page.getByTestId("wf-card-ready-to-allocate")).toBeVisible();
-    await expect(page.getByTestId("wf-card-ready-to-allocate")).toContainText("0");
+    await expect(page.getByTestId("wf-card-ready-to-allocate")).toContainText("445");
     await expect(page.getByTestId("wf-card-live-tested")).toBeVisible();
     await expect(page.getByTestId("wf-card-live-tested")).toContainText("0");
 
-    // Must not falsely claim 445 active/running agents or 445 persisted without DB
+    // Must not falsely claim 445 active/running agents
     await expect(page.getByText(/445 active agents/i)).toHaveCount(0);
     await expect(page.getByText(/445 running/i)).toHaveCount(0);
-    await expect(page.getByTestId("wf-card-persisted")).not.toContainText(/^445$/);
     // Stale Founder contract removed
     await expect(page.getByText(/38 executable/i)).toHaveCount(0);
 
     await expect(page.getByRole("heading", { name: /workforce error/i })).toHaveCount(0);
     await expect(page.locator("body")).not.toContainText(/Application error|Hydration failed/i);
+  });
+
+  test("Workforce Setup uses AdminShell without duplicated numbering", async ({ page }) => {
+    await page.goto("/admin/workforce-activation");
+    await expect(page.getByTestId("workforce-activation")).toBeVisible();
+    await expect(page.locator("aside.admin-sidebar, [aria-label='Admin navigation']").first()).toBeVisible();
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expect(page.getByTestId("wa-persisted")).toContainText("445");
+    await expect(page.getByTestId("wa-ready")).toContainText("445");
+    await expect(page.getByTestId("wa-open-bootstrap")).toBeDisabled();
+    await expect(page.getByTestId("wa-open-bootstrap")).toContainText(/Bootstrap complete/i);
+    await expect(page.getByTestId("wa-run-idempotency")).toBeEnabled();
+    const checklist = page.getByTestId("wa-checklist");
+    await expect(checklist).toBeVisible();
+    await expect(checklist.locator("li")).toHaveCount(15);
+    await expect(checklist).not.toContainText("1. 1.");
+    await expect(checklist).not.toContainText("10. 10.");
+    await expect(page.getByTestId("wa-technical-details")).not.toHaveAttribute("open", "");
+    await expect(page.locator("body")).not.toContainText(/1\.\s*1\.\s*Database migration/i);
+  });
+
+  test("Workforce Readiness uses AdminShell with foundation vs live split", async ({ page }) => {
+    await page.goto("/admin/workforce-readiness");
+    await expect(page.getByTestId("workforce-readiness")).toBeVisible();
+    await expect(page.locator("aside.admin-sidebar, [aria-label='Admin navigation']").first()).toBeVisible();
+    await expect(page.getByTestId("wr-persisted")).toContainText("445");
+    await expect(page.getByTestId("wr-provider-status")).toContainText(/AI provider unconfigured/i);
+    await expect(page.getByTestId("wr-live-exec")).toContainText("false");
+    await expect(page.getByText(/Anthropic provider/i)).toHaveCount(0);
   });
 });
 
