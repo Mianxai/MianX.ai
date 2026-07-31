@@ -213,7 +213,7 @@ export default function ObjectivesClient() {
           ))}
         </select>
       </label>
-      <Link href="/admin/command-center" className="header-btn-ghost">
+      <Link href="/admin" className="header-btn-ghost">
         Command Center
       </Link>
       <Link href="/admin/ceo-brief" className="header-btn-ghost">

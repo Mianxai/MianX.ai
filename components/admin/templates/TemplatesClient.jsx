@@ -167,7 +167,7 @@ export default function TemplatesClient() {
     <AdminShell
       title="Templates"
       breadcrumbs={[
-        { href: "/admin/command-center", label: "Admin" },
+        { href: "/admin", label: "Admin" },
         { label: "Templates" },
       ]}
       actions={

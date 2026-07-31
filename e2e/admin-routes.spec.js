@@ -127,6 +127,23 @@ test.describe("admin authenticated route sweep", () => {
     await expect(page.getByText(/generic industry platform|generic-platform/i).first()).toBeVisible();
   });
 
+  test("Founder Home and Command Center are distinct", async ({ page }) => {
+    await page.goto("/admin?project_id=proj-1");
+    await expect(page).toHaveURL(/\/admin(\?|$)/);
+    await expect(page.getByRole("heading", { name: /^Founder Home$/i })).toBeVisible();
+    await expect(page.getByTestId("founder-quick-start")).toBeVisible();
+    await expect(
+      page.getByRole("navigation", { name: /primary/i }).getByRole("link", { name: /^home$/i })
+    ).toHaveCount(1);
+
+    await page.goto("/admin/command-center?project_id=proj-1");
+    await expect(page).toHaveURL(/\/admin\/command-center/);
+    await expect(page.getByRole("heading", { name: /^Command Center$/i })).toBeVisible();
+    await expect(page.getByTestId("ops-command-center")).toBeVisible();
+    await expect(page.getByTestId("founder-quick-start")).toHaveCount(0);
+    await expect(page.getByTestId("cc-ops-foundation")).toBeVisible();
+  });
+
   test("Planning intelligence page loads overview", async ({ page }) => {
     await page.goto("/admin/planning");
     await expect(page).toHaveURL(/\/admin\/planning/);

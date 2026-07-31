@@ -322,7 +322,7 @@ function AdminShellInner({
       >
         <div className="sidebar-logo">
           <Link
-            href={withProjectQuery("/admin/command-center", projectId)}
+            href={withProjectQuery("/admin", projectId)}
             className="sidebar-logo-brand"
             onClick={closeSidebar}
           >

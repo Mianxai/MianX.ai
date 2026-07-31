@@ -21,7 +21,7 @@ test.describe("H.3.1 Founder plan correctness screenshots", () => {
   test("capture plan review surfaces", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
 
-    await page.goto("/admin/command-center?project_id=proj-proof-1");
+    await page.goto("/admin?project_id=proj-proof-1");
     await page.waitForLoadState("domcontentloaded");
     await shot(page, "01-founder-home");
 

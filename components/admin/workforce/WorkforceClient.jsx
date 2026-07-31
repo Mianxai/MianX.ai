@@ -250,7 +250,7 @@ export default function WorkforceClient() {
     <AdminShell
       title="Workforce ops"
       breadcrumbs={[
-        { href: "/admin/command-center", label: "Admin" },
+        { href: "/admin", label: "Admin" },
         { label: "Workforce ops" },
       ]}
       actions={

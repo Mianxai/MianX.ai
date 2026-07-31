@@ -58,7 +58,7 @@ test.describe("admin primary actions", () => {
 
   test("mobile nav opens and navigates", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/admin/command-center");
+    await page.goto("/admin");
     await expect(page.locator("#main-content, .admin-main, main").first()).toBeVisible();
     await page.getByRole("button", { name: /open navigation/i }).click();
     const aside = page.locator("aside.admin-sidebar").first();

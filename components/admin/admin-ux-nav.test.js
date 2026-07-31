@@ -63,15 +63,16 @@ describe("admin navigation uniqueness", () => {
       "Founder Proof",
       "Founder Inbox",
     ]);
-    expect(founder.items[0].href).toBe("/admin/command-center");
+    expect(founder.items[0].href).toBe("/admin");
     expect(primaryNavHrefs().filter((h) => h === "/admin/integration")).toHaveLength(1);
-    expect(ADMIN_NAV.some((i) => i.href === "/admin")).toBe(false);
+    expect(ADMIN_NAV.some((i) => i.href === "/admin")).toBe(true);
     expect(ADMIN_NAV.some((i) => i.href === "/admin/execution")).toBe(true);
     const ops = ADMIN_NAV_GROUPS.find((g) => g.id === "operations");
     expect(ops.label).toBe("Advanced Operations");
     expect(ops.collapsedByDefault).toBe(true);
     expect(ops.items.map((i) => i.label)).toEqual(
       expect.arrayContaining([
+        "Command Center",
         "Runtime Overview",
         "Runtime Approvals",
         "Full Audit",
@@ -80,6 +81,14 @@ describe("admin navigation uniqueness", () => {
         "Company Builder",
       ])
     );
+    const home = founder.items.find((i) => i.label === "Home");
+    expect(home.match).toBe("exact");
+    expect(isNavItemCurrent("/admin", home)).toBe(true);
+    expect(isNavItemCurrent("/admin/projects", home)).toBe(false);
+    const cc = ops.items.find((i) => i.href === "/admin/command-center");
+    expect(cc.label).toBe("Command Center");
+    expect(isNavItemCurrent("/admin/command-center", cc)).toBe(true);
+    expect(isNavItemCurrent("/admin", cc)).toBe(false);
     const runtime = ops.items.find((i) => i.href === "/admin/runtime");
     expect(runtime.badge).toBe("Advanced");
     const exec = ops.items.find((i) => i.href === "/admin/execution");

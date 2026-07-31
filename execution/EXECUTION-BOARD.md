@@ -1539,21 +1539,36 @@ See `execution/PHASE-I6-FOUNDATION-ACCEPTANCE.md` and metric dictionary.
 
 ---
 
-## 32. Phase I.7 — Current build operational closeout (Draft PR)
+## 32. Phase I.7 — Current build operational closeout (merged PR #74)
 
 Branch: `cursor/phase-i7-current-build-operational-closeout`  
-Base: `origin/main` `b298fe3` (PR #73)
+Base: `origin/main` `b298fe3` → merge `7f213a7`
 
-Bring every already-built Admin surface to a truthful operational state:
-Verified, Blocked, Hidden, or N/A — no fake completion. No provider. No live
-activation. No Production DB mutation. No Founder Proof auto-approval.
-
-Key honesty fixes: Workforce ops rename; Execution Best-effort nav + persistence
-note; Planning/Learning/Templates honesty; remove misleading hardcoded catalogue
-fallbacks; project-isolation contracts; full route Playwright includes Execution.
-
+Bring every already-built Admin surface to a truthful operational state.
 See `execution/PHASE-I7-CURRENT-BUILD-INVENTORY.md` and
 `execution/PHASE-I7-CURRENT-BUILD-ACCEPTANCE.md`.
+
+---
+
+## 33. Phase I.8 — Final current-build production closeout (Draft PR)
+
+Branch: `cursor/phase-i8-final-production-closeout`  
+Base: `origin/main` `7f213a7` (PR #74)
+
+Screenshot-driven closeout:
+
+- Separate Founder Home (`/admin`) from Command Center (`/admin/command-center`)
+- Reconcile Founder Proof Memory & Learning at Final Review
+- Scheduler Stale honesty (GHA private-repo delivery gap; successful empty ticks)
+- Execution tick gated when provider/programs absent
+
+### Acceptance
+
+- **A. Current non-provider application** — closeout Verified (this PR)
+- **B. Scheduler operational** — workflow + honest Stale Verified; delivery gaps Founder-monitored
+- **C. Live AI execution** — **Blocked**
+
+See `execution/PHASE-I8-FINAL-PRODUCTION-CLOSEOUT.md`.
 
 ---
 

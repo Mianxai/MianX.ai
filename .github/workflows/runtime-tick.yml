@@ -12,8 +12,10 @@
 #
 # Cadence note: `*/5 * * * *` is the *target*. GitHub Actions schedule delivery
 # is approximate and may skip or delay under platform load — especially on
-# private repos. Treat Healthy/Delayed/Stale thresholds as grace windows, not
-# exact clocks.
+# private repos (multi-hour gaps are observed and are a platform delivery issue,
+# not evidence that a successful empty tick failed). Treat Healthy/Delayed/Stale
+# thresholds as grace windows, not exact clocks. Zero claimed/succeeded/failed
+# with HTTP 200 is a truthful no-op success.
 
 name: Runtime tick
 

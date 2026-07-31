@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const PERF_ROUTES = [
-  "/admin/command-center",
+  "/admin",
   "/admin/departments",
   "/admin/workflows",
   "/admin/leads",
@@ -19,11 +19,11 @@ test.describe("admin performance timings", () => {
 
     // Cold: first shell
     const coldStart = Date.now();
-    await page.goto("/admin/command-center");
+    await page.goto("/admin");
     await page.waitForSelector("#main-content, .admin-main, main");
     const coldMs = Date.now() - coldStart;
 
-    const results = [{ route: "/admin/command-center", kind: "cold", ms: coldMs, apiCalls: 0, dupes: 0 }];
+    const results = [{ route: "/admin", kind: "cold", ms: coldMs, apiCalls: 0, dupes: 0 }];
 
     for (const route of PERF_ROUTES) {
       const calls = [];
@@ -36,7 +36,7 @@ test.describe("admin performance timings", () => {
       const t0 = Date.now();
       // Prefer client nav via sidebar when possible
       const label =
-        route === "/admin/command-center"
+        route === "/admin"
           ? /Command Center/i
           : route === "/admin/runtime"
             ? /^Runtime$/i

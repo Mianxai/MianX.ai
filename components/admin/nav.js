@@ -19,7 +19,7 @@ export const ADMIN_NAV_GROUPS = [
     id: "founder",
     label: "Founder Mode",
     items: [
-      { href: "/admin/command-center", label: "Home", match: "prefix", icon: "command" },
+      { href: "/admin", label: "Home", match: "exact", icon: "command" },
       { href: "/admin/projects", label: "Projects", match: "prefix", icon: "projects" },
       { href: "/admin/objectives", label: "Objectives", match: "prefix", icon: "objectives" },
       { href: "/admin/integration", label: "Founder Proof", match: "prefix", icon: "runtime" },
@@ -73,6 +73,13 @@ export const ADMIN_NAV_GROUPS = [
     label: "Advanced Operations",
     collapsedByDefault: true,
     items: [
+      {
+        href: "/admin/command-center",
+        label: "Command Center",
+        match: "prefix",
+        icon: "command",
+        badge: "Advanced",
+      },
       {
         href: "/admin/runtime",
         label: "Runtime Overview",

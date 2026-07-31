@@ -79,7 +79,7 @@ test.describe("Integration Founder UX closeout", () => {
   test("Founder guided panel does not duplicate Selected project label as value", async ({
     page,
   }) => {
-    await page.goto("/admin/command-center?project_id=proj-1");
+    await page.goto("/admin?project_id=proj-1");
     await page.waitForLoadState("domcontentloaded");
     const name = page.getByTestId("founder-selected-project-name");
     if ((await name.count()) > 0) {
