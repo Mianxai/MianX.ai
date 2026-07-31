@@ -139,6 +139,7 @@ test.describe("admin authenticated route sweep", () => {
     await page.goto("/admin/command-center?project_id=proj-1");
     await expect(page).toHaveURL(/\/admin\/command-center/);
     await expect(page.getByRole("heading", { name: /^Command Center$/i })).toBeVisible();
+    await expect(page.getByTestId("ops-command-center")).toHaveCount(1);
     await expect(page.getByTestId("ops-command-center")).toBeVisible();
     await expect(page.getByTestId("founder-quick-start")).toHaveCount(0);
     await expect(page.getByTestId("cc-ops-foundation")).toBeVisible();

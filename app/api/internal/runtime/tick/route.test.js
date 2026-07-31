@@ -82,6 +82,25 @@ describe("POST /api/internal/runtime/tick", () => {
     expect(data.tick.claimed).toBe(1);
   });
 
+  it("accepts supabase_cron source header (pg_net contract) without leaking secrets", async () => {
+    process.env.INTERNAL_RUNTIME_SECRET = SECRET;
+    const res = await POST(
+      fakeReq({
+        headers: {
+          authorization: `Bearer ${SECRET}`,
+          "x-mianx-scheduler-source": "supabase_cron",
+        },
+        body: { max_jobs: 5 },
+      })
+    );
+    expect(res.status).toBe(200);
+    const arg = workerMock.runTick.mock.calls[0][0];
+    expect(arg.source).toBe("supabase_cron");
+    expect(arg.httpStatus).toBe(200);
+    const text = JSON.stringify(await res.json());
+    expect(text).not.toContain(SECRET);
+  });
+
   it("clamps max_jobs to the server-side ceiling", async () => {
     process.env.INTERNAL_RUNTIME_SECRET = SECRET;
     await POST(

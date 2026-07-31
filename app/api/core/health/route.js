@@ -137,6 +137,29 @@ export async function GET() {
     /* keep defaults */
   }
 
+  let durableScheduler = null;
+  try {
+    const { buildSchedulerSurfaceSnapshot } = await import(
+      "@/lib/core/scheduler-surface"
+    );
+    durableScheduler = await buildSchedulerSurfaceSnapshot({ lastTick });
+    runtime = {
+      ...runtime,
+      schedulerStatus: durableScheduler,
+      expectedIntervalMs: durableScheduler.configuredCadenceMs ?? 300000,
+      lastTickAt: lastTick?.at || null,
+      claimed: lastTick?.claimed ?? null,
+      succeeded: lastTick?.succeeded ?? null,
+      failed: lastTick?.failed ?? null,
+      deadLettered: lastTick?.dead_lettered ?? null,
+      schedulerSource: durableScheduler.schedulerSource,
+      schedulerHealth: durableScheduler.schedulerHealth,
+      primaryScheduler: durableScheduler.primaryScheduler,
+    };
+  } catch {
+    /* keep defaults */
+  }
+
   return NextResponse.json({
     ok: true,
     service: "mianx-core",
@@ -145,6 +168,7 @@ export async function GET() {
       ...config,
       providerStatus: providerOperationalStatus("anthropic"),
       openrouterStatus: providerOperationalStatus("openrouter"),
+      scheduler: durableScheduler || config.scheduler,
     },
     productionReadiness,
     lastTick: lastTick
@@ -155,8 +179,11 @@ export async function GET() {
           failed: lastTick.failed ?? null,
           dead_lettered: lastTick.dead_lettered ?? null,
           duration_ms: lastTick.duration_ms ?? null,
+          source: lastTick.source || null,
+          latestHttpStatus: lastTick.latestHttpStatus ?? null,
         }
       : null,
+    scheduler: durableScheduler,
     agents: executable.length,
     agentsExecutable: executable.length,
     agentsCatalogTotal: listAgentDefinitions().length,

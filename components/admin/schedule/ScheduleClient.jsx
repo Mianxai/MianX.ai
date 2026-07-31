@@ -51,7 +51,9 @@ export default function ScheduleClient() {
     <AdminShell title="Schedule">
       <div className="cc-page">
         <p className="cc-muted">
-          Truthful worker / scheduler state. No fake countdown.
+          Primary scheduler: Supabase Cron (<code>mianx-runtime-tick-5m</code>, every 5
+          minutes). GitHub Actions is diagnostic fallback only. No fake countdown or next-tick
+          clock.
         </p>
         {loading && !data ? (
           <DelayedLoader delayMs={200}>

@@ -38,7 +38,9 @@ export default function AdminShell(props) {
                 </div>
               </div>
             </div>
-            <div className="admin-body">{props.children}</div>
+            {/* Never mirror props.children here — nested useSearchParams Suspense
+                would leave a duplicate tree beside AdminShellInner. */}
+            <div className="admin-body" aria-busy="true" />
           </main>
         </div>
       }

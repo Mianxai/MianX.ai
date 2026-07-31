@@ -34,6 +34,8 @@ export default function CeoBriefPanel({
 
   if (!brief) return null;
 
+  const schedulerPayload = scheduler || brief.scheduler || null;
+
   return (
     <section className="cc-card" aria-labelledby="cc-ceo-h" data-testid="ceo-brief-panel">
       <div className="ceo-brief-header-row">
@@ -79,7 +81,9 @@ export default function CeoBriefPanel({
       />
       <BriefList title="Recent completed" items={brief.recentCompleted} empty="None" />
 
-      {scheduler ? <SchedulerStatus scheduler={scheduler} compact /> : null}
+      {schedulerPayload ? (
+        <SchedulerStatus scheduler={schedulerPayload} compact useDurableHealth />
+      ) : null}
 
       {brief.duplicateProofWarning?.count > 0 ? (
         <div className="cc-warnings" role="status">

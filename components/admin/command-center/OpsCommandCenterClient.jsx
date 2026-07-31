@@ -193,15 +193,18 @@ export default function OpsCommandCenterClient() {
 
         {data?.metrics ? <OverviewMetrics metrics={data.metrics} /> : null}
 
-        <SchedulerStatus
-          scheduler={schedule}
-          lastTickAt={schedule.lastTick || schedule.lastTickAt || health?.runtime?.lastTickAt}
-        />
         {data ? (
           <SchedulePanel
             schedule={schedule}
-            projectId={projectId}
-            onRefresh={load}
+            readiness={data.productionReadiness}
+            provider={provider || data.provider}
+            rateLimit={data.rateLimit}
+          />
+        ) : schedule && Object.keys(schedule).length > 0 ? (
+          <SchedulerStatus
+            scheduler={schedule}
+            lastTickAt={schedule.lastTick || schedule.lastTickAt || health?.runtime?.lastTickAt}
+            useDurableHealth
           />
         ) : null}
 

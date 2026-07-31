@@ -31,6 +31,8 @@ export const POST = withErrorHandling(async (req) => {
   const summary = await runTick({
     workerId: `admin:${user.id.slice(0, 8)}`,
     maxJobs,
+    source: "manual_diagnostic",
+    httpStatus: 200,
   });
   return NextResponse.json({ ok: true, tick: summary });
 });
