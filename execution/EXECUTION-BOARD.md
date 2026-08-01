@@ -1627,6 +1627,23 @@ Admin: `/admin/live-agent-pilot` (Run disabled). API: `/api/admin/live-agent-pil
 
 ---
 
+## 36. Phase II.2 — OpenAI one-agent live execution path (Draft)
+
+Branch: `cursor/phase-ii2-openai-one-agent-live-path`  
+Base: `origin/main` `dfa4dd65c5f05810ccc661f404a8e04432e5e43f`
+
+Official OpenAI SDK Responses API path for the single Architecture Reviewer pilot.
+**Implementation + mocked tests only. Zero real provider calls. No migration change.**
+
+Guide: `execution/PHASE-II2-OPENAI-LIVE-PILOT-PATH.md`
+
+| Lane | Status |
+|------|--------|
+| **Phase II.2 OpenAI execution path** | **Draft implementation** |
+| **Actual one-agent Production run** | **Blocked** until PR merge; Production deployment; OpenAI API billing/key; explicit model confirmation; two live switches; one exact approval; separate Founder run authorization |
+
+---
+
 ## 30. Workforce UI foundation closeout (merged)
 
 Branch: `cursor/workforce-ui-foundation-closeout`

@@ -73,7 +73,8 @@ export default function LiveAgentPilotClient() {
   const pilotOn = data?.switches?.pilotLiveExecutionEnabled === true;
   const killOn = data?.killSwitch?.active === true;
   const disabledReasons = data?.eligibility?.disabledReasons || [];
-  const runEnabled = false;
+  // Client never decides eligibility independently — server status only.
+  const runEnabled = data?.eligibility?.runButtonEnabled === true;
 
   return (
     <AdminShell
@@ -85,7 +86,7 @@ export default function LiveAgentPilotClient() {
     >
       <PageHeader
         title="Controlled live-agent pilot"
-        description="Phase II.1 foundation only. No provider call. Switches default off. Exact one future agent: Architecture Reviewer."
+        description="Phase II.2 OpenAI path implemented and disabled by default. Server gates decide Run eligibility. No browser-to-provider calls."
       />
 
       {error ? (
@@ -100,34 +101,55 @@ export default function LiveAgentPilotClient() {
       {data ? (
         <>
           <div className="workforce-status-grid" data-testid="live-pilot-status-grid">
-            <Row
-              label="Pilot agent"
-              value={data.agent?.name || "—"}
-              testId="live-pilot-agent"
-            />
-            <Row
-              label="Slug"
-              value={data.agent?.slug || "—"}
-              testId="live-pilot-slug"
-            />
-            <Row
-              label="Project"
-              value={data.project?.name || "—"}
-              testId="live-pilot-project"
-            />
+            <Row label="Pilot agent" value={data.agent?.name || "—"} testId="live-pilot-agent" />
+            <Row label="Slug" value={data.agent?.slug || "—"} testId="live-pilot-slug" />
+            <Row label="Project" value={data.project?.name || "—"} testId="live-pilot-project" />
             <Row
               label="Provider"
               value={
                 providerName === "none"
                   ? "none — Provider setup required"
-                  : providerName
+                  : `${providerName} — configured`
               }
               testId="live-pilot-provider"
             />
             <Row
-              label="Model"
-              value={data.model?.status || "none_selected"}
+              label="Provider configured"
+              value={data.provider?.configured ? "yes" : "no"}
+              testId="live-pilot-provider-configured"
+            />
+            <Row
+              label="Selected model"
+              value={data.model?.selected || "none"}
               testId="live-pilot-model"
+            />
+            <Row
+              label="Model allowlisted"
+              value={data.model?.allowlisted ? "yes" : "no"}
+              testId="live-pilot-model-allowlisted"
+            />
+            <Row
+              label="Pricing version"
+              value={data.provider?.pricingVersion || "none"}
+              testId="live-pilot-pricing"
+            />
+            <Row
+              label="Worst-case cost"
+              value={
+                data.budget?.worstCaseCostUsd != null
+                  ? `USD ${data.budget.worstCaseCostUsd}`
+                  : "n/a"
+              }
+              testId="live-pilot-worst-case-cost"
+            />
+            <Row
+              label="Latest run cost"
+              value={
+                data.budget?.latestRunCostUsd != null
+                  ? `USD ${data.budget.latestRunCostUsd}`
+                  : "none"
+              }
+              testId="live-pilot-latest-cost"
             />
             <Row
               label="Global live execution"
@@ -156,14 +178,12 @@ export default function LiveAgentPilotClient() {
             />
             <Row
               label="Live tested"
-              value={
-                (data.workforce?.liveTestedSeats || 0) > 0 ? "yes" : "no"
-              }
+              value={(data.workforce?.liveTestedSeats || 0) > 0 ? "yes" : "no"}
               testId="live-pilot-live-tested"
             />
             <Row
               label="Execution eligible"
-              value="no"
+              value={runEnabled ? "yes" : "no"}
               testId="live-pilot-eligible"
             />
             <Row
@@ -183,12 +203,34 @@ export default function LiveAgentPilotClient() {
             />
             <Row
               label="Latest run"
-              value={data.latestRun?.id ? `${data.latestRun.status} (${data.latestRun.id.slice(0, 8)}…)` : "none"}
+              value={
+                data.latestRun?.id
+                  ? `${data.latestRun.status} (${data.latestRun.id.slice(0, 8)}…)`
+                  : "none"
+              }
               testId="live-pilot-latest-run"
             />
             <Row
+              label="Provider request ID"
+              value={data.latestProviderRequestId || "none"}
+              testId="live-pilot-provider-request"
+            />
+            <Row
+              label="Latest tokens"
+              value={
+                data.latestRun?.totalTokens != null
+                  ? String(data.latestRun.totalTokens)
+                  : "none"
+              }
+              testId="live-pilot-latest-tokens"
+            />
+            <Row
               label="Latest evidence"
-              value={data.latestEvidence?.id ? data.latestEvidence.id.slice(0, 8) + "…" : "none"}
+              value={
+                data.latestEvidence?.id
+                  ? `${data.latestEvidence.id.slice(0, 8)}…`
+                  : "none"
+              }
               testId="live-pilot-latest-evidence"
             />
             <Row
@@ -201,17 +243,30 @@ export default function LiveAgentPilotClient() {
           <section style={{ marginTop: "1.5rem" }}>
             <h2 className="admin-section-title">Controls</h2>
             <p className="wa-metric-hint">
-              Run is disabled. Phase II.1 never calls a provider from this UI.
+              Run stays disabled until the server status endpoint reports every gate.
+              This UI never calls OpenAI directly.
             </p>
-            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginTop: "0.75rem" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: "0.75rem",
+                flexWrap: "wrap",
+                marginTop: "0.75rem",
+              }}
+            >
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={!runEnabled}
+                disabled={!runEnabled || busy}
                 data-testid="live-pilot-run"
                 title={disabledReasons.join("; ") || "Run disabled"}
+                onClick={() => {
+                  setNote(
+                    "Execute via POST /api/admin/live-agent-pilot/execute with Founder approval fields. UI does not auto-fire provider calls."
+                  );
+                }}
               >
-                Run (disabled)
+                {runEnabled ? "Run (server-eligible)" : "Run (disabled)"}
               </button>
               <button
                 type="button"
@@ -238,7 +293,10 @@ export default function LiveAgentPilotClient() {
               ))}
             </ul>
             <p style={{ marginTop: "1rem" }}>
-              <StatusBadge tone="warning">liveExecutionReady: false</StatusBadge>{" "}
+              <StatusBadge tone="warning">
+                liveExecutionReady:{" "}
+                {String(Boolean(data.workforce?.liveExecutionReady))}
+              </StatusBadge>{" "}
               <StatusBadge tone="unconfigured">providerName: {providerName}</StatusBadge>{" "}
               <StatusBadge tone="unconfigured">
                 activeInstances: {data.workforce?.activeInstances ?? 0}
