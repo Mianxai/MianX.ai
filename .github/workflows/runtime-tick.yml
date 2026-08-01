@@ -12,11 +12,9 @@
 # the machine-readable contract says githubFallbackShouldSkip=true.
 # workflow_dispatch always invokes (Founder diagnostic).
 #
-# Secrets (Founder-configured; never commit values):
-#   INTERNAL_RUNTIME_SECRET  (or CRON_SECRET) — Bearer token for tick auth
-#   RUNTIME_TICK_BASE_URL    — production alias, e.g. https://mian-x-ai.vercel.app
-#
-# Concurrent Supabase + GitHub arrivals are safe: job leases + CAS claims.
+# Founder configures host tick URL + runtime auth via repository secrets
+# (values never logged). Concurrent Supabase + GitHub arrivals are safe:
+# job leases + CAS claims.
 
 name: Runtime tick (gapless fallback)
 
@@ -52,16 +50,17 @@ jobs:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
+          set +x
           echo "NOTE: GitHub Actions is gapless fallback until supabase_primary_active."
           BASE="${RUNTIME_TICK_BASE_URL:-}"
           if [ -z "${BASE}" ]; then
-            echo "RUNTIME_TICK_BASE_URL secret is not configured." >&2
+            echo "Runtime tick base URL is not configured." >&2
             exit 1
           fi
           case "${BASE}" in
             http://*|https://*) ;;
             *)
-              echo "RUNTIME_TICK_BASE_URL must be an http(s) URL." >&2
+              echo "Runtime tick base URL must be an http(s) URL." >&2
               exit 1
               ;;
           esac
@@ -73,7 +72,7 @@ jobs:
           LATEST_SOURCE="unknown"
           ACTIVE="false"
 
-          # Public health — no Authorization header (never log secrets).
+          # Public health probe — no auth header; never enable curl verbose.
           HEALTH_CODE=$(curl -sS -o /tmp/mianx-health.json -w "%{http_code}" \
             -X GET "${HEALTH_URL}" \
             -H "Accept: application/json" \
@@ -133,12 +132,14 @@ jobs:
             echo "Supabase degraded — invoking protected fallback tick (leases prevent duplicate claims)."
           fi
 
+          # Select configured runtime auth without printing names or values.
+          set +x
           TOKEN="${INTERNAL_RUNTIME_SECRET:-}"
           if [ -z "${TOKEN}" ]; then
             TOKEN="${CRON_SECRET:-}"
           fi
           if [ -z "${TOKEN}" ]; then
-            echo "INTERNAL_RUNTIME_SECRET or CRON_SECRET must be set in GitHub secrets." >&2
+            echo "Runtime scheduler authentication is not configured." >&2
             exit 1
           fi
 
@@ -149,6 +150,7 @@ jobs:
           attempt=1
           while [ "${attempt}" -le "${ATTEMPTS}" ]; do
             echo "attempt=${attempt}/${ATTEMPTS} request_id=${REQ_ID} source=github_actions"
+            # Auth header is required; never print the request line and never use curl verbose mode.
             CODE=$(curl -sS -o /tmp/mianx-tick.json -w "%{http_code}" \
               -X POST "${URL}" \
               -H "Authorization: Bearer ${TOKEN}" \
@@ -199,7 +201,10 @@ jobs:
           err = data.get("error")
           if isinstance(err, dict):
             print(f"- error_code: `{err.get('code')}`")
-            print(f"- error_message: `{str(err.get('message') or '')[:160]}`")
+            # Do not dump raw messages that might echo request context.
+            msg = str(err.get("message") or "")[:80]
+            if msg:
+              print(f"- error_message: `{msg}`")
           tick = data.get("tick") if isinstance(data.get("tick"), dict) else {}
           for k in ("recovered", "claimed", "succeeded", "failed", "dead_lettered", "cancelled", "duration_ms", "worker", "source"):
             if k in tick:
@@ -219,9 +224,8 @@ jobs:
             print("body_parse_error", str(e)[:120])
             raise SystemExit(0)
           err = data.get("error") if isinstance(data, dict) else None
-          if err:
+          if isinstance(err, dict):
             print("error_code", err.get("code"))
-            print("error_message", str(err.get("message") or "")[:160])
           tick = data.get("tick") if isinstance(data, dict) else None
           if isinstance(tick, dict):
             for k in ("recovered", "claimed", "succeeded", "failed", "dead_lettered", "cancelled", "duration_ms", "worker", "source"):
