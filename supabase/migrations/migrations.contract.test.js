@@ -51,14 +51,27 @@ describe("migration contract (static, not applied)", () => {
 
   it("expected dry-run order lists newer additive migrations last", () => {
     const expectedTail = [
-      "20260728180000_phase_e_template_intelligence.sql",
       "20260728190000_phase_f_planning_intelligence.sql",
       "20260728200000_phase_g_workforce_runtime.sql",
       "20260728210000_phase_h_integration_runtime.sql",
       "20260730180000_phase_i2_workforce_registry.sql",
       "20260730190000_phase_i3_workforce_rls.sql",
+      "20260731180000_phase_i9_supabase_cron_scheduler.sql",
     ];
     expect(files.slice(-6)).toEqual(expectedTail);
+  });
+
+  it("phase_i9 supabase cron scheduler migration is additive and secret-free", () => {
+    const sql = readMigration("20260731180000_phase_i9_supabase_cron_scheduler.sql");
+    expect(sql).toMatch(/create extension if not exists pg_cron/i);
+    expect(sql).toMatch(/create extension if not exists pg_net/i);
+    expect(sql).toContain("mianx-runtime-tick-5m");
+    expect(sql).toContain("*/5 * * * *");
+    expect(sql).toContain("mianx_runtime_tick_url");
+    expect(sql).toContain("mianx_runtime_tick_secret");
+    expect(sql).not.toMatch(/Bearer [A-Za-z0-9_-]{20,}/);
+    expect(sql).not.toMatch(/truncate /i);
+    expect(sql).not.toMatch(/delete from /i);
   });
 
   it("phase_i2 workforce registry migration is additive", () => {

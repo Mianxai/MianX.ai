@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import OpsCommandCenterClient from "@/components/admin/command-center/OpsCommandCenterClient";
-import AdminShell from "@/components/admin/AdminShell";
 import AdminLoadingRegion from "@/components/admin/AdminLoadingRegion";
 import MianxLoader from "@/components/shared/MianxLoader";
 
@@ -11,15 +10,22 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
+/**
+ * Do not wrap the Suspense fallback in AdminShell — OpsCommandCenterClient
+ * already mounts AdminShell. A nested AdminShell fallback can leave two
+ * ops-command-center trees in the DOM during useSearchParams resolution.
+ */
 export default function CommandCenterPage() {
   return (
     <Suspense
       fallback={
-        <AdminShell title="Command Center">
-          <AdminLoadingRegion>
-            <MianxLoader variant="section" label="Loading Command Center…" />
-          </AdminLoadingRegion>
-        </AdminShell>
+        <div className="admin-app">
+          <main className="admin-main" id="main-content">
+            <AdminLoadingRegion>
+              <MianxLoader variant="section" label="Loading Command Center…" />
+            </AdminLoadingRegion>
+          </main>
+        </div>
       }
     >
       <OpsCommandCenterClient />

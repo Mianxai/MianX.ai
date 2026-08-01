@@ -51,7 +51,9 @@ export default function ScheduleClient() {
     <AdminShell title="Schedule">
       <div className="cc-page">
         <p className="cc-muted">
-          Truthful worker / scheduler state. No fake countdown.
+          Primary scheduler: Supabase Cron (intended). GitHub Actions <code>*/5</code> remains
+          gapless fallback until Production cutover. No fake countdown. Implementation available;
+          Production Vault/job not claimed from Preview alone.
         </p>
         {loading && !data ? (
           <DelayedLoader delayMs={200}>

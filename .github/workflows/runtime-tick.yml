@@ -1,29 +1,32 @@
-# Production runtime tick — GitHub Actions scheduler (sub-daily).
+# Production runtime tick — GitHub Actions GAPLESS FALLBACK (Phase I.9).
 #
-# Preferred automatic path when Vercel Hobby cannot host sub-daily cron.
-# Never commit secrets. Founder must configure repository secrets first:
-#   INTERNAL_RUNTIME_SECRET  (or CRON_SECRET) — Bearer token for tick auth
-#   RUNTIME_TICK_BASE_URL    — production alias, e.g. https://mian-x-ai.vercel.app
+# Intended primary: Supabase Cron job `mianx-runtime-tick-5m`
+# (pg_cron → pg_net → /api/internal/runtime/tick). See:
+#   execution/PHASE-I9-DURABLE-SCHEDULER-CLOSEOUT.md
 #
-# After the first successful run, set on the Vercel deployment:
-#   RUNTIME_SCHEDULER_PLATFORM=github_actions
-#   RUNTIME_SCHEDULER_ACTIVE=1
-# Do NOT set ACTIVE until a tick has been verified.
+# CRITICAL: Keep schedule `*/5 * * * *` until Production cutover proves
+# supabase_primary_active + healthy. Removing the schedule before Vault,
+# migration, verified supabase_cron tick, and ACTIVE flags would open a gap.
 #
-# Cadence note: `*/5 * * * *` is the *target*. GitHub Actions schedule delivery
-# is approximate and may skip or delay under platform load — especially on
-# private repos (multi-hour gaps are observed and are a platform delivery issue,
-# not evidence that a successful empty tick failed). Treat Healthy/Delayed/Stale
-# thresholds as grace windows, not exact clocks. Zero claimed/succeeded/failed
-# with HTTP 200 is a truthful no-op success.
+# Scheduled runs query public /api/core/health and SKIP the tick only when
+# the machine-readable contract says githubFallbackShouldSkip=true.
+# workflow_dispatch always invokes (Founder diagnostic).
+#
+# Founder configures host tick URL + runtime auth via repository secrets
+# (values never logged). Concurrent Supabase + GitHub arrivals are safe:
+# job leases + CAS claims.
 
-name: Runtime tick
+name: Runtime tick (gapless fallback)
 
 on:
   schedule:
-    # Target every 5 minutes — GitHub delivery is approximate.
     - cron: "*/5 * * * *"
   workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why is this diagnostic tick being run?"
+        required: false
+        default: "Founder diagnostic"
 
 concurrency:
   # One production tick at a time; never cancel a healthy in-progress run.
@@ -35,57 +38,130 @@ permissions:
 
 jobs:
   tick:
-    name: POST /api/internal/runtime/tick
+    name: Conditional POST /api/internal/runtime/tick
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Invoke bounded runtime tick
+      - name: Decide fallback vs skip, then tick if needed
         env:
           RUNTIME_TICK_BASE_URL: ${{ secrets.RUNTIME_TICK_BASE_URL }}
           INTERNAL_RUNTIME_SECRET: ${{ secrets.INTERNAL_RUNTIME_SECRET }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
+          set +x
+          echo "NOTE: GitHub Actions is gapless fallback until supabase_primary_active."
           BASE="${RUNTIME_TICK_BASE_URL:-}"
           if [ -z "${BASE}" ]; then
-            echo "RUNTIME_TICK_BASE_URL secret is not configured." >&2
+            echo "Runtime tick base URL is not configured." >&2
             exit 1
           fi
-          # Prefer the production alias; do not invent alternate hosts.
           case "${BASE}" in
             http://*|https://*) ;;
             *)
-              echo "RUNTIME_TICK_BASE_URL must be an http(s) URL." >&2
+              echo "Runtime tick base URL must be an http(s) URL." >&2
               exit 1
               ;;
           esac
+
+          HEALTH_URL="${BASE%/}/api/core/health"
+          SKIP="0"
+          TRANSITION="unknown"
+          HEALTH_STATUS="unknown"
+          LATEST_SOURCE="unknown"
+          ACTIVE="false"
+
+          # Public health probe — no auth header; never enable curl verbose.
+          HEALTH_CODE=$(curl -sS -o /tmp/mianx-health.json -w "%{http_code}" \
+            -X GET "${HEALTH_URL}" \
+            -H "Accept: application/json" \
+            --connect-timeout 15 \
+            --max-time 30 || true)
+          echo "health_http_status=${HEALTH_CODE}"
+
+          if [ "${HEALTH_CODE}" = "200" ] && command -v python3 >/dev/null 2>&1; then
+            eval "$(python3 - <<'PY'
+          import json, shlex
+          try:
+            data = json.load(open("/tmp/mianx-health.json"))
+          except Exception:
+            print("SKIP=0")
+            print("TRANSITION=health_parse_error")
+            raise SystemExit(0)
+          c = data.get("schedulerContract") if isinstance(data, dict) else None
+          if not isinstance(c, dict):
+            sched = data.get("scheduler") if isinstance(data, dict) else None
+            c = sched.get("healthContract") if isinstance(sched, dict) else {}
+          if not isinstance(c, dict):
+            c = {}
+          skip = bool(c.get("githubFallbackShouldSkip")) and str(c.get("schedulerTransitionState") or "") == "supabase_primary_active"
+          print(f"SKIP={'1' if skip else '0'}")
+          print("TRANSITION=" + shlex.quote(str(c.get("schedulerTransitionState") or "unknown")))
+          print("HEALTH_STATUS=" + shlex.quote(str(c.get("schedulerHealth") or "unknown")))
+          print("LATEST_SOURCE=" + shlex.quote(str(c.get("latestSource") or "unknown")))
+          print("ACTIVE=" + shlex.quote(str(bool(c.get("schedulerActive"))).lower()))
+          PY
+          )"
+          fi
+
+          {
+            echo "## Runtime tick decision (GitHub gapless fallback)"
+            echo ""
+            echo "- event: \`${GITHUB_EVENT_NAME}\`"
+            echo "- health_http_status: \`${HEALTH_CODE}\`"
+            echo "- schedulerTransitionState: \`${TRANSITION}\`"
+            echo "- schedulerHealth: \`${HEALTH_STATUS}\`"
+            echo "- latestSource: \`${LATEST_SOURCE}\`"
+            echo "- schedulerActive: \`${ACTIVE}\`"
+            echo "- githubFallbackShouldSkip: \`${SKIP}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          # Scheduled only: skip when Supabase primary is active and healthy.
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ] && [ "${SKIP}" = "1" ]; then
+            echo "Supabase Cron is active and healthy; fallback tick skipped."
+            {
+              echo ""
+              echo "- decision: \`skip\`"
+              echo "- message: \`Supabase Cron is active and healthy; fallback tick skipped.\`"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ] && [ "${TRANSITION}" = "supabase_degraded" ]; then
+            echo "Supabase degraded — invoking protected fallback tick (leases prevent duplicate claims)."
+          fi
+
+          # Select configured runtime auth without printing names or values.
+          set +x
           TOKEN="${INTERNAL_RUNTIME_SECRET:-}"
           if [ -z "${TOKEN}" ]; then
             TOKEN="${CRON_SECRET:-}"
           fi
           if [ -z "${TOKEN}" ]; then
-            echo "INTERNAL_RUNTIME_SECRET or CRON_SECRET must be set in GitHub secrets." >&2
+            echo "Runtime scheduler authentication is not configured." >&2
             exit 1
           fi
 
-          REQ_ID="gha-$(date -u +%Y%m%dT%H%M%SZ)-$RANDOM"
+          REQ_ID="gha-fb-$(date -u +%Y%m%dT%H%M%SZ)-$RANDOM"
           URL="${BASE%/}/api/internal/runtime/tick"
           ATTEMPTS=3
           CODE="000"
           attempt=1
           while [ "${attempt}" -le "${ATTEMPTS}" ]; do
-            echo "attempt=${attempt}/${ATTEMPTS} request_id=${REQ_ID}"
+            echo "attempt=${attempt}/${ATTEMPTS} request_id=${REQ_ID} source=github_actions"
+            # Auth header is required; never print the request line and never use curl verbose mode.
             CODE=$(curl -sS -o /tmp/mianx-tick.json -w "%{http_code}" \
               -X POST "${URL}" \
               -H "Authorization: Bearer ${TOKEN}" \
               -H "Content-Type: application/json" \
               -H "Accept: application/json" \
               -H "x-request-id: ${REQ_ID}-a${attempt}" \
+              -H "x-mianx-scheduler-source: github_actions" \
               --connect-timeout 15 \
               --max-time 90 \
-              -d '{"max_jobs":5}' || true)
+              -d '{"max_jobs":5,"source":"github_actions"}' || true)
             echo "http_status=${CODE}"
-            # Retry transient upstream failures with bounded backoff.
             if [ "${CODE}" = "200" ] || [ "${CODE}" = "204" ]; then
               break
             fi
@@ -99,13 +175,13 @@ jobs:
             attempt=$((attempt + 1))
           done
 
-          # Sanitised counters for logs + GitHub Job Summary (never print secrets).
           {
-            echo "## Runtime tick summary"
             echo ""
+            echo "- decision: \`invoke\`"
             echo "- request_id: \`${REQ_ID}\`"
             echo "- http_status: \`${CODE}\`"
             echo "- attempts: \`${attempt}\`"
+            echo "- source: \`github_actions\`"
             echo "- target: production tick endpoint (host redacted)"
           } >> "${GITHUB_STEP_SUMMARY}"
 
@@ -125,11 +201,19 @@ jobs:
           err = data.get("error")
           if isinstance(err, dict):
             print(f"- error_code: `{err.get('code')}`")
-            print(f"- error_message: `{str(err.get('message') or '')[:160]}`")
+            # Do not dump raw messages that might echo request context.
+            msg = str(err.get("message") or "")[:80]
+            if msg:
+              print(f"- error_message: `{msg}`")
           tick = data.get("tick") if isinstance(data.get("tick"), dict) else {}
-          for k in ("recovered", "claimed", "succeeded", "failed", "dead_lettered", "cancelled", "duration_ms", "worker"):
+          for k in ("recovered", "claimed", "succeeded", "failed", "dead_lettered", "cancelled", "duration_ms", "worker", "source"):
             if k in tick:
               print(f"- {k}: `{tick[k]}`")
+          claimed = int(tick.get("claimed") or 0)
+          succeeded = int(tick.get("succeeded") or 0)
+          failed = int(tick.get("failed") or 0)
+          if claimed == 0 and succeeded == 0 and failed == 0 and data.get("ok"):
+            print("- note: `successful no-op (empty queue)`")
           print(f"- ok: `{data.get('ok')}`")
           PY
             python3 - <<'PY'
@@ -140,12 +224,11 @@ jobs:
             print("body_parse_error", str(e)[:120])
             raise SystemExit(0)
           err = data.get("error") if isinstance(data, dict) else None
-          if err:
+          if isinstance(err, dict):
             print("error_code", err.get("code"))
-            print("error_message", str(err.get("message") or "")[:160])
           tick = data.get("tick") if isinstance(data, dict) else None
           if isinstance(tick, dict):
-            for k in ("recovered", "claimed", "succeeded", "failed", "dead_lettered", "cancelled", "duration_ms", "worker"):
+            for k in ("recovered", "claimed", "succeeded", "failed", "dead_lettered", "cancelled", "duration_ms", "worker", "source"):
               if k in tick:
                 print(f"{k}={tick[k]}")
           print("ok", data.get("ok") if isinstance(data, dict) else None)

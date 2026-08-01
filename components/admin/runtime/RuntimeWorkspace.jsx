@@ -359,30 +359,44 @@ export default function RuntimeWorkspace({
 function OverviewPanel({ health, projects }) {
   const cfg = health?.config;
   const rateLimit = cfg?.rateLimit;
-  const scheduler = cfg?.scheduler;
+  const scheduler = cfg?.scheduler || health?.scheduler || null;
   const anthropicOk = Boolean(cfg?.providers?.anthropic);
   const rateLabel = rateLimit?.durable
     ? "Durable adapter active"
     : rateLimit?.urlConfigured
       ? "In-memory (URL set, adapter inactive)"
       : "In-memory (single instance)";
-  const schedulerMode = scheduler?.mode || "manual";
+
+  // Prefer Phase I.9 durable health (same view model as Schedule / health API).
+  const durableHealth = scheduler?.schedulerHealth || scheduler?.health || null;
+  const durableLabel = scheduler?.label || null;
+  const primary = scheduler?.primaryScheduler || "supabase_cron";
+  const schedulerMode = durableHealth || scheduler?.mode || "manual";
   const schedulerIsWarning =
-    schedulerMode === "warning" ||
-    schedulerMode === "delayed" ||
-    schedulerMode === "stale";
+    durableHealth === "delayed" ||
+    durableHealth === "stale" ||
+    durableHealth === "failing" ||
+    durableHealth === "setup_required" ||
+    scheduler?.mode === "warning" ||
+    scheduler?.mode === "delayed" ||
+    scheduler?.mode === "stale";
   let schedulerLabel;
-  if (scheduler?.automaticProcessing && !schedulerIsWarning) {
+  if (durableLabel) {
+    schedulerLabel = `${durableLabel} · primary ${primary}${
+      scheduler?.detail ? ` — ${scheduler.detail}` : ""
+    }`;
+  } else if (scheduler?.automaticProcessing && !schedulerIsWarning) {
     schedulerLabel = "Automatic processing";
   } else if (schedulerIsWarning) {
     schedulerLabel =
       scheduler?.founderGuidance ||
-      "Warning: last tick is older than the expected cadence. Check GitHub Actions / external cron — not a Level-1 Founder Proof failure.";
+      scheduler?.recommendation ||
+      "Warning: last tick is older than the expected cadence. Check Supabase Cron — GitHub Actions is diagnostic only.";
   } else if (scheduler?.readyForExternalScheduler) {
-    schedulerLabel = "Manual — worker secret ready for external cron";
+    schedulerLabel = "Manual — worker secret ready; complete Vault + Supabase Cron cutover";
   } else {
     schedulerLabel =
-      "Manual — configure CRON_SECRET / INTERNAL_RUNTIME_SECRET for scheduler";
+      "Setup — Vault secrets + Supabase Cron migration (GitHub Actions is diagnostic fallback)";
   }
 
   return (
@@ -429,8 +443,10 @@ function OverviewPanel({ health, projects }) {
         </div>
         <div className="runtime-card" data-testid="overview-scheduler">
           <h3>Scheduler</h3>
-          <p className="runtime-metric">
-            {schedulerIsWarning ? `Warning · ${schedulerMode}` : schedulerMode}
+          <p className="runtime-metric" data-testid="overview-scheduler-health">
+            {schedulerIsWarning
+              ? `${durableLabel || "Warning"} · ${schedulerMode}`
+              : durableLabel || schedulerMode}
           </p>
           <p className="runtime-muted">{schedulerLabel}</p>
         </div>

@@ -1550,10 +1550,10 @@ See `execution/PHASE-I7-CURRENT-BUILD-INVENTORY.md` and
 
 ---
 
-## 33. Phase I.8 — Final current-build production closeout (Draft PR)
+## 33. Phase I.8 — Final current-build production closeout (merged PR #75)
 
 Branch: `cursor/phase-i8-final-production-closeout`  
-Base: `origin/main` `7f213a7` (PR #74)
+Base: `origin/main` `7f213a7` → merge `ef409485dd9449d81109332e03258ae055932807`
 
 Screenshot-driven closeout:
 
@@ -1564,11 +1564,38 @@ Screenshot-driven closeout:
 
 ### Acceptance
 
-- **A. Current non-provider application** — closeout Verified (this PR)
+- **A. Current non-provider application** — closeout Verified (merged)
 - **B. Scheduler operational** — workflow + honest Stale Verified; delivery gaps Founder-monitored
 - **C. Live AI execution** — **Blocked**
 
 See `execution/PHASE-I8-FINAL-PRODUCTION-CLOSEOUT.md`.
+
+---
+
+## 34. Phase I.9 — Durable Supabase scheduler and Production cadence (Draft PR #76)
+
+Branch: `cursor/phase-i9-durable-production-scheduler`  
+Base: `origin/main` `ef409485dd9449d81109332e03258ae055932807`
+
+Replace GitHub Actions as *sole reliable* Production tick with Supabase Cron
+(`pg_cron` → `pg_net` → `/api/internal/runtime/tick`), while **retaining**
+GHA `*/5` as **gapless conditional fallback** until `supabase_primary_active`
+is verified (critical cutover-gap correction on PR #76).
+
+Contract: `execution/PHASE-I9-SCHEDULER-CONTRACT.md`  
+Closeout: `execution/PHASE-I9-DURABLE-SCHEDULER-CLOSEOUT.md`  
+Migration (not applied):
+`supabase/migrations/20260731180000_phase_i9_supabase_cron_scheduler.sql`
+
+### Acceptance (separated)
+
+| Lane | Status |
+|------|--------|
+| **A. Current application acceptance** | **Verified** (gapless GHA schedule + health skip contract + shared view model + tests/gates) |
+| **B. Durable scheduler implementation** | **Pending Production cutover** (Vault + migration + verified supabase_cron + ACTIVE — Founder-only) |
+| **C. Live AI execution** | **Blocked** |
+
+Do not remove GHA schedule until step 12 of the gapless cutover succeeds.
 
 ---
 
