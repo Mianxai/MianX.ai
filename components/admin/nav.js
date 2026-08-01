@@ -115,6 +115,13 @@ export const ADMIN_NAV_GROUPS = [
         badge: "Best-effort",
       },
       {
+        href: "/admin/live-agent-pilot",
+        label: "Live Agent Pilot",
+        match: "prefix",
+        icon: "runtime",
+        badge: "Foundation",
+      },
+      {
         href: "/admin/settings",
         label: "Technical Settings",
         match: "prefix",
