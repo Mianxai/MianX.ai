@@ -77,6 +77,7 @@ describe("admin navigation uniqueness", () => {
         "Runtime Approvals",
         "Full Audit",
         "Execution",
+        "Live Agent Pilot",
         "Technical Settings",
         "Company Builder",
       ])

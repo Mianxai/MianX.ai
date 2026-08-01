@@ -51,14 +51,34 @@ describe("migration contract (static, not applied)", () => {
 
   it("expected dry-run order lists newer additive migrations last", () => {
     const expectedTail = [
-      "20260728190000_phase_f_planning_intelligence.sql",
       "20260728200000_phase_g_workforce_runtime.sql",
       "20260728210000_phase_h_integration_runtime.sql",
       "20260730180000_phase_i2_workforce_registry.sql",
       "20260730190000_phase_i3_workforce_rls.sql",
       "20260731180000_phase_i9_supabase_cron_scheduler.sql",
+      "20260801120000_phase_ii1_live_agent_pilot.sql",
     ];
     expect(files.slice(-6)).toEqual(expectedTail);
+  });
+
+  it("phase_ii1 live agent pilot migration is additive with RLS and secret-free", () => {
+    const sql = readMigration("20260801120000_phase_ii1_live_agent_pilot.sql");
+    expect(sql).toMatch(/create table if not exists pilot_runs/i);
+    expect(sql).toMatch(/create table if not exists pilot_approvals/i);
+    expect(sql).toMatch(/create table if not exists pilot_provider_requests/i);
+    expect(sql).toMatch(/create table if not exists pilot_token_usage/i);
+    expect(sql).toMatch(/create table if not exists pilot_cost_usage/i);
+    expect(sql).toMatch(/create table if not exists pilot_evidence/i);
+    expect(sql).toMatch(/create table if not exists pilot_failures/i);
+    expect(sql).toMatch(/create table if not exists pilot_kill_switch_events/i);
+    expect(sql).toContain("mianx-internal-architecture-reviewer");
+    expect(sql).toMatch(/enable row level security/i);
+    expect(sql).toMatch(/grant all on table pilot_runs to service_role/i);
+    expect(sql).toMatch(/DO NOT apply without Founder approval/i);
+    expect(sql).not.toMatch(/Bearer [A-Za-z0-9_-]{20,}/);
+    expect(sql).not.toMatch(/ANTHROPIC_API_KEY\s*=/);
+    expect(sql).not.toMatch(/truncate /i);
+    expect(sql).not.toMatch(/delete from /i);
   });
 
   it("phase_i9 supabase cron scheduler migration is additive and secret-free", () => {

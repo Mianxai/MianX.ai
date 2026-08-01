@@ -1599,6 +1599,34 @@ Do not remove GHA schedule until step 12 of the gapless cutover succeeds.
 
 ---
 
+## 35. Phase II.1 — Controlled one-agent live execution pilot foundation
+
+Branch: `cursor/phase-ii1-controlled-live-agent-pilot-foundation`  
+Base: `origin/main` `a6b3ecb57d50f4057e3b03e8415de5ff0f5422bf`
+
+Implementation-only foundation for a future single live pilot
+(`mianx-internal-architecture-reviewer` on MianX Internal Production Proof).
+**No provider call. No migration apply. No agent allocation/activation.**
+
+Contract: `execution/PHASE-II1-LIVE-PILOT-CONTRACT.md`  
+Guide: `execution/PHASE-II1-CONTROLLED-LIVE-AGENT-PILOT.md`  
+Migration (not applied):
+`supabase/migrations/20260801120000_phase_ii1_live_agent_pilot.sql`
+
+### Separated lanes (Founder truth)
+
+| Lane | Status |
+|------|--------|
+| **A. Phase I durable platform** | **Operational** (queue/lease/scheduler primary/workforce seats foundation) |
+| **B. GitHub fallback scheduled-delivery proof** | **Pending external event** (do not claim GHA delivery verified) |
+| **C. Phase II.1 live pilot foundation** | **Draft implementation** (this PR) |
+| **D. Actual live provider run** | **Blocked** until Founder configuration + explicit approval |
+
+Switches default false: `LIVE_AGENT_EXECUTION_ENABLED`, `LIVE_AGENT_PILOT_ENABLED`.  
+Admin: `/admin/live-agent-pilot` (Run disabled). API: `/api/admin/live-agent-pilot`.
+
+---
+
 ## 30. Workforce UI foundation closeout (merged)
 
 Branch: `cursor/workforce-ui-foundation-closeout`
