@@ -124,13 +124,20 @@ live-tested AI agents.
 
 ## Known verified issues
 
-- Projects card may contradict the active Founder Proof state (requires engineering fix).
 - Workforce, Readiness, and Workforce Ops responsibility overlap requires audit before consolidation.
 - GitHub scheduled fallback external-delivery proof remains pending.
 
+## Resolved issues
+
+- **Projects card Founder Proof contradiction** — **resolved** (2026-08-03, PR pending `cursor/admin-projects-objectives-truth-fix`).
+  - **Root cause:** `/admin/projects` treated missing/`null` operational summary (including in-flight load and fetch failure) as “No active Founder Proof”, and labeled proof from `canonical_integration_run` alone instead of the shared `founder_proof_ui` / status classification. During load, metrics showed “…” while Founder Proof falsely claimed no active proof.
+  - **Fix:** Shared `lib/core/integration/founder-proof-status.js` classification; Projects card uses `resolveProjectsFounderProofDisplay` so `awaiting_final_review` / `founder_final_review` is active review-pending; explicit Loading… / Unavailable metric states; per-project ops load errors no longer map to empty proof.
+  - **Verification evidence:** unit tests in `founder-proof-status.test.js`, `projects-truth.test.jsx`, `admin-ops-summary.test.js` (awaiting_final_review → active; no-proof empty preserved; failure → Unavailable; metrics not left as “…”).
+  - **Resulting truthful behavior:** Canonical project with awaiting_final_review shows active Founder Proof waiting for final Founder review; Final Review remains unapproved; no fabricated metrics.
+
 ## Suspected issues requiring reproduction
 
-- Objectives loading anomaly — reproduce before calling confirmed.
+- Objectives loading anomaly — **client failure modes reproduced and hardened** (2026-08-03, same PR). Evidence: (1) uncaught `fetch` throw left `loading` true with no `finally`; (2) unstable `useCallback`/`useEffect` deps on `router` could retrigger loads; (3) `DelayedLoader` was invoked with ignored `children`/`delayMs` while `active` defaulted true. Fixed with try/finally, 30s abort timeout, response-schema validation, stable router ref, correct `DelayedLoader active={loading}`, and explicit auth/API/unexpected ErrorState + Retry. Not treated as a permanent Production-only server bug without a live hang after timeout; empty/error states remain truthful (no fabricated objectives).
 
 ## Current blockers
 

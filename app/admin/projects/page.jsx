@@ -8,6 +8,12 @@ import MianxLoader from "@/components/shared/MianxLoader";
 import DelayedLoader from "@/components/shared/DelayedLoader";
 import { slugFromName, evaluateSlugInput } from "@/lib/slug";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
+import {
+  resolveProjectsFounderProofDisplay,
+  resolveProjectsMetricDisplay,
+} from "@/lib/core/integration/founder-proof-status.js";
+
+const OPS_FETCH_TIMEOUT_MS = 25_000;
 
 function errorMessage(data, fallback) {
   return data?.error?.message || data?.error || fallback;
@@ -24,14 +30,9 @@ function formatActivity(iso) {
   }
 }
 
-function dash(v) {
-  if (v === null || v === undefined || v === "") return "—";
-  return v;
-}
-
 /**
  * Enrich projects with operational summaries (bounded concurrency).
- * Missing/failed summaries stay null — never invent activity.
+ * Each entry is { loadState, data } — failures are explicit, never invent metrics.
  */
 async function loadOpsMap(projectIds, { concurrency = 4 } = {}) {
   const map = {};
@@ -41,19 +42,27 @@ async function loadOpsMap(projectIds, { concurrency = 4 } = {}) {
       const idx = i;
       i += 1;
       const id = projectIds[idx];
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), OPS_FETCH_TIMEOUT_MS);
       try {
         const res = await fetch(
           `/api/admin/operations/summary?project_id=${encodeURIComponent(id)}`,
-          { headers: { Accept: "application/json" } }
+          { headers: { Accept: "application/json" }, signal: controller.signal }
         );
         if (!res.ok) {
-          map[id] = null;
+          map[id] = { loadState: "error", data: null };
           continue;
         }
         const data = await res.json().catch(() => null);
-        map[id] = data?.ok ? data : null;
+        if (data?.ok) {
+          map[id] = { loadState: "ready", data };
+        } else {
+          map[id] = { loadState: "error", data: null };
+        }
       } catch {
-        map[id] = null;
+        map[id] = { loadState: "error", data: null };
+      } finally {
+        clearTimeout(timer);
       }
     }
   }
@@ -67,6 +76,8 @@ async function loadOpsMap(projectIds, { concurrency = 4 } = {}) {
 
 export default function ProjectsPage() {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const [projects, setProjects] = useState([]);
   const [opsById, setOpsById] = useState({});
   const [opsLoading, setOpsLoading] = useState(false);
@@ -84,7 +95,7 @@ export default function ProjectsPage() {
     try {
       const res = await fetch("/api/core/projects");
       if (res.status === 401) {
-        router.push(currentAdminLoginHref("/admin/projects"));
+        routerRef.current.push(currentAdminLoginHref("/admin/projects"));
         return;
       }
       if (res.status === 503) {
@@ -97,15 +108,22 @@ export default function ProjectsPage() {
       if (!res.ok) throw new Error(errorMessage(data, "Failed to load projects"));
       const list = Array.isArray(data.projects) ? data.projects : [];
       setProjects(list);
-      setOpsLoading(true);
       const ids = list.map((p) => p.id).filter(Boolean);
       if (ids.length) {
-        const map = await loadOpsMap(ids);
-        setOpsById(map);
+        const pending = {};
+        for (const id of ids) pending[id] = { loadState: "loading", data: null };
+        setOpsById(pending);
+        setOpsLoading(true);
+        try {
+          const map = await loadOpsMap(ids);
+          setOpsById(map);
+        } finally {
+          setOpsLoading(false);
+        }
       } else {
         setOpsById({});
+        setOpsLoading(false);
       }
-      setOpsLoading(false);
     } catch (err) {
       setError(err.message);
       setProjects([]);
@@ -114,7 +132,7 @@ export default function ProjectsPage() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -132,7 +150,7 @@ export default function ProjectsPage() {
         body: JSON.stringify({ archived: true }),
       });
       if (res.status === 401) {
-        router.push(currentAdminLoginHref("/admin/projects"));
+        routerRef.current.push(currentAdminLoginHref("/admin/projects"));
         return;
       }
       const data = await res.json().catch(() => ({}));
@@ -195,26 +213,56 @@ export default function ProjectsPage() {
       {projects.length > 0 && (
         <ul className="projects-list projects-list--dense">
           {projects.map((p) => {
-            const ops = opsById[p.id];
-            const proof = ops?.canonical_integration_run || null;
-            const proofLabel = proof
-              ? proof.stage_label || proof.proof_status || proof.stage || "Active"
-              : "No active Founder Proof";
+            const entry = opsById[p.id];
+            const loadState =
+              entry?.loadState || (opsLoading ? "loading" : "error");
+            const ops = entry?.data || null;
+            const proofDisplay = resolveProjectsFounderProofDisplay({
+              loadState,
+              summary: ops,
+            });
+            const objectivesMetric = resolveProjectsMetricDisplay({
+              loadState,
+              value: ops?.active_objective_count,
+            });
+            const agentsMetric = resolveProjectsMetricDisplay({
+              loadState,
+              value: ops?.assigned_agents_count,
+            });
+            const actionsMetric = resolveProjectsMetricDisplay({
+              loadState,
+              value: ops?.open_founder_actions,
+            });
             const health = ops?.runtime_health;
-            const healthLabel = health
-              ? [
-                  health.provider || null,
-                  health.jobs_failed ? `${health.jobs_failed} failed jobs` : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ") || "—"
-              : opsLoading
-                ? "…"
-                : "—";
+            const healthMetric =
+              loadState === "loading" || loadState === "idle"
+                ? { kind: "loading", label: "Loading…" }
+                : loadState === "error"
+                  ? { kind: "error", label: "Unavailable" }
+                  : {
+                      kind: "ready",
+                      label:
+                        [
+                          health?.provider || null,
+                          health?.jobs_failed
+                            ? `${health.jobs_failed} failed jobs`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || "—",
+                    };
             const expanded = selectedId === p.id;
 
             return (
-              <li key={p.id} className="projects-item projects-item--rich">
+              <li
+                key={p.id}
+                className="projects-item projects-item--rich"
+                data-testid="projects-item"
+                data-proof-kind={proofDisplay.kind}
+                data-proof-review-pending={
+                  proofDisplay.reviewPending ? "true" : "false"
+                }
+              >
                 <div className="projects-item-main">
                   <div className="projects-item-title-row">
                     <Link href={`/admin/projects/${p.id}`} className="projects-item-title">
@@ -227,32 +275,31 @@ export default function ProjectsPage() {
                   <dl className="projects-ops-grid">
                     <div>
                       <dt>Founder Proof</dt>
-                      <dd className={!proof ? "cc-muted" : undefined}>{proofLabel}</dd>
+                      <dd
+                        className={
+                          proofDisplay.kind === "empty" || proofDisplay.kind === "error"
+                            ? "cc-muted"
+                            : undefined
+                        }
+                        data-testid="projects-founder-proof"
+                      >
+                        {proofDisplay.label}
+                      </dd>
                     </div>
                     <div>
                       <dt>Active objectives</dt>
-                      <dd>
-                        {ops ? dash(ops.active_objective_count) : opsLoading ? "…" : "—"}
+                      <dd data-testid="projects-active-objectives">
+                        {objectivesMetric.label}
                       </dd>
                     </div>
                     <div>
                       <dt>Assigned agents</dt>
-                      <dd>
-                        {ops
-                          ? dash(ops.assigned_agents_count)
-                          : opsLoading
-                            ? "…"
-                            : "—"}
-                      </dd>
+                      <dd data-testid="projects-assigned-agents">{agentsMetric.label}</dd>
                     </div>
                     <div>
                       <dt>Open Founder actions</dt>
-                      <dd>
-                        {ops
-                          ? dash(ops.open_founder_actions)
-                          : opsLoading
-                            ? "…"
-                            : "—"}
+                      <dd data-testid="projects-open-founder-actions">
+                        {actionsMetric.label}
                       </dd>
                     </div>
                     <div>
@@ -265,7 +312,7 @@ export default function ProjectsPage() {
                     </div>
                     <div>
                       <dt>Runtime health</dt>
-                      <dd>{healthLabel}</dd>
+                      <dd data-testid="projects-runtime-health">{healthMetric.label}</dd>
                     </div>
                   </dl>
                   {expanded && ops?.next_founder_action?.label ? (
@@ -314,14 +361,14 @@ export default function ProjectsPage() {
             setModalOpen(false);
             load();
           }}
-          router={router}
+          routerRef={routerRef}
         />
       )}
     </AdminShell>
   );
 }
 
-function NewProjectModal({ onClose, onCreated, router }) {
+function NewProjectModal({ onClose, onCreated, routerRef }) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
@@ -422,7 +469,7 @@ function NewProjectModal({ onClose, onCreated, router }) {
         body: JSON.stringify(body),
       });
       if (res.status === 401) {
-        router.push(currentAdminLoginHref("/admin/projects"));
+        routerRef.current.push(currentAdminLoginHref("/admin/projects"));
         return;
       }
       const data = await res.json().catch(() => ({}));
