@@ -129,15 +129,18 @@ live-tested AI agents.
 
 ## Resolved issues
 
-- **Projects card Founder Proof contradiction** — **resolved** (2026-08-03, Draft PR [#80](https://github.com/Mianxai/MianX.ai/pull/80)).
+- **Projects card Founder Proof contradiction** — **fixed and verified in PR preview; Production deployment pending merge** (2026-08-03, Draft PR [#80](https://github.com/Mianxai/MianX.ai/pull/80)).
   - **Root cause:** `/admin/projects` treated missing/`null` operational summary (including in-flight load and fetch failure) as “No active Founder Proof”, and labeled proof from `canonical_integration_run` alone instead of the shared `founder_proof_ui` / status classification. During load, metrics showed “…” while Founder Proof falsely claimed no active proof.
-  - **Fix:** Shared `lib/core/integration/founder-proof-status.js` classification; Projects card uses `resolveProjectsFounderProofDisplay` so `awaiting_final_review` / `founder_final_review` is active review-pending; explicit Loading… / Unavailable metric states; per-project ops load errors no longer map to empty proof.
-  - **Verification evidence:** unit tests in `founder-proof-status.test.js`, `projects-truth.test.jsx`, `admin-ops-summary.test.js` (awaiting_final_review → active; no-proof empty preserved; failure → Unavailable; metrics not left as “…”).
-  - **Resulting truthful behavior:** Canonical project with awaiting_final_review shows active Founder Proof waiting for final Founder review; Final Review remains unapproved; no fabricated metrics.
+  - **Fix:** Shared `lib/core/integration/founder-proof-status.js` classification; Projects card uses `resolveProjectsFounderProofDisplay` so `awaiting_final_review` / `founder_final_review` is **active review-pending** (not inactive/terminal); explicit Loading… / real value including `0` / Unavailable metric states; per-project ops load errors no longer map to empty proof.
+  - **Verification evidence:** executed classifier truth table + unit/component tests (`founder-proof-status.test.js`, `projects-truth.test.jsx`, `admin-ops-summary.test.js`); CI Lint/Build, Chrome harness, Playwright on PR #80; Vercel Preview for the PR branch.
+  - **Resulting truthful behavior (preview):** project with `awaiting_final_review` shows active Founder Proof “Waiting for final Founder review”. **Founder Final Review remains not approved. Provider remains none. Allocated/active/live-tested remains 0/0/0.** Not claimed as Production-resolved until merge + deploy.
 
 ## Suspected issues requiring reproduction
 
-- Objectives loading anomaly — **client failure modes reproduced and hardened** (2026-08-03, Draft PR [#80](https://github.com/Mianxai/MianX.ai/pull/80)). Evidence: (1) uncaught `fetch` throw left `loading` true with no `finally`; (2) unstable `useCallback`/`useEffect` deps on `router` could retrigger loads; (3) `DelayedLoader` was invoked with ignored `children`/`delayMs` while `active` defaulted true. Fixed with try/finally, 30s abort timeout, response-schema validation, stable router ref, correct `DelayedLoader active={loading}`, and explicit auth/API/unexpected ErrorState + Retry. Not treated as a permanent Production-only server bug without a live hang after timeout; empty/error states remain truthful (no fabricated objectives).
+- Objectives loading anomaly — **client failure modes reproduced and hardened in PR preview; Production deployment pending merge** (2026-08-03, Draft PR [#80](https://github.com/Mianxai/MianX.ai/pull/80)).
+  - **Root cause:** (1) uncaught `fetch` throw left `loading` true without `finally`; (2) unstable router-dependent effect deps could retrigger loads; (3) `DelayedLoader` misuse; (4) missing unmount abort / stale-response guards.
+  - **Fix:** try/finally, named 30s `OBJECTIVES_FETCH_TIMEOUT_MS` abort, unmount abort without misleading errors, request-id stale protection, schema/invalid-JSON handling, ErrorState + single Retry.
+  - **Evidence:** `ObjectivesClient.test.jsx` lifecycle coverage (success/empty/HTTP/auth/JSON/schema/timeout/unmount/stale/retry). Empty/error states remain truthful (no fabricated objectives).
 
 ## Current blockers
 
@@ -145,7 +148,7 @@ live-tested AI agents.
 2. Provider not configured (`providerName: none`).
 3. Live switches not enabled; no Founder-authorized live pilot run.
 4. Documentation Stage 2+ refactor (README/roadmap split) not started.
-5. UI contradictions listed above need separate engineering work.
+5. Remaining UI debt: Workforce / Readiness / Workforce Ops overlap (out of PR #80 scope).
 
 ## Next operational milestone
 

@@ -272,7 +272,11 @@ export default function ProjectsPage() {
                       {p.status || "active"}
                     </span>
                   </div>
-                  <dl className="projects-ops-grid">
+                  <dl
+                    className="projects-ops-grid"
+                    aria-busy={loadState === "loading" ? "true" : "false"}
+                    aria-live="polite"
+                  >
                     <div>
                       <dt>Founder Proof</dt>
                       <dd
@@ -282,23 +286,35 @@ export default function ProjectsPage() {
                             : undefined
                         }
                         data-testid="projects-founder-proof"
+                        data-metric-kind={proofDisplay.kind}
                       >
                         {proofDisplay.label}
                       </dd>
                     </div>
                     <div>
                       <dt>Active objectives</dt>
-                      <dd data-testid="projects-active-objectives">
+                      <dd
+                        data-testid="projects-active-objectives"
+                        data-metric-kind={objectivesMetric.kind}
+                      >
                         {objectivesMetric.label}
                       </dd>
                     </div>
                     <div>
                       <dt>Assigned agents</dt>
-                      <dd data-testid="projects-assigned-agents">{agentsMetric.label}</dd>
+                      <dd
+                        data-testid="projects-assigned-agents"
+                        data-metric-kind={agentsMetric.kind}
+                      >
+                        {agentsMetric.label}
+                      </dd>
                     </div>
                     <div>
                       <dt>Open Founder actions</dt>
-                      <dd data-testid="projects-open-founder-actions">
+                      <dd
+                        data-testid="projects-open-founder-actions"
+                        data-metric-kind={actionsMetric.kind}
+                      >
                         {actionsMetric.label}
                       </dd>
                     </div>
@@ -312,7 +328,12 @@ export default function ProjectsPage() {
                     </div>
                     <div>
                       <dt>Runtime health</dt>
-                      <dd data-testid="projects-runtime-health">{healthMetric.label}</dd>
+                      <dd
+                        data-testid="projects-runtime-health"
+                        data-metric-kind={healthMetric.kind}
+                      >
+                        {healthMetric.label}
+                      </dd>
                     </div>
                   </dl>
                   {expanded && ops?.next_founder_action?.label ? (

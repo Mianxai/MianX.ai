@@ -177,6 +177,52 @@ describe("Projects page — Founder Proof truth consistency", () => {
     expect(screen.getByTestId("projects-runtime-health")).toHaveTextContent("Unavailable");
   });
 
+  it("displays zero metrics as 0, not Unavailable", async () => {
+    global.fetch = vi.fn(async (url) => {
+      if (url === "/api/core/projects") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            projects: [{ id: PROJECT_ID, name: "Zero Metrics", status: "active" }],
+          }),
+        };
+      }
+      if (String(url).includes("/api/admin/operations/summary")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            project_id: PROJECT_ID,
+            active_objective_count: 0,
+            assigned_agents_count: 0,
+            open_founder_actions: 0,
+            canonical_integration_run: null,
+            founder_proof_ui: {
+              state: "no_proof",
+              title: "No active Founder Proof",
+              caseId: "empty",
+            },
+            runtime_health: { provider: "not_configured", jobs_failed: 0 },
+          }),
+        };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    });
+
+    render(<ProjectsPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("projects-active-objectives")).toHaveTextContent("0");
+    });
+    expect(screen.getByTestId("projects-assigned-agents")).toHaveTextContent("0");
+    expect(screen.getByTestId("projects-open-founder-actions")).toHaveTextContent("0");
+    expect(screen.getByTestId("projects-active-objectives")).toHaveAttribute(
+      "data-metric-kind",
+      "ready"
+    );
+  });
+
   it("does not invent Founder Final Review approval or agent allocation", async () => {
     global.fetch = vi.fn(async (url) => {
       if (url === "/api/core/projects") {

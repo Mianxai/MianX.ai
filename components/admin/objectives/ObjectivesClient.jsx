@@ -15,7 +15,8 @@ import {
   hasActiveFounderProof,
 } from "@/lib/admin-ops-summary";
 
-const OBJECTIVES_FETCH_TIMEOUT_MS = 30_000;
+/** Named timeout for objectives list fetch (AbortController). */
+export const OBJECTIVES_FETCH_TIMEOUT_MS = 30_000;
 
 function isCancelledOrArchived(item) {
   const s = String(item?.status || item?.stage || item?.proof_status || "").toLowerCase();
@@ -69,12 +70,15 @@ async function api(path, options, router) {
   }
 }
 
-function normalizeObjectivesResponse(data) {
+export function normalizeObjectivesResponse(data) {
   if (data == null || typeof data !== "object" || Array.isArray(data)) {
     return {
       ok: false,
-      reason: "unexpected_response",
-      message: "Unexpected objectives response from the server.",
+      reason: data == null ? "invalid_json" : "unexpected_response",
+      message:
+        data == null
+          ? "Invalid or empty objectives JSON response."
+          : "Unexpected objectives response from the server.",
     };
   }
   if (data.objectives != null && !Array.isArray(data.objectives)) {
@@ -142,6 +146,18 @@ export default function ObjectivesClient() {
   });
   const [idempotencyKey, setIdempotencyKey] = useState(() => newIdempotencyKey());
 
+  const mountedRef = useRef(true);
+  const listRequestIdRef = useRef(0);
+  const listAbortRef = useRef(/** @type {AbortController|null} */ (null));
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      listAbortRef.current?.abort();
+    };
+  }, []);
+
   useEffect(() => {
     setShowAnalysisForm(false);
   }, [projectId]);
@@ -167,25 +183,45 @@ export default function ObjectivesClient() {
 
   const loadProjects = useCallback(async () => {
     const res = await call("/api/core/projects");
+    if (!mountedRef.current) return;
     if (res.ok) setProjects(res.data?.projects || []);
   }, [call]);
 
   const loadList = useCallback(async () => {
+    const requestId = ++listRequestIdRef.current;
+    listAbortRef.current?.abort();
     setLoading(true);
     setError("");
     setLoadFailureKind("");
     if (!projectId) {
+      if (requestId !== listRequestIdRef.current || !mountedRef.current) return;
       setList({ available: false, objectives: [] });
       setLoading(false);
       return;
     }
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), OBJECTIVES_FETCH_TIMEOUT_MS);
+    listAbortRef.current = controller;
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, OBJECTIVES_FETCH_TIMEOUT_MS);
     try {
       const res = await call(
         `/api/admin/objectives?project_id=${encodeURIComponent(projectId)}`,
         { signal: controller.signal }
       );
+      if (requestId !== listRequestIdRef.current || !mountedRef.current) {
+        return;
+      }
+      if (res.aborted) {
+        // Unmount / superseded abort: no misleading user error.
+        if (!timedOut) return;
+        setLoadFailureKind("timeout");
+        setError("Timed out loading objectives.");
+        setList(null);
+        return;
+      }
       if (res.authFailure) {
         setLoadFailureKind("auth");
         setError("Authentication required to load objectives.");
@@ -193,7 +229,7 @@ export default function ObjectivesClient() {
         return;
       }
       if (!res.ok) {
-        setLoadFailureKind(res.aborted ? "timeout" : "api");
+        setLoadFailureKind("api");
         setError(
           res.error ||
             res.data?.error?.message ||
@@ -204,30 +240,36 @@ export default function ObjectivesClient() {
       }
       const normalized = normalizeObjectivesResponse(res.data);
       if (!normalized.ok) {
-        setLoadFailureKind("unexpected_response");
+        setLoadFailureKind(
+          normalized.reason === "invalid_json" ? "invalid_json" : "unexpected_response"
+        );
         setError(normalized.message);
         setList(null);
         return;
       }
       setList(normalized.value);
     } catch (err) {
+      if (requestId !== listRequestIdRef.current || !mountedRef.current) return;
       setLoadFailureKind("api");
       setError(err?.message || "Failed to load objectives");
       setList(null);
     } finally {
       clearTimeout(timer);
-      setLoading(false);
+      if (requestId === listRequestIdRef.current && mountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [call, projectId]);
 
   const loadDetail = useCallback(async () => {
     if (!projectId || !selectedId) {
-      setDetail(null);
+      if (mountedRef.current) setDetail(null);
       return;
     }
     const res = await call(
       `/api/admin/objectives/${selectedId}?project_id=${projectId}`
     );
+    if (!mountedRef.current) return;
     if (res.ok) setDetail(res.data);
     else setDetail(null);
   }, [call, projectId, selectedId]);
@@ -509,9 +551,12 @@ export default function ObjectivesClient() {
                 title={
                   loadFailureKind === "auth"
                     ? "Authentication required"
-                    : loadFailureKind === "unexpected_response"
-                      ? "Unexpected response"
-                      : "Could not load objectives"
+                    : loadFailureKind === "timeout"
+                      ? "Request timed out"
+                      : loadFailureKind === "invalid_json" ||
+                          loadFailureKind === "unexpected_response"
+                        ? "Unexpected response"
+                        : "Could not load objectives"
                 }
                 message={error || "The objectives panel could not finish loading."}
                 onRetry={loadFailureKind === "auth" ? null : () => loadList()}
