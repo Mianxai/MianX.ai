@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import EmptyState from "@/components/admin/EmptyState";
+import ErrorState from "@/components/admin/ErrorState";
 import DelayedLoader from "@/components/shared/DelayedLoader";
-import MianxLoader from "@/components/shared/MianxLoader";
 import StatusChip from "@/components/admin/command-center/StatusChip";
 import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
@@ -14,6 +14,9 @@ import {
   useProjectOperationalSummary,
   hasActiveFounderProof,
 } from "@/lib/admin-ops-summary";
+
+/** Named timeout for objectives list fetch (AbortController). */
+export const OBJECTIVES_FETCH_TIMEOUT_MS = 30_000;
 
 function isCancelledOrArchived(item) {
   const s = String(item?.status || item?.stage || item?.proof_status || "").toLowerCase();
@@ -33,21 +36,66 @@ function isPrimaryProductionProof(item) {
 }
 
 async function api(path, options, router) {
-  const res = await fetch(path, {
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    ...options,
-  });
-  if (res.status === 401) {
-    router?.push(currentAdminLoginHref("/admin/objectives"));
-    return { ok: false, status: 401, data: null };
-  }
-  let data = null;
   try {
-    data = await res.json();
-  } catch {
-    data = null;
+    const res = await fetch(path, {
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      ...options,
+    });
+    if (res.status === 401) {
+      router?.push(currentAdminLoginHref("/admin/objectives"));
+      return { ok: false, status: 401, data: null, authFailure: true };
+    }
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+    return { ok: res.ok, status: res.status, data, authFailure: false };
+  } catch (err) {
+    const aborted =
+      err?.name === "AbortError" ||
+      String(err?.message || "").toLowerCase().includes("abort");
+    return {
+      ok: false,
+      status: 0,
+      data: null,
+      authFailure: false,
+      networkError: true,
+      aborted,
+      error: aborted
+        ? "Timed out loading objectives."
+        : err?.message || "Network error while loading objectives.",
+    };
   }
-  return { ok: res.ok, status: res.status, data };
+}
+
+export function normalizeObjectivesResponse(data) {
+  if (data == null || typeof data !== "object" || Array.isArray(data)) {
+    return {
+      ok: false,
+      reason: data == null ? "invalid_json" : "unexpected_response",
+      message:
+        data == null
+          ? "Invalid or empty objectives JSON response."
+          : "Unexpected objectives response from the server.",
+    };
+  }
+  if (data.objectives != null && !Array.isArray(data.objectives)) {
+    return {
+      ok: false,
+      reason: "unexpected_response",
+      message: "Unexpected objectives response schema.",
+    };
+  }
+  return {
+    ok: true,
+    value: {
+      ...data,
+      available: data.available !== false,
+      objectives: Array.isArray(data.objectives) ? data.objectives : [],
+    },
+  };
 }
 
 function newIdempotencyKey() {
@@ -70,6 +118,8 @@ const PROTECTED_OPTIONS = [
 
 export default function ObjectivesClient() {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
   const selectedId = searchParams?.get("id") || "";
@@ -82,6 +132,7 @@ export default function ObjectivesClient() {
   const [list, setList] = useState(null);
   const [detail, setDetail] = useState(null);
   const [error, setError] = useState("");
+  const [loadFailureKind, setLoadFailureKind] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showCancelled, setShowCancelled] = useState(false);
@@ -95,56 +146,130 @@ export default function ObjectivesClient() {
   });
   const [idempotencyKey, setIdempotencyKey] = useState(() => newIdempotencyKey());
 
+  const mountedRef = useRef(true);
+  const listRequestIdRef = useRef(0);
+  const listAbortRef = useRef(/** @type {AbortController|null} */ (null));
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      listAbortRef.current?.abort();
+    };
+  }, []);
+
   useEffect(() => {
     setShowAnalysisForm(false);
   }, [projectId]);
 
-  const call = useCallback((path, options) => api(path, options, router), [router]);
+  const call = useCallback(
+    (path, options) => api(path, options, routerRef.current),
+    []
+  );
 
+  const searchParamsKey = searchParams?.toString() || "";
   const replaceParams = useCallback(
     (patch) => {
-      const next = new URLSearchParams(searchParams?.toString() || "");
+      const next = new URLSearchParams(searchParamsKey);
       for (const [k, v] of Object.entries(patch)) {
         if (v == null || v === "") next.delete(k);
         else next.set(k, v);
       }
       const qs = next.toString();
-      router.replace(qs ? `/admin/objectives?${qs}` : "/admin/objectives");
+      routerRef.current.replace(qs ? `/admin/objectives?${qs}` : "/admin/objectives");
     },
-    [router, searchParams]
+    [searchParamsKey]
   );
 
   const loadProjects = useCallback(async () => {
     const res = await call("/api/core/projects");
+    if (!mountedRef.current) return;
     if (res.ok) setProjects(res.data?.projects || []);
   }, [call]);
 
   const loadList = useCallback(async () => {
+    const requestId = ++listRequestIdRef.current;
+    listAbortRef.current?.abort();
     setLoading(true);
     setError("");
+    setLoadFailureKind("");
     if (!projectId) {
+      if (requestId !== listRequestIdRef.current || !mountedRef.current) return;
       setList({ available: false, objectives: [] });
       setLoading(false);
       return;
     }
-    const res = await call(`/api/admin/objectives?project_id=${projectId}`);
-    if (!res.ok) {
-      setError(res.data?.error?.message || "Failed to load objectives");
+    const controller = new AbortController();
+    listAbortRef.current = controller;
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, OBJECTIVES_FETCH_TIMEOUT_MS);
+    try {
+      const res = await call(
+        `/api/admin/objectives?project_id=${encodeURIComponent(projectId)}`,
+        { signal: controller.signal }
+      );
+      if (requestId !== listRequestIdRef.current || !mountedRef.current) {
+        return;
+      }
+      if (res.aborted) {
+        // Unmount / superseded abort: no misleading user error.
+        if (!timedOut) return;
+        setLoadFailureKind("timeout");
+        setError("Timed out loading objectives.");
+        setList(null);
+        return;
+      }
+      if (res.authFailure) {
+        setLoadFailureKind("auth");
+        setError("Authentication required to load objectives.");
+        setList(null);
+        return;
+      }
+      if (!res.ok) {
+        setLoadFailureKind("api");
+        setError(
+          res.error ||
+            res.data?.error?.message ||
+            "Failed to load objectives"
+        );
+        setList(null);
+        return;
+      }
+      const normalized = normalizeObjectivesResponse(res.data);
+      if (!normalized.ok) {
+        setLoadFailureKind(
+          normalized.reason === "invalid_json" ? "invalid_json" : "unexpected_response"
+        );
+        setError(normalized.message);
+        setList(null);
+        return;
+      }
+      setList(normalized.value);
+    } catch (err) {
+      if (requestId !== listRequestIdRef.current || !mountedRef.current) return;
+      setLoadFailureKind("api");
+      setError(err?.message || "Failed to load objectives");
       setList(null);
-    } else {
-      setList(res.data);
+    } finally {
+      clearTimeout(timer);
+      if (requestId === listRequestIdRef.current && mountedRef.current) {
+        setLoading(false);
+      }
     }
-    setLoading(false);
   }, [call, projectId]);
 
   const loadDetail = useCallback(async () => {
     if (!projectId || !selectedId) {
-      setDetail(null);
+      if (mountedRef.current) setDetail(null);
       return;
     }
     const res = await call(
       `/api/admin/objectives/${selectedId}?project_id=${projectId}`
     );
+    if (!mountedRef.current) return;
     if (res.ok) setDetail(res.data);
     else setDetail(null);
   }, [call, projectId, selectedId]);
@@ -394,12 +519,21 @@ export default function ObjectivesClient() {
             ) : null}
           </section>
 
-          <section className="cc-card" aria-labelledby="obj-list-h">
+          <section
+            className="cc-card"
+            aria-labelledby="obj-list-h"
+            data-testid="obj-list-panel"
+            data-loading={loading ? "true" : "false"}
+            data-failure-kind={loadFailureKind || undefined}
+          >
             <h2 id="obj-list-h">Project objectives</h2>
             {loading ? (
-              <DelayedLoader delayMs={150}>
-                <MianxLoader variant="inline" label="Loading…" />
-              </DelayedLoader>
+              <DelayedLoader
+                active={loading}
+                variant="inline"
+                label="Loading…"
+                region={false}
+              />
             ) : !projectId ? (
               <EmptyState
                 title="No project selected"
@@ -412,14 +546,31 @@ export default function ObjectivesClient() {
                   </Link>
                 }
               />
-            ) : objectives.length === 0 ? (
-              <EmptyState
-                title="No objectives yet"
-                reason="This project has no Founder objectives recorded — the list is empty, not seeded with sample rows."
-                configuration="Analysis-only by default; protected actions stay Founder-gated."
-                nextAction="Use the form to start an objective for this project."
-                projectLabel={projectId}
+            ) : loadFailureKind ? (
+              <ErrorState
+                title={
+                  loadFailureKind === "auth"
+                    ? "Authentication required"
+                    : loadFailureKind === "timeout"
+                      ? "Request timed out"
+                      : loadFailureKind === "invalid_json" ||
+                          loadFailureKind === "unexpected_response"
+                        ? "Unexpected response"
+                        : "Could not load objectives"
+                }
+                message={error || "The objectives panel could not finish loading."}
+                onRetry={loadFailureKind === "auth" ? null : () => loadList()}
               />
+            ) : objectives.length === 0 ? (
+              <div data-testid="obj-empty-state">
+                <EmptyState
+                  title="No objectives yet"
+                  reason="This project has no Founder objectives recorded — the list is empty, not seeded with sample rows."
+                  configuration="Analysis-only by default; protected actions stay Founder-gated."
+                  nextAction="Use the form to start an objective for this project."
+                  projectLabel={projectId}
+                />
+              </div>
             ) : (
               <ul className="obj-list">
                 {objectives.map((o) => {
