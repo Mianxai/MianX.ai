@@ -1,21 +1,27 @@
 ---
 title: MianX.ai Enterprise Documentation
 subtitle: Complete Enterprise AI Operating System Documentation
-version: 2.0.0
-status: Production Ready
+version: 2.1.0
+document_status: review
+documentation_scope_status: enterprise-draft-complete
+implementation_status: partial
+production_status: pilot
+verification_status: partially_verified
 classification: Internal
 owner: MianX.ai
 maintainer: MianX.ai Core Team
 created: 2026-07-04
-updated: 2026-07-28
-documentation-version: Enterprise v2
+updated: 2026-08-03
 documentation-type: Master Documentation Portal
 reading-time: 60+ Minutes
+canonical_final_document_marker: README Completion Status
 ---
 
 # MianX.ai Enterprise Documentation
 
 > **The official documentation portal for the MianX.ai Enterprise AI Operating System, AI Workforce, Platform Architecture, Engineering Standards, Business Systems, and Enterprise Knowledge Base.**
+
+> **Stage 1 current-state notice (2026-08-03):** MianX.ai is in **Stage 1 — Foundation and Core Platform**, with a controlled **Stage 2 one-agent pilot** path only. This portal is an enterprise **documentation draft**. **Documentation complete does not mean the system is fully implemented or Production-operational.** There are **not** 445 active or live-tested agents. Provider remains **none**; Founder Final Review remains **unapproved**. See [CURRENT-STATE.md](./CURRENT-STATE.md), [DOCUMENT-STATUS-REGISTRY.md](./DOCUMENT-STATUS-REGISTRY.md), and [CANONICAL-DOCUMENT-MAP.md](./CANONICAL-DOCUMENT-MAP.md). Refactor plan: [DOCUMENTATION-REFACTOR-PLAN.md](./DOCUMENTATION-REFACTOR-PLAN.md).
 
 ---
 
@@ -23,7 +29,7 @@ reading-time: 60+ Minutes
 
 Welcome to the official documentation repository of **MianX.ai**.
 
-This documentation represents the complete knowledge base of the MianX.ai platform.
+This documentation represents the enterprise knowledge base and planning corpus for the MianX.ai platform. Large sections describe **target architecture and future state**. Always verify software maturity against [CURRENT-STATE.md](./CURRENT-STATE.md) before treating a capability as implemented or operational.
 
 It is the single source of truth for everything related to:
 
@@ -284,11 +290,18 @@ The following sections describe every documentation domain in detail.
 
 | Item | Value |
 |------|-------|
-| Documentation Version | 2.0.0 |
-| Repository Status | Production Ready |
-| Architecture | Enterprise AI Operating System |
-| Documentation Scope | Complete Enterprise Platform |
+| Documentation Version | 2.1.0 |
+| document_status | review |
+| documentation_scope_status | enterprise-draft-complete |
+| implementation_status | partial |
+| production_status | pilot |
+| verification_status | partially_verified |
+| Architecture (target narrative) | Enterprise AI Operating System |
+| Documentation Scope | Enterprise portal draft (not split in Stage 1) |
 | Maintainer | MianX.ai Core Team |
+| Canonical truth links | CURRENT-STATE · DOCUMENT-STATUS-REGISTRY · CANONICAL-DOCUMENT-MAP |
+
+**Note:** `documentation_scope_status: enterprise-draft-complete` means the portal draft’s intended section coverage is present as documentation. It does **not** mean every described subsystem is implemented, live-tested, or operational in Production.
 
 ---
 
@@ -11576,6 +11589,10 @@ By combining modular architecture, enterprise standards, AI-native design, reusa
 
 # README Completion Status
 
+> **Canonical final document marker for this portal draft.**  
+> “ENTERPRISE COMPLETE” below means **documentation draft section coverage**, not that MianX.ai is a fully operational Enterprise AI Operating System, not that 445 agents are active/live-tested, and not that future products (Marketplace, RestaurantOS, PoultryOS, global expansion) are Production-ready.  
+> Oversized structure and any duplicate trailing patterns are **Stage 2 refactor debt** ([DOCUMENTATION-REFACTOR-PLAN.md](./DOCUMENTATION-REFACTOR-PLAN.md)) — content is preserved, not silently deleted in Stage 1.
+
 ```text
 Part 01  Front Matter & Vision                         ✅
 Part 02  Documentation Architecture                   ✅
@@ -11591,3 +11608,5 @@ Part 11  Enterprise Glossary                          ✅
 Part 12  Acronyms & References                        ✅
 
 Repository README Status                              ✅ ENTERPRISE COMPLETE
+(documentation draft coverage — not full system operational readiness)
+```

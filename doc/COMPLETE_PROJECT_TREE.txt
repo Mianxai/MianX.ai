@@ -1,3 +1,7 @@
+# CLASSIFICATION (Stage 1): generated artifact · repository inventory snapshot ·
+# point-in-time evidence · NON-CANONICAL · regenerable · subject to staleness.
+# Not an authoritative architecture or policy source. See doc/CANONICAL-DOCUMENT-MAP.md
+# and doc/DOCUMENT-STATUS-REGISTRY.md.
 .
 ├── 01-governance
 │   ├── AI-CONSTITUTION.md

@@ -2,9 +2,14 @@
 id: ROADMAP-000
 title: MianX.ai Complete Enterprise Roadmap
 subtitle: Master Execution Blueprint for Building the MianX.ai Enterprise AI Operating System
-version: 1.0.0
+version: 1.0.1
 status: Master Planning
-
+document_status: review
+master_planning_status: active
+implementation_status: partial
+production_status: unavailable
+verification_status: partially_verified
+authority_status: proposed
 classification: Enterprise Confidential
 
 owner:
@@ -18,7 +23,7 @@ reviewers:
   - AI Workforce Leadership
 
 created: 2026-08-02
-updated: 2026-08-02
+updated: 2026-08-03
 
 repository: MianX.ai
 document: complete-roadmap.md
@@ -30,11 +35,32 @@ tags:
   - master-blueprint
   - execution
   - strategy
+  - planned-future-state
 ---
 
 # MianX.ai Complete Enterprise Roadmap
 
 > **The Complete Enterprise Roadmap is the highest-level execution document of the MianX.ai ecosystem. It defines how MianX.ai evolves from an idea into a world-class Enterprise AI Operating System capable of building, operating, and continuously improving intelligent companies.**
+
+## Stage 1 navigation (truth baseline)
+
+| Link | Purpose |
+|------|---------|
+| [CURRENT-STATE.md](./CURRENT-STATE.md) | Verified Production / implementation baseline |
+| [DOCUMENT-STATUS-REGISTRY.md](./DOCUMENT-STATUS-REGISTRY.md) | Documentation vs implementation vs Production statuses |
+| [CANONICAL-DOCUMENT-MAP.md](./CANONICAL-DOCUMENT-MAP.md) | Ownership and authority hierarchy |
+| [DOCUMENTATION-REFACTOR-PLAN.md](./DOCUMENTATION-REFACTOR-PLAN.md) | Future controlled split phases (not executed here) |
+
+### Current baseline notice
+
+- **Current enterprise stage:** Stage 1 — Foundation and Core Platform.
+- **Parallel work:** Stage 2 one-agent pilot foundation may proceed in parallel, but **Stage 2 cannot be declared complete before Stage 1 exit criteria**.
+- **Long-term sections in this file** (later stages, industry products, marketplace, global expansion, full AI OS maturity) are **planned future state**, not verified operational claims.
+- **Elapsed calendar time does not complete a stage.**
+- **Documentation or planning completeness does not equal implemented or operational software.**
+- Software counters (agents, provider, Founder Proof) must be read from [CURRENT-STATE.md](./CURRENT-STATE.md).
+
+This Stage 1 update does **not** split, move, or remove roadmap body content.
 
 ---
 
