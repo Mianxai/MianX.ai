@@ -21,7 +21,7 @@ canonical_final_document_marker: README Completion Status
 
 > **The official documentation portal for the MianX.ai Enterprise AI Operating System, AI Workforce, Platform Architecture, Engineering Standards, Business Systems, and Enterprise Knowledge Base.**
 
-> **Stage 1 current-state notice (2026-08-03):** MianX.ai is in **Stage 1 — Foundation and Core Platform**, with a controlled **Stage 2 one-agent pilot** path only. This portal is an enterprise **documentation draft**. **Documentation complete does not mean the system is fully implemented or Production-operational.** There are **not** 445 active or live-tested agents. Provider remains **none**; Founder Final Review remains **unapproved**. See [CURRENT-STATE.md](./CURRENT-STATE.md), [DOCUMENT-STATUS-REGISTRY.md](./DOCUMENT-STATUS-REGISTRY.md), and [CANONICAL-DOCUMENT-MAP.md](./CANONICAL-DOCUMENT-MAP.md). Refactor plan: [DOCUMENTATION-REFACTOR-PLAN.md](./DOCUMENTATION-REFACTOR-PLAN.md).
+> **Stage 1 current-state notice (2026-08-03):** MianX.ai is currently in Stage 1 — Foundation and Core Platform, with a controlled Stage 2 one-agent pilot. It is not yet a fully operational Enterprise AI Operating System and does not yet have 445 active or live-tested AI agents. This portal is an enterprise **documentation draft**. **Documentation complete does not mean the system is fully implemented or Production-operational.** Provider remains **none**; Founder Final Review remains **unapproved**. See [CURRENT-STATE.md](./CURRENT-STATE.md), [DOCUMENT-STATUS-REGISTRY.md](./DOCUMENT-STATUS-REGISTRY.md), and [CANONICAL-DOCUMENT-MAP.md](./CANONICAL-DOCUMENT-MAP.md). Refactor plan: [DOCUMENTATION-REFACTOR-PLAN.md](./DOCUMENTATION-REFACTOR-PLAN.md).
 
 ---
 
