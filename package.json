@@ -18,6 +18,7 @@
     "test:e2e:perf": "playwright test e2e/admin-perf.spec.js",
     "test:e2e:responsive": "playwright test e2e/admin-responsive.spec.js",
     "typecheck": "tsc -p jsconfig.json --noEmit",
+    "verify:docs:stage1": "node scripts/verify-docs-canonicalization-stage1.mjs",
     "verify:navbar": "node scripts/verify-navbar-geometry.mjs",
     "verify:browser": "node scripts/verify-browser-harness.mjs",
     "runtime:tick": "node scripts/runtime-tick.mjs",
