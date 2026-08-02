@@ -38,18 +38,18 @@ export const ADMIN_NAV_GROUPS = [
     items: [
       {
         href: "/admin/workforce-activation",
-        label: "Workforce",
+        label: "Workforce Setup",
         match: "prefix",
         icon: "network",
       },
       {
         href: "/admin/workforce-readiness",
-        label: "Readiness detail",
+        label: "Readiness",
         match: "prefix",
         icon: "network",
       },
       { href: "/admin/agents", label: "Agents", match: "prefix", icon: "network" },
-      { href: "/admin/workforce", label: "Workforce ops", match: "prefix", icon: "runtime" },
+      { href: "/admin/workforce", label: "Workforce Ops", match: "prefix", icon: "runtime" },
       { href: "/admin/departments", label: "Departments", match: "prefix", icon: "departments" },
       { href: "/admin/workflows", label: "Workflows", match: "prefix", icon: "workflows" },
       { href: "/admin/schedule", label: "Schedule", match: "prefix", icon: "schedule" },

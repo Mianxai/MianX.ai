@@ -5,6 +5,7 @@ import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import StatusBadge from "@/components/admin/StatusBadge";
+import { formatWorkforceMetric } from "@/lib/core/workforce-i2/terminology.js";
 
 const CONFIRM_PHRASE = "BOOTSTRAP 445";
 
@@ -198,21 +199,45 @@ export default function WorkforceActivationClient() {
   }, [checks, verify, bootstrapComplete, bp, providerConfigured]);
 
   const metricCards = [
-    { label: "Capacity seats", value: 445, testId: "wa-capacity" },
-    { label: "Compiled seats", value: capacity.compiledSeats ?? 445, testId: "wa-compiled" },
+    {
+      label: "Capacity seats",
+      value: formatWorkforceMetric(445).label,
+      testId: "wa-capacity",
+    },
+    {
+      label: "Compiled seats",
+      value: formatWorkforceMetric(capacity.compiledSeats ?? 445).label,
+      testId: "wa-compiled",
+    },
     {
       label: "Persisted in database",
-      value: Number.isFinite(persistedSeats) ? persistedSeats : "n/a",
+      value: formatWorkforceMetric(
+        Number.isFinite(persistedSeats) ? persistedSeats : null
+      ).label,
       testId: "wa-persisted",
     },
-    { label: "Ready to allocate", value: readySeats, testId: "wa-ready" },
-    { label: "Allocated", value: capacity.allocated ?? 0, testId: "wa-allocated" },
+    {
+      label: "Ready to allocate",
+      value: formatWorkforceMetric(readySeats).label,
+      testId: "wa-ready",
+    },
+    {
+      label: "Allocated",
+      value: formatWorkforceMetric(capacity.allocated ?? 0).label,
+      testId: "wa-allocated",
+    },
     {
       label: "Active instances",
-      value: verify.activeInstances ?? data?.verify?.activeInstances ?? 0,
+      value: formatWorkforceMetric(
+        verify.activeInstances ?? data?.verify?.activeInstances ?? 0
+      ).label,
       testId: "wa-active",
     },
-    { label: "Live tested", value: data?.liveTested ?? 0, testId: "wa-live-tested" },
+    {
+      label: "Live tested",
+      value: formatWorkforceMetric(data?.liveTested ?? 0).label,
+      testId: "wa-live-tested",
+    },
     {
       label: "Departments",
       value: bp?.departmentCount ?? 20,
@@ -293,8 +318,8 @@ export default function WorkforceActivationClient() {
   return shell(
     <>
       <PageHeader
-        title="Workforce Setup"
         description="Foundation status for the 445-seat capacity registry. Capacity seats are allocatable slots — not always-on agents."
+        howThisWorks="Owns: enterprise capacity inventory, persisted seat bootstrap, foundation checklist. Does not prove: allocation, active instances, live-tested agents, or a configured AI provider. Ready to allocate ≠ active."
       />
       <div className="wa-header-meta" data-testid="wa-foundation-badge-row">
         <StatusBadge tone={bootstrapComplete ? "healthy" : "warning"}>

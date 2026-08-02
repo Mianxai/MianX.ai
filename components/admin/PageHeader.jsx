@@ -39,7 +39,7 @@ export default function PageHeader({
               <ScopeBadge scope={scope} label={scopeLabel} />
             </div>
           ) : null}
-          <h1 className="admin-page-title">{title}</h1>
+          {title ? <h1 className="admin-page-title">{title}</h1> : null}
           {description ? <p className="admin-page-lede cc-muted">{description}</p> : null}
           {howThisWorks ? (
             <p className="admin-page-how cc-muted" data-testid="page-how-this-works">

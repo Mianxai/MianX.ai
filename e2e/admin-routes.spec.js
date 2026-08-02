@@ -153,13 +153,14 @@ test.describe("admin authenticated route sweep", () => {
     await expect(page.getByText(/nothing executes/i).first()).toBeVisible();
   });
 
-  test("Workforce ops page loads dashboard", async ({ page }) => {
+  test("Workforce Ops page loads dashboard", async ({ page }) => {
     await page.goto("/admin/workforce");
     await expect(page).toHaveURL(/\/admin\/workforce/);
-    await expect(page.getByRole("heading", { name: /real autonomous workforce/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^workforce ops$/i })).toBeVisible();
     await expect(
       page.getByRole("navigation", { name: /primary/i }).getByRole("link", { name: /workforce ops/i })
     ).toHaveCount(1);
+    await expect(page.getByTestId("page-how-this-works")).toBeVisible();
 
     const dashboard = page.getByTestId("workforce-dashboard");
     await expect(dashboard).toBeVisible();
@@ -188,10 +189,16 @@ test.describe("admin authenticated route sweep", () => {
   test("Workforce Setup uses AdminShell without duplicated numbering", async ({ page }) => {
     await page.goto("/admin/workforce-activation");
     await expect(page.getByTestId("workforce-activation")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^workforce setup$/i })).toBeVisible();
+    await expect(page.getByTestId("page-how-this-works")).toContainText(/Does not prove/i);
     await expect(page.locator("aside.admin-sidebar, [aria-label='Admin navigation']").first()).toBeVisible();
     await expect(page.locator("#main-content")).toBeVisible();
     await expect(page.getByTestId("wa-persisted")).toContainText("445");
     await expect(page.getByTestId("wa-ready")).toContainText("445");
+    await expect(page.getByTestId("wa-allocated")).toContainText("0");
+    await expect(page.getByTestId("wa-active")).toContainText("0");
+    await expect(page.getByTestId("wa-live-tested")).toContainText("0");
+    await expect(page.getByText(/445 active agents/i)).toHaveCount(0);
     await expect(page.getByTestId("wa-open-bootstrap")).toBeDisabled();
     await expect(page.getByTestId("wa-open-bootstrap")).toContainText(/Bootstrap complete/i);
     await expect(page.getByTestId("wa-run-idempotency")).toBeEnabled();
@@ -207,10 +214,16 @@ test.describe("admin authenticated route sweep", () => {
   test("Workforce Readiness uses AdminShell with foundation vs live split", async ({ page }) => {
     await page.goto("/admin/workforce-readiness");
     await expect(page.getByTestId("workforce-readiness")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /workforce readiness/i })).toBeVisible();
+    await expect(page.getByTestId("page-how-this-works")).toContainText(/Does not prove/i);
     await expect(page.locator("aside.admin-sidebar, [aria-label='Admin navigation']").first()).toBeVisible();
     await expect(page.getByTestId("wr-compiled")).toContainText("445");
     await expect(page.getByTestId("wr-compiled")).not.toContainText("92");
     await expect(page.getByTestId("wr-persisted")).toContainText("445");
+    await expect(page.getByTestId("wr-ready")).toContainText("445");
+    await expect(page.getByTestId("wr-allocated")).toContainText("0");
+    await expect(page.getByTestId("wr-active")).toContainText("0");
+    await expect(page.getByTestId("wr-live-tested")).toContainText("0");
     await expect(page.getByTestId("wr-catalogue-entries")).toContainText("43");
     await expect(page.getByTestId("wr-executable-count")).toContainText("38");
     await expect(page.getByTestId("wr-named-role-registry")).toContainText("92");
@@ -218,6 +231,7 @@ test.describe("admin authenticated route sweep", () => {
     await expect(page.getByTestId("wr-live-exec")).toContainText("false");
     await expect(page.getByTestId("wr-run-readiness-check")).toContainText(/Refresh Foundation Readiness/i);
     await expect(page.getByText(/Anthropic provider/i)).toHaveCount(0);
+    await expect(page.getByText(/445 active agents/i)).toHaveCount(0);
   });
 });
 

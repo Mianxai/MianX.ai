@@ -16,6 +16,7 @@ import {
 } from "@/lib/admin-ops-summary";
 import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import { normalizeCapacityTruth } from "@/lib/core/workforce-i2/ui-truth";
+import { formatWorkforceMetric } from "@/lib/core/workforce-i2/terminology.js";
 
 const TABS = [
   { id: "dashboard", label: "Dashboard" },
@@ -181,7 +182,7 @@ export default function WorkforceClient() {
   const statusCards = [
     {
       label: "Compiled seats",
-      value: capacityTruth.compiledSeats,
+      value: formatWorkforceMetric(capacityTruth.compiledSeats).label,
       testId: "wf-card-capacity-seats",
     },
     {
@@ -191,52 +192,62 @@ export default function WorkforceClient() {
     },
     {
       label: "Ready to Allocate",
-      value: capacityTruth.readyToAllocate,
+      value: formatWorkforceMetric(capacityTruth.readyToAllocate).label,
       testId: "wf-card-ready-to-allocate",
     },
     {
       label: "Allocated",
-      value: capacityTruth.allocated || assignedCount,
+      value: formatWorkforceMetric(
+        capacityTruth.allocated || assignedCount
+      ).label,
       testId: "wf-card-allocated",
     },
     {
       label: "Active",
-      value: capacityTruth.active || counts.busy || 0,
+      value: formatWorkforceMetric(
+        capacityTruth.active || counts.busy || 0
+      ).label,
       testId: "wf-card-active",
     },
     {
       label: "Waiting",
-      value: counts.waiting ?? 0,
+      value: formatWorkforceMetric(counts.waiting ?? 0).label,
       testId: "wf-card-waiting",
     },
     {
       label: "Reviewing",
-      value: counts.review ?? capacityTruth.reviewing,
+      value: formatWorkforceMetric(
+        counts.review ?? capacityTruth.reviewing
+      ).label,
       testId: "wf-card-reviewing",
     },
     {
       label: "Blocked",
-      value: capacityTruth.blocked || counts.blocked || 0,
+      value: formatWorkforceMetric(
+        capacityTruth.blocked || counts.blocked || 0
+      ).label,
       testId: "wf-card-blocked",
     },
     {
       label: "Released",
-      value: capacityTruth.released || counts.completed || 0,
+      value: formatWorkforceMetric(
+        capacityTruth.released || counts.completed || 0
+      ).label,
       testId: "wf-card-released",
     },
     {
       label: "Live Tested",
-      value: capacityTruth.liveTested,
+      value: formatWorkforceMetric(capacityTruth.liveTested).label,
       testId: "wf-card-live-tested",
     },
     {
       label: "Runtime definitions (not all seats)",
-      value: executableCount,
+      value: formatWorkforceMetric(executableCount).label,
       testId: "wf-card-executable",
     },
     {
       label: "Current proof assignment",
-      value: assignedCount,
+      value: formatWorkforceMetric(assignedCount).label,
       testId: "wf-card-proof-assignment",
     },
     {
@@ -248,10 +259,10 @@ export default function WorkforceClient() {
 
   return (
     <AdminShell
-      title="Workforce ops"
+      title="Workforce Ops"
       breadcrumbs={[
         { href: "/admin", label: "Admin" },
-        { label: "Workforce ops" },
+        { label: "Workforce Ops" },
       ]}
       actions={
         <ProjectPicker
@@ -263,8 +274,8 @@ export default function WorkforceClient() {
       }
     >
       <PageHeader
-        title="Real Autonomous Workforce"
-        description="445 capacity seats are allocatable workforce capacity — not 445 always-on agents. Live Tested stays 0 until controlled provider evidence. Runtime definitions are a smaller executable subset. No auto Founder approval. No paid provider in simulation."
+        description="Runtime operational status and simulation controls for the selected project scope. Capacity seats shown here are inventory truth — not proof that agents are active or live-tested."
+        howThisWorks="Owns: runtime health, queued/running work, simulation evidence. Does not own: static enterprise seat bootstrap. Provider remains none until configured; liveExecutionReady stays false without gated live activation. Allocated/active/live-tested must not be implied from the 445 capacity figure."
       />
       <FounderActionBanner summary={opsSummary} projectId={projectId} />
 

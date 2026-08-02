@@ -5,6 +5,7 @@ import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import StatusBadge from "@/components/admin/StatusBadge";
+import { formatWorkforceMetric } from "@/lib/core/workforce-i2/terminology.js";
 
 function MetricCard({ label, value, testId, hint }) {
   return (
@@ -105,7 +106,7 @@ export default function WorkforceReadinessClient() {
       breadcrumbs={[
         { href: "/admin", label: "Admin" },
         { href: "/admin/workforce-activation", label: "Workforce Setup" },
-        { label: "Readiness detail" },
+        { label: "Readiness" },
       ]}
     >
       <div className="admin-page wa-page" data-testid="workforce-readiness">
@@ -115,46 +116,60 @@ export default function WorkforceReadinessClient() {
   );
 
   if (error) {
-    return shell(<p role="alert">{error}</p>);
+    return shell(
+      <div className="admin-error-state" role="alert">
+        <h2>Readiness unavailable</h2>
+        <p>{error}</p>
+        <button type="button" className="btn btn-secondary" onClick={() => load()}>
+          Retry
+        </button>
+      </div>
+    );
   }
   if (!data || !real) {
-    return shell(<p className="cc-muted">Loading workforce readiness…</p>);
+    return shell(
+      <p className="cc-muted" aria-busy="true" aria-live="polite">
+        Loading workforce readiness…
+      </p>
+    );
   }
 
   const capacityMetrics = [
     {
       label: "Documented / capacity seats",
-      value: foundation.capacitySeats ?? "—",
+      value: formatWorkforceMetric(foundation.capacitySeats).label,
       testId: "wr-capacity",
     },
     {
       label: "Compiled seats",
-      value: foundation.compiledSeats ?? "—",
+      value: formatWorkforceMetric(foundation.compiledSeats).label,
       testId: "wr-compiled",
     },
     {
       label: "Persisted seats",
-      value: foundation.persistedSeats ?? "n/a",
+      value: formatWorkforceMetric(foundation.persistedSeats).label,
       testId: "wr-persisted",
     },
     {
       label: "Ready to allocate",
-      value: foundation.readyToAllocateSeats ?? 0,
+      value: formatWorkforceMetric(foundation.readyToAllocateSeats ?? 0).label,
       testId: "wr-ready",
     },
     {
       label: "Allocated seats",
-      value: foundation.allocatedSeats ?? 0,
+      value: formatWorkforceMetric(foundation.allocatedSeats ?? 0).label,
       testId: "wr-allocated",
     },
     {
       label: "Active instances",
-      value: foundation.activeInstances ?? 0,
+      value: formatWorkforceMetric(foundation.activeInstances ?? 0).label,
       testId: "wr-active",
     },
     {
       label: "Live-tested seats",
-      value: foundation.liveTestedSeats ?? readiness?.live_tested ?? 0,
+      value: formatWorkforceMetric(
+        foundation.liveTestedSeats ?? readiness?.live_tested ?? 0
+      ).label,
       testId: "wr-live-tested",
     },
     {
@@ -215,8 +230,8 @@ export default function WorkforceReadinessClient() {
   return shell(
     <>
       <PageHeader
-        title="Workforce Readiness"
         description="445 capacity seats are allocatable workforce capacity — not 445 always-on agents. Foundation metrics come from the shared seat registry; executable catalogue metrics are a smaller runtime subset."
+        howThisWorks="Owns: readiness gates, allocation eligibility, provider/safety prerequisites. Does not prove: activation, live execution, or that readiness equals an operational autonomous workforce. Provider unconfigured remains visible when true."
       />
       <div className="wa-header-meta">
         <StatusBadge tone={foundationReady ? "healthy" : "warning"}>
