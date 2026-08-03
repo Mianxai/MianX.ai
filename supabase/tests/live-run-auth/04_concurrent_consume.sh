@@ -28,10 +28,15 @@ for ((rep=1; rep<=REPS; rep++)); do
       'authorized',
       md5(('c'||'${rep}')::text) || md5(('d'||'${rep}')::text)
     ) returning id;
-  ")
+  " | tr -d '[:space:]')
 
-  THASH=$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "select md5('${rep}'::text) || md5(('x'||'${rep}')::text);")
-  CHKSUM=$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "select md5(('c'||'${rep}')::text) || md5(('d'||'${rep}')::text);")
+  THASH=$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "select md5('${rep}'::text) || md5(('x'||'${rep}')::text);" | tr -d '[:space:]')
+  CHKSUM=$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "select md5(('c'||'${rep}')::text) || md5(('d'||'${rep}')::text);" | tr -d '[:space:]')
+
+  if [[ ! "$AUTH_ID" =~ ^[0-9a-fA-F-]{36}$ ]]; then
+    echo "ASSERT_FAIL: bad AUTH_ID=${AUTH_ID}" >&2
+    exit 1
+  fi
 
   TMPDIR=$(mktemp -d)
   for ((w=1; w<=WORKERS; w++)); do
