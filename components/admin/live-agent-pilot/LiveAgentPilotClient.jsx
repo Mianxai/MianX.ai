@@ -69,8 +69,6 @@ export default function LiveAgentPilotClient() {
   }
 
   const providerName = data?.provider?.providerName || "none";
-  const globalOn = data?.switches?.globalLiveExecutionEnabled === true;
-  const pilotOn = data?.switches?.pilotLiveExecutionEnabled === true;
   const killOn = data?.killSwitch?.active === true;
   const disabledReasons = data?.eligibility?.disabledReasons || [];
   // Client never decides eligibility independently — server status only.
@@ -102,6 +100,11 @@ export default function LiveAgentPilotClient() {
         <>
           <div className="workforce-status-grid" data-testid="live-pilot-activation-preflight">
             <Row
+              label="Provider configured"
+              value={data.activationPreflight?.display?.providerConfigured || "No"}
+              testId="live-pilot-provider-configured"
+            />
+            <Row
               label="Provider"
               value={data.activationPreflight?.display?.provider || "Not configured"}
               testId="live-pilot-provider"
@@ -112,14 +115,39 @@ export default function LiveAgentPilotClient() {
               testId="live-pilot-api-key"
             />
             <Row
-              label="Model verification"
-              value={data.activationPreflight?.display?.modelVerification || "Not checked"}
-              testId="live-pilot-model-verification"
+              label="Configured model"
+              value={data.activationPreflight?.display?.configuredModel || "none"}
+              testId="live-pilot-model"
             />
             <Row
-              label="Pricing verification"
-              value={data.activationPreflight?.display?.pricingVerification || "Not checked"}
-              testId="live-pilot-pricing-verification"
+              label="Official catalog verification"
+              value={data.activationPreflight?.display?.officialCatalog || "Not checked"}
+              testId="live-pilot-official-catalog"
+            />
+            <Row
+              label="Account model-access verification"
+              value={data.activationPreflight?.display?.accountModelAccess || "Not checked"}
+              testId="live-pilot-account-access"
+            />
+            <Row
+              label="Official pricing verification"
+              value={data.activationPreflight?.display?.officialPricing || "Not checked"}
+              testId="live-pilot-official-pricing"
+            />
+            <Row
+              label="Billing-path verification"
+              value={data.activationPreflight?.display?.billingPath || "Not checked"}
+              testId="live-pilot-billing-path"
+            />
+            <Row
+              label="Response storage"
+              value={data.activationPreflight?.display?.responseStorage || "Disabled"}
+              testId="live-pilot-response-storage"
+            />
+            <Row
+              label="Zero Data Retention verification"
+              value={data.activationPreflight?.display?.zeroDataRetention || "Not verified"}
+              testId="live-pilot-zdr"
             />
             <Row
               label="Execution switch"
@@ -132,19 +160,39 @@ export default function LiveAgentPilotClient() {
               testId="live-pilot-pilot-switch"
             />
             <Row
-              label="Agent allocated"
-              value={data.activationPreflight?.display?.agentAllocated || "No"}
-              testId="live-pilot-allocated"
+              label="Pilot agent"
+              value={data.activationPreflight?.display?.pilotAgent || data.agent?.slug || "—"}
+              testId="live-pilot-agent"
             />
             <Row
-              label="Agent active"
-              value={data.activationPreflight?.display?.agentActive || "No"}
-              testId="live-pilot-active"
+              label="Queue count"
+              value={data.activationPreflight?.display?.queueCount || "0"}
+              testId="live-pilot-queue"
             />
             <Row
-              label="Agent live-tested"
-              value={data.activationPreflight?.display?.agentLiveTested || "No"}
-              testId="live-pilot-live-tested"
+              label="Concurrent runs"
+              value={data.activationPreflight?.display?.concurrentRuns || "0"}
+              testId="live-pilot-concurrent"
+            />
+            <Row
+              label="Scheduler health"
+              value={data.activationPreflight?.display?.schedulerHealth || "Unknown"}
+              testId="live-pilot-scheduler"
+            />
+            <Row
+              label="Evidence store"
+              value={data.activationPreflight?.display?.evidenceStore || "Unavailable"}
+              testId="live-pilot-evidence-store"
+            />
+            <Row
+              label="Provider-call allowed"
+              value={data.activationPreflight?.display?.providerCallAllowed || "No"}
+              testId="live-pilot-provider-call-allowed"
+            />
+            <Row
+              label="Live execution ready"
+              value={data.activationPreflight?.display?.liveExecutionReady || "No"}
+              testId="live-pilot-live-ready"
             />
             <Row
               label="Provider calls"
@@ -152,22 +200,19 @@ export default function LiveAgentPilotClient() {
               testId="live-pilot-provider-calls"
             />
             <Row
-              label="Live execution ready"
-              value={data.activationPreflight?.display?.liveExecutionReady || "No"}
-              testId="live-pilot-live-ready"
-            />
-            <Row label="Pilot agent" value={data.agent?.name || "—"} testId="live-pilot-agent" />
-            <Row label="Slug" value={data.agent?.slug || "—"} testId="live-pilot-slug" />
-            <Row label="Project" value={data.project?.name || "—"} testId="live-pilot-project" />
-            <Row
-              label="Selected model"
-              value={data.model?.selected || "none"}
-              testId="live-pilot-model"
+              label="Allocated"
+              value={data.activationPreflight?.display?.allocated || "0"}
+              testId="live-pilot-allocated"
             />
             <Row
-              label="Model allowlisted"
-              value={data.model?.allowlisted ? "yes" : "no"}
-              testId="live-pilot-model-allowlisted"
+              label="Active"
+              value={data.activationPreflight?.display?.active || "0"}
+              testId="live-pilot-active"
+            />
+            <Row
+              label="Live-tested"
+              value={data.activationPreflight?.display?.liveTested || "0"}
+              testId="live-pilot-live-tested"
             />
             <Row
               label="Kill switch"
@@ -180,11 +225,6 @@ export default function LiveAgentPilotClient() {
               testId="live-pilot-eligible"
             />
             <Row
-              label="Queue / lease"
-              value={`queued ${data.queue?.queued ?? 0}/${data.queue?.maxQueued ?? 1} · leases ${data.queue?.activeLeases ?? 0}/${data.queue?.maxConcurrent ?? 1}`}
-              testId="live-pilot-queue"
-            />
-            <Row
               label="Token limits"
               value={`${data.budget?.maxInputTokens}/${data.budget?.maxOutputTokens}/${data.budget?.maxTotalTokens}`}
               testId="live-pilot-tokens"
@@ -194,21 +234,12 @@ export default function LiveAgentPilotClient() {
               value={`USD ${data.budget?.maxEstimatedCostUsd}`}
               testId="live-pilot-cost"
             />
-            <Row
-              label="Latest run"
-              value={
-                data.latestRun?.id
-                  ? `${data.latestRun.status} (${data.latestRun.id.slice(0, 8)}…)`
-                  : "none"
-              }
-              testId="live-pilot-latest-run"
-            />
-            <Row
-              label="Provider request ID"
-              value={data.latestProviderRequestId || "none"}
-              testId="live-pilot-provider-request"
-            />
           </div>
+
+          <p className="wa-metric-hint" data-testid="live-pilot-store-note" style={{ marginTop: "1rem" }}>
+            {data.activationPreflight?.storeFalseNote ||
+              "store:false disables persistent Responses resource storage. It does not by itself establish Zero Data Retention."}
+          </p>
 
           <section style={{ marginTop: "1.5rem" }} data-testid="live-pilot-blockers">
             <h2 className="admin-section-title">Blocking reasons</h2>

@@ -81,14 +81,20 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 
 | Item | Value |
 |------|-------|
-| OpenAI execution path | merged into main |
+| OpenAI execution path | merged into main (path); activation-readiness Draft until merge |
 | Provider configured | no |
 | providerName | none |
 | Genuine provider calls | 0 |
 | liveExecutionReady | false |
-| Model availability verification | not_checked (no authenticated Models API call) |
-| Pricing verification | unverified (candidate registry only) |
-| Provider activation readiness PR | Draft/Preview only — not merged; not Production |
+| officialCatalogStatus (gpt-5.4-mini) | verified (docs 2026-08-03) |
+| accountAccessStatus | not_checked |
+| officialPricingStatus | verified (standard $0.75/$0.075/$4.50 per 1M) |
+| billingModeStatus | unknown |
+| standard worst-case at pilot caps | $0.0084 (not authorizing) |
+| responseStorageEnabled | false |
+| zeroDataRetentionVerified | false |
+| Authenticated Models API verification | not performed |
+| Provider activation readiness PR | Draft/Preview only until merged |
 
 ## Live execution truth
 

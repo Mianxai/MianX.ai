@@ -24,11 +24,29 @@ Admin request (/admin/live-agent-pilot or POST /api/admin/live-agent-pilot/execu
   → runtime tick (processExplicitPilotQueue / processPilotWorkFromSchedulerTick)
   → preflight + activation gate (fail closed)
   → provider adapter (server-only openai SDK)
-  → Responses API (store:false, tools:[], structured text.format)
+  → Responses API (store:false (Responses storage off; not ZDR), tools:[], structured text.format)
   → schema validation
   → durable evidence
   → terminal run state
 ```
+
+## Verification dimensions (current)
+
+| Dimension | Status |
+|-----------|--------|
+| officialCatalogStatus | verified (gpt-5.4-mini + snapshot gpt-5.4-mini-2026-03-17) |
+| accountAccessStatus | not_checked |
+| officialPricingStatus | verified (standard $0.75 / $0.075 / $4.50 per 1M) |
+| billingModeStatus | unknown |
+| standard worst-case at caps | $0.0084 (8400 µUSD) |
+| responseStorageEnabled | false |
+| zeroDataRetentionVerified | false |
+| modelReadyForProviderCall | false |
+| pricingReadyForProviderCall | false |
+| providerCallAllowed | false |
+
+`store:false` disables persistent Responses resource storage. It does **not**
+establish Zero Data Retention by itself.
 
 ## Phase 0 — Current blocked baseline
 
