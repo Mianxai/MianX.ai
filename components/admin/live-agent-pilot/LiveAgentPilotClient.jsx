@@ -241,6 +241,42 @@ export default function LiveAgentPilotClient() {
               "store:false disables persistent Responses resource storage. It does not by itself establish Zero Data Retention."}
           </p>
 
+          <section style={{ marginTop: "1.5rem" }} data-testid="live-pilot-dry-run-report">
+            <h2 className="admin-section-title">Dry-run rehearsal (read-only)</h2>
+            <p className="wa-metric-hint">
+              Fake-provider rehearsal exists only in Vitest. This Admin page cannot run a fake
+              provider and cannot call OpenAI.
+            </p>
+            <div className="workforce-status-grid">
+              <Row
+                label="Rehearsal status"
+                value={data.dryRunRehearsal?.rehearsalStatus || "documented_test_only"}
+                testId="live-pilot-rehearsal-status"
+              />
+              <Row
+                label="Fake-provider label"
+                value={data.dryRunRehearsal?.fakeProviderLabel || "fake_openai_test_only"}
+                testId="live-pilot-fake-label"
+              />
+              <Row label="Not Production" value="Yes" testId="live-pilot-not-production" />
+              <Row
+                label="Genuine provider call"
+                value="No"
+                testId="live-pilot-genuine-call"
+              />
+              <Row
+                label="Rollback readiness"
+                value={data.dryRunRehearsal?.rollbackReadiness || "switches_off_available"}
+                testId="live-pilot-rollback"
+              />
+            </div>
+            <ul data-testid="live-pilot-rehearsal-blockers">
+              {(data.dryRunRehearsal?.blockersRemaining || []).map((b) => (
+                <li key={b}>{b}</li>
+              ))}
+            </ul>
+          </section>
+
           <section style={{ marginTop: "1.5rem" }} data-testid="live-pilot-blockers">
             <h2 className="admin-section-title">Blocking reasons</h2>
             <ul data-testid="live-pilot-disabled-reasons">
