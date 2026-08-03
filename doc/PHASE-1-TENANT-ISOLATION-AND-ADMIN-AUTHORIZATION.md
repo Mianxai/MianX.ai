@@ -1,7 +1,8 @@
-# Core platform — multi-project isolation and Admin authorization
+# Phase 1 — Tenant isolation and Admin authorization foundation
 
-Status: Preview / Draft (`cursor/core-platform-tenant-isolation-admin-authz`)  
+Status: Preview / Draft (`cursor/phase1-tenant-authz-foundation`)  
 As-of: 2026-08-03  
+Master plan: `doc/MIANX-AI-MASTER-COMPLETION-PHASES.md` (Phase 1 only)  
 Production database changed: **no**  
 Migration applied: **no**
 
@@ -30,6 +31,14 @@ owner (platform.admin) → admin → operator → viewer
 - **live_pilot.read**: owner, admin, operator, viewer (via `read` alias).
 - **live_pilot.authorize**: owner only (prepare/kill-switch authorize path).
 
+## Permission inventory
+
+Canonical: `lib/admin-capabilities.js` (`CAPABILITIES`)
+
+Legacy: `read`, `manage_*`, `decide_approvals`, `start_workflows`, `view_settings`, `view_audit`  
+Phase 1 explicit: `project.read`, `project.manage`, `workforce.read`, `workforce.manage`,
+`live_pilot.read`, `live_pilot.authorize`, `audit.read`, `platform.admin`
+
 ## Trusted tenant-context resolution
 
 Canonical helper: `lib/tenant-context.js`
@@ -38,9 +47,9 @@ Canonical helper: `lib/tenant-context.js`
   `tenantAdmin`, optional `projectId` + `organizationId` from the **verified
   session** and durable membership / project rows.
 - Rejects client-supplied `role`, `organizationId`, `platformAdmin`, etc.
-- Outcomes: authenticated_and_authorized | unauthenticated | forbidden |
-  membership_missing | project_required | project_not_found |
-  tenant_context_unavailable.
+- Outcomes: `authenticated_authorized` | `unauthenticated` | `forbidden` |
+  `membership_missing` | `scope_mismatch` | `tenant_context_unavailable` |
+  `project_required` | `project_not_found`.
 
 ## Route authorization matrix
 
@@ -104,16 +113,19 @@ payload sanitization, platform vs tenant admin.
 3. Service-role remains the Admin data path — must stay behind authz helpers.
 4. Docs elsewhere may still describe multi-tenant ideals; this file is runtime truth.
 
-## Recommended next Core Platform phase
+## Phase 1 implementation backlog
 
-1. Founder dry-run + apply optional membership scope migration.
-2. Enforce org/project filters in `listProjects` / Admin list routes.
-3. Require `project_id` on remaining optional list endpoints.
-4. Expand `requireCapabilityAndProject` across `/api/core/*` mutations.
-5. Consider authenticated-role RLS only after membership scoping is live.
+1. Founder review + merge this Draft PR (no Production migration apply yet).
+2. Founder dry-run + apply optional membership scope migration.
+3. Enforce org/project filters in `listProjects` / Admin list routes.
+4. Require `project_id` on remaining optional list endpoints.
+5. Expand `requireCapabilityAndProject` across `/api/core/*` mutations.
+6. Consider authenticated-role RLS only after membership scoping is live.
+7. Only then consider Phase 2 (Operating System / Enterprise Operations).
 
 ## Related
 
 - `lib/admin-auth.js`, `lib/admin-capabilities.js`
 - `lib/tenant-context.js`
+- `doc/MIANX-AI-MASTER-COMPLETION-PHASES.md`
 - `doc/CURRENT-STATE.md` (Preview)

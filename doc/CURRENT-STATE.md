@@ -57,7 +57,8 @@ until Founder adds API credits. Key presence boolean true; credits not_checked.)
 | Founder Final Review | not approved |
 | First-live-run readiness packet | **merged** (PR #88 → `715b700…`) |
 | No-credit safe readiness | **merged** (PR #89 → `70b9382…`) |
-| Tenant isolation / Admin authz hardening | Draft/Preview on `cursor/core-platform-tenant-isolation-admin-authz` |
+| Master completion phases | `doc/MIANX-AI-MASTER-COMPLETION-PHASES.md` — Phase 1 in progress |
+| Phase 1 tenant/authz foundation | Draft/Preview on `cursor/phase1-tenant-authz-foundation` |
 
 Founder-observed billing balance on 2026-08-03: $0.00.  
 Not machine-verified by MianX.ai.
@@ -66,7 +67,7 @@ Not machine-verified by MianX.ai.
 
 **Single-tenant Founder platform** — global `admin_memberships`; one default org;
 project isolation is application-level when `project_id` is provided. See
-`doc/CORE-PLATFORM-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md` (Draft).
+`doc/PHASE-1-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md` (Draft).
 
 ## Scheduler state
 
