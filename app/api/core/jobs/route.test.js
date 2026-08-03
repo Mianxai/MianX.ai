@@ -211,26 +211,36 @@ describe("POST /api/core/jobs", () => {
 describe("POST /api/core/jobs/[id]/cancel and /retry", () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.doUnmock("@/lib/tenant/project-access");
+    vi.doUnmock("@/lib/core/repo");
+    vi.doUnmock("@/lib/auth");
   });
 
   it("cancel requires authentication", async () => {
     await withAuth(null);
+    vi.doUnmock("@/lib/tenant/project-access");
     const { POST } = await import("./[id]/cancel/route.js");
-    const res = await POST(fakeReq({}), { params: Promise.resolve({ id: UUID }) });
+    const res = await POST(fakeReq({ project_id: UUID }), {
+      params: Promise.resolve({ id: UUID }),
+    });
     expect(res.status).toBe(401);
     vi.doUnmock("@/lib/auth");
   });
 
   it("cancel rejects a malformed job id", async () => {
     await withAuth({ email: "admin@mianx.ai" });
+    mockProjectAccess();
     const { POST } = await import("./[id]/cancel/route.js");
-    const res = await POST(fakeReq({}), { params: Promise.resolve({ id: "nope" }) });
+    const res = await POST(fakeReq({ project_id: UUID }), {
+      params: Promise.resolve({ id: "nope" }),
+    });
     expect(res.status).toBe(400);
     vi.doUnmock("@/lib/auth");
   });
 
   it("retry returns the requeued job for an admin", async () => {
     await withAuth({ email: "admin@mianx.ai" });
+    mockProjectAccess();
     vi.doMock("@/lib/core/repo", () => ({
       getJob: vi.fn(async () => ({
         id: UUID,
@@ -253,6 +263,7 @@ describe("POST /api/core/jobs/[id]/cancel and /retry", () => {
 
   it("retry requires project_id", async () => {
     await withAuth({ email: "admin@mianx.ai" });
+    mockProjectAccess();
     const { POST } = await import("./[id]/retry/route.js");
     const res = await POST(fakeReq({}), { params: Promise.resolve({ id: UUID }) });
     expect(res.status).toBe(400);
