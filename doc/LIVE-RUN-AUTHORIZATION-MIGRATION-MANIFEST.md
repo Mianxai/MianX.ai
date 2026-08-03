@@ -22,8 +22,8 @@ classification: Internal
 | functionSecurity | SECURITY DEFINER; **`SET search_path = ''`**; all refs `public.*` / `pg_catalog.*`; argument length bounds; no dynamic SQL |
 | executePrivileges | REVOKE from PUBLIC/anon/authenticated; GRANT EXECUTE to `service_role` only |
 | grants | GRANT ALL table → `service_role`; REVOKE table from public/anon/authenticated |
-| disposableDbCI | GitHub Actions job `Live-run Auth Migration DB` (postgres:16 service) — apply, schema, RLS/grants, concurrent consume (5×8), rollback, reapply; no Production credentials |
-| concurrencyResult | Exactly one concurrent consumer succeeds; others zero-row conflict (atomic one-time consumption / at-most-one authorized provider-attempt boundary — not distributed exactly-once generation) |
+| disposableDbCI | GitHub Actions job `Live-run Auth Migration DB` (postgres:16) — **passed** on head `ebbf9ac…`: apply, schema, RLS/grants/`search_path=""`, concurrent consume (5×8 → exactly one success), rollback, reapply; no Production credentials |
+| concurrencyResult | Exactly one concurrent consumer succeeds (5 reps × 8 workers); others zero-row conflict (atomic one-time consumption / at-most-one authorized provider-attempt boundary — not distributed exactly-once generation) |
 | rollbackPath | `supabase/rollbacks/20260803120000_pilot_live_run_authorizations.rollback.sql` (refuses if non-empty) |
 | linkedDryRun | `npx supabase db push --linked --dry-run` exit 0; exactly one pending: `20260803120000_pilot_live_run_authorizations.sql`; no mutation |
 | estimatedLockLevel | ACCESS EXCLUSIVE on new table create (brief); function replace; no rewrite of existing tables |
