@@ -10,7 +10,7 @@ const MIGRATION = join(
   "supabase/migrations/20260803120000_pilot_live_run_authorizations.sql"
 );
 const EXPECTED =
-  "5258d5d432c3cf4928d152be674416857a89f9b389d575d993632f29a7f3ddf0";
+  "82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8";
 
 describe("live-run authorization migration readiness", () => {
   it("manifest checksum matches migration file bytes", () => {

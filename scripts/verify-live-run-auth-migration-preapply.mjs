@@ -18,7 +18,7 @@ const PREV = "supabase/migrations/20260801120000_phase_ii1_live_agent_pilot.sql"
 const ROLLBACK =
   "supabase/rollbacks/20260803120000_pilot_live_run_authorizations.rollback.sql";
 const EXPECTED_CHECKSUM =
-  "5258d5d432c3cf4928d152be674416857a89f9b389d575d993632f29a7f3ddf0";
+  "82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8";
 
 function sh(cmd) {
   return execSync(cmd, { cwd: ROOT, encoding: "utf8" }).trim();
@@ -58,11 +58,16 @@ function main() {
     "pilot_live_run_authorizations",
     "consume_pilot_live_run_authorization",
     "enable row level security",
+    "force row level security",
     "security definer",
-    "set search_path = public",
+    "set search_path = ''",
+    "pg_catalog.now()",
     "migrationApplied: no",
   ]) {
     if (!sql.includes(needle)) fail(`migration missing required marker: ${needle}`);
+  }
+  if (/set search_path = public/i.test(sql)) {
+    fail("insecure search_path=public still present");
   }
   if (/truncate |delete from /i.test(sql)) fail("destructive DML detected in migration");
 

@@ -100,7 +100,7 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 | Provider activation readiness PR | **merged** (PR #83 → `940c227`); Production verified after merge |
 | Dry-run evidence rehearsal PR | **merged** (PR #84 → `405171b`); Vitest-only fake provider; Production verified |
 | Live-run control-plane PR | **merged** (PR #85 → `da4e19b`); Production verified **without** migration apply; fail-closed store |
-| Live-run authorization migration | Included on main; **not applied**; rollout-readiness Draft follows |
+| Live-run authorization migration | Included on main via PR #85; **not applied**; PR #86 readiness adds ephemeral DB CI + SECURITY DEFINER `search_path=''` hardening |
 
 ## Live execution truth
 

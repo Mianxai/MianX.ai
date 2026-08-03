@@ -12,20 +12,25 @@ classification: Internal
 | Field | Value |
 |-------|-------|
 | migrationPath | `supabase/migrations/20260803120000_pilot_live_run_authorizations.sql` |
-| migrationChecksumSha256 | `5258d5d432c3cf4928d152be674416857a89f9b389d575d993632f29a7f3ddf0` |
+| migrationChecksumSha256 | `82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8` |
 | previousMigration | `20260801120000_phase_ii1_live_agent_pilot.sql` |
 | expectedRemoteHistory | All migrations through `20260801120000_phase_ii1_live_agent_pilot.sql` applied; this file pending until Founder apply |
 | objectsCreated | table `public.pilot_live_run_authorizations`; function `public.consume_pilot_live_run_authorization(...)` |
-| indexesCreated | `pilot_lra_one_outstanding_authorized` (partial unique); `pilot_lra_project_idx`; `pilot_lra_status_idx`; `pilot_lra_expires_idx`; unique `pilot_lra_issuance_idempotency_unique` |
-| functionsCreated | `consume_pilot_live_run_authorization` (SECURITY DEFINER, `search_path=public`) |
-| policiesCreated | `pilot_lra_service_all` (service_role only) |
-| grants | GRANT ALL table + EXECUTE function → `service_role`; REVOKE from `public`/`anon`/`authenticated` |
-| estimatedLockLevel | ACCESS EXCLUSIVE on new table create (brief); function create; no rewrite of existing tables |
+| constraints | status CHECK; non-negative tokens/cost; text bounds; version 1–1000; expires≥authorized; consumed/revoked timestamps; checksum length 64 |
+| indexesCreated | `pilot_lra_one_outstanding_authorized` (partial unique); project/status/expires indexes; issuance idempotency unique |
+| RLS | ENABLE + **FORCE** ROW LEVEL SECURITY; policy `pilot_lra_service_all` for `service_role` only |
+| functionSecurity | SECURITY DEFINER; **`SET search_path = ''`**; all refs `public.*` / `pg_catalog.*`; argument length bounds; no dynamic SQL |
+| executePrivileges | REVOKE from PUBLIC/anon/authenticated; GRANT EXECUTE to `service_role` only |
+| grants | GRANT ALL table → `service_role`; REVOKE table from public/anon/authenticated |
+| disposableDbCI | GitHub Actions job `Live-run Auth Migration DB` (postgres:16 service) — apply, schema, RLS/grants, concurrent consume (5×8), rollback, reapply; no Production credentials |
+| concurrencyResult | Exactly one concurrent consumer succeeds; others zero-row conflict (atomic one-time consumption / at-most-one authorized provider-attempt boundary — not distributed exactly-once generation) |
+| rollbackPath | `supabase/rollbacks/20260803120000_pilot_live_run_authorizations.rollback.sql` (refuses if non-empty) |
+| linkedDryRun | `npx supabase db push --linked --dry-run` exit 0; exactly one pending: `20260803120000_pilot_live_run_authorizations.sql`; no mutation |
+| estimatedLockLevel | ACCESS EXCLUSIVE on new table create (brief); function replace; no rewrite of existing tables |
 | expectedDuration | seconds on empty pilot schema; no data backfill |
-| rollbackPath | `supabase/rollbacks/20260803120000_pilot_live_run_authorizations.rollback.sql` |
-| compatibilityBeforeApply | App fail-closed: `authorization_store_unavailable`; providerCallAllowed false |
-| compatibilityAfterApply | Authorization store may report `available`; still no provider calls until Founder auth + switches |
-| owner | Founder / Mianx platform |
-| founderApprovalRequired | **yes** — do not apply without Phase 0 approval in the runbook |
+| compatibilityBeforeApply | App fail-closed: `authorization_store_unavailable`; providerCallAllowed false; Production deploy safe without migration |
+| compatibilityAfterApply | Store may report `available`; still no provider calls until Founder auth + switches |
+| postUseRollbackLimitation | Do **not** drop table after real authorization/evidence rows — prefer forward-fix + archival |
+| founderApprovalRequired | **yes** — explicit Founder sentence required before linked apply |
 | migrationApplied | **no** |
 | ProductionDatabaseChanged | **no** |

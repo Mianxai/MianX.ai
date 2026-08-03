@@ -151,3 +151,42 @@ jobs:
             test-results/**/*.png
             test-results/**/*.webm
           if-no-files-found: ignore
+
+  live-run-auth-db:
+    name: Live-run Auth Migration DB
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: mianx_lra_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mianx_lra_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install psql client
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: Ephemeral migration apply / security / concurrency / rollback / reapply
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mianx_lra_test
+          CONCURRENCY_REPS: "5"
+          CONCURRENCY_WORKERS: "8"
+        run: |
+          set -euo pipefail
+          SHA=$(shasum -a 256 supabase/migrations/20260803120000_pilot_live_run_authorizations.sql | awk '{print $1}')
+          echo "Migration checksum ${SHA}"
+          export EXPECTED_MIGRATION_SHA256="${SHA}"
+          chmod +x supabase/tests/live-run-auth/*.sh
+          bash supabase/tests/live-run-auth/run-ephemeral-validation.sh

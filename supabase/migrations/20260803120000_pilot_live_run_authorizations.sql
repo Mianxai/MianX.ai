@@ -1,5 +1,5 @@
 -- Focused Phase II.3 one-time Founder live-run authorization table.
--- DO NOT apply without Founder approval. Included in Draft PR only.
+-- DO NOT apply without Founder approval.
 -- migrationApplied: no (until Founder dry-run + push review)
 -- ProductionDatabaseChanged: no
 --
@@ -7,23 +7,30 @@
 -- RLS: service_role only. Anon/authenticated have no policies → denied under RLS.
 -- Rollback: supabase/rollbacks/20260803120000_pilot_live_run_authorizations.rollback.sql
 -- FK on pilot_run_id uses ON DELETE SET NULL (does not cascade-delete auth/evidence).
+--
+-- SECURITY DEFINER consume function uses SET search_path = '' with fully
+-- schema-qualified references (pg_catalog.now / public.table) to prevent
+-- schema-shadowing attacks.
 
 create table if not exists public.pilot_live_run_authorizations (
-  id uuid primary key default gen_random_uuid(),
+  id uuid primary key default pg_catalog.gen_random_uuid(),
   authorization_version integer not null default 1
     check (authorization_version >= 1 and authorization_version <= 1000),
   project_id uuid not null,
   pilot_run_id uuid references public.pilot_runs(id) on delete set null,
   agent_id text not null default 'mianx-internal-architecture-reviewer'
-    check (char_length(agent_id) between 1 and 120),
+    check (pg_catalog.char_length(agent_id) between 1 and 120),
   task_envelope_hash text not null
-    check (char_length(task_envelope_hash) = 64),
+    check (pg_catalog.char_length(task_envelope_hash) = 64),
   provider_name text not null default 'openai'
-    check (char_length(provider_name) between 1 and 64),
+    check (pg_catalog.char_length(provider_name) between 1 and 64),
   approved_model text not null
-    check (char_length(approved_model) between 1 and 120),
+    check (pg_catalog.char_length(approved_model) between 1 and 120),
   approved_snapshot text
-    check (approved_snapshot is null or char_length(approved_snapshot) between 1 and 120),
+    check (
+      approved_snapshot is null
+      or pg_catalog.char_length(approved_snapshot) between 1 and 120
+    ),
   maximum_input_tokens integer not null check (maximum_input_tokens >= 0),
   maximum_output_tokens integer not null check (maximum_output_tokens >= 0),
   maximum_total_tokens integer not null check (maximum_total_tokens >= 0),
@@ -31,26 +38,35 @@ create table if not exists public.pilot_live_run_authorizations (
   authorized_at timestamptz,
   expires_at timestamptz not null,
   authorized_by text
-    check (authorized_by is null or char_length(authorized_by) <= 200),
+    check (
+      authorized_by is null
+      or pg_catalog.char_length(authorized_by) <= 200
+    ),
   authorization_reason text
-    check (authorization_reason is null or char_length(authorization_reason) <= 500),
+    check (
+      authorization_reason is null
+      or pg_catalog.char_length(authorization_reason) <= 500
+    ),
   status text not null default 'draft'
     check (status in ('draft', 'authorized', 'consumed', 'expired', 'revoked')),
   consumed_at timestamptz,
   revoked_at timestamptz,
   revocation_reason text
-    check (revocation_reason is null or char_length(revocation_reason) <= 500),
+    check (
+      revocation_reason is null
+      or pg_catalog.char_length(revocation_reason) <= 500
+    ),
   one_time_use boolean not null default true,
   issuance_idempotency_key text
     check (
       issuance_idempotency_key is null
-      or char_length(issuance_idempotency_key) between 1 and 200
+      or pg_catalog.char_length(issuance_idempotency_key) between 1 and 200
     ),
   integrity_checksum text not null
-    check (char_length(integrity_checksum) = 64),
+    check (pg_catalog.char_length(integrity_checksum) = 64),
   payload jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default pg_catalog.now(),
+  updated_at timestamptz not null default pg_catalog.now(),
   constraint pilot_lra_issuance_idempotency_unique unique (issuance_idempotency_key),
   constraint pilot_lra_expires_after_authorized check (
     authorized_at is null or expires_at >= authorized_at
@@ -76,6 +92,8 @@ create index if not exists pilot_lra_expires_idx
   on public.pilot_live_run_authorizations (expires_at);
 
 alter table public.pilot_live_run_authorizations enable row level security;
+-- Force RLS so even privileged non-bypass roles cannot skip policies.
+alter table public.pilot_live_run_authorizations force row level security;
 
 drop policy if exists pilot_lra_service_all on public.pilot_live_run_authorizations;
 create policy pilot_lra_service_all on public.pilot_live_run_authorizations
@@ -83,15 +101,16 @@ create policy pilot_lra_service_all on public.pilot_live_run_authorizations
   using (true)
   with check (true);
 
--- Explicit: no grants to anon/authenticated. Browser cannot write authorization state.
+-- Explicit: no grants to anon/authenticated/PUBLIC. Browser cannot write auth state.
 revoke all on table public.pilot_live_run_authorizations from public;
 revoke all on table public.pilot_live_run_authorizations from anon;
 revoke all on table public.pilot_live_run_authorizations from authenticated;
 grant all on table public.pilot_live_run_authorizations to service_role;
 
--- Atomic one-time consume (single guarded UPDATE). Not distributed exactly-once
--- provider execution — at-most-one authorized provider-attempt boundary only.
--- Does not rewrite integrity_checksum (caller may recompute after success).
+-- Atomic one-time consume (single guarded UPDATE).
+-- Guarantee: atomic one-time authorization consumption /
+-- duplicate-consumption protection / at-most-one authorized provider-attempt
+-- boundary. NOT distributed exactly-once generation.
 create or replace function public.consume_pilot_live_run_authorization(
   p_id uuid,
   p_project_id uuid,
@@ -105,19 +124,51 @@ create or replace function public.consume_pilot_live_run_authorization(
 returns setof public.pilot_live_run_authorizations
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 begin
+  -- Bound argument lengths before mutation (defense in depth).
+  if p_agent_id is null
+     or pg_catalog.char_length(p_agent_id) < 1
+     or pg_catalog.char_length(p_agent_id) > 120 then
+    raise exception 'invalid_agent_id' using errcode = '22023';
+  end if;
+  if p_task_envelope_hash is null
+     or pg_catalog.char_length(p_task_envelope_hash) <> 64 then
+    raise exception 'invalid_task_envelope_hash' using errcode = '22023';
+  end if;
+  if p_provider_name is null
+     or pg_catalog.char_length(p_provider_name) < 1
+     or pg_catalog.char_length(p_provider_name) > 64 then
+    raise exception 'invalid_provider_name' using errcode = '22023';
+  end if;
+  if p_approved_model is null
+     or pg_catalog.char_length(p_approved_model) < 1
+     or pg_catalog.char_length(p_approved_model) > 120 then
+    raise exception 'invalid_approved_model' using errcode = '22023';
+  end if;
+  if p_approved_snapshot is not null
+     and (
+       pg_catalog.char_length(p_approved_snapshot) < 1
+       or pg_catalog.char_length(p_approved_snapshot) > 120
+     ) then
+    raise exception 'invalid_approved_snapshot' using errcode = '22023';
+  end if;
+  if p_integrity_checksum is null
+     or pg_catalog.char_length(p_integrity_checksum) <> 64 then
+    raise exception 'invalid_integrity_checksum' using errcode = '22023';
+  end if;
+
   return query
   update public.pilot_live_run_authorizations as a
   set
     status = 'consumed',
-    consumed_at = now(),
-    updated_at = now()
+    consumed_at = pg_catalog.now(),
+    updated_at = pg_catalog.now()
   where a.id = p_id
     and a.status = 'authorized'
     and a.consumed_at is null
-    and a.expires_at > now()
+    and a.expires_at > pg_catalog.now()
     and a.project_id = p_project_id
     and a.agent_id = p_agent_id
     and a.task_envelope_hash = p_task_envelope_hash
@@ -152,4 +203,4 @@ comment on table public.pilot_live_run_authorizations is
 comment on function public.consume_pilot_live_run_authorization(
   uuid, uuid, text, text, text, text, text, text
 ) is
-  'Atomic one-time authorization consumption. Duplicate callers get zero rows returned (already-consumed or conflict).';
+  'Atomic one-time authorization consumption. Duplicate callers get zero rows returned (already-consumed or conflict). search_path empty; objects schema-qualified.';

@@ -14,9 +14,15 @@ classification: Internal
 No phase below claims completion. Migration is **not applied**.
 Production database is **unchanged**. Provider remains `none`.
 
+**STOP BEFORE APPLICATION:** Do not run `supabase db push` without `--dry-run`
+unless the Founder has issued the exact approval sentence in the final packet.
+This Draft/merged readiness work does **not** authorize Production apply.
+
 Manifest: `doc/LIVE-RUN-AUTHORIZATION-MIGRATION-MANIFEST.md`  
+Checksum: `82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8`  
 Pre-apply script: `node scripts/verify-live-run-auth-migration-preapply.mjs`  
 Post-apply script: `node scripts/verify-live-run-auth-migration-postapply.mjs`  
+Ephemeral CI: `.github/workflows/ci.yml` job `Live-run Auth Migration DB`  
 Rollback SQL: `supabase/rollbacks/20260803120000_pilot_live_run_authorizations.rollback.sql`
 
 ## Phase 0 — Founder approval
@@ -26,7 +32,7 @@ Rollback SQL: `supabase/rollbacks/20260803120000_pilot_live_run_authorizations.r
 | Authorization | Founder explicit approve to apply this single migration |
 | Mutation | None yet |
 | Stop | Approval missing |
-| Evidence | Written Founder approval referencing checksum `5258d5d4…` |
+| Evidence | Written Founder approval referencing checksum `82b8223a…` |
 
 ## Phase 1 — Exact main / deployment verification
 
