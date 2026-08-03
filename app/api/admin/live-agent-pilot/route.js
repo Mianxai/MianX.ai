@@ -5,6 +5,7 @@ import {
   PILOT_AGENT_SLUG,
   PILOT_PROJECT_ID,
   buildLivePilotStatus,
+  buildLiveRunControlPlaneAdminReportAsync,
   evaluatePilotEligibility,
   preparePilotProviderCall,
   createPilotApproval,
@@ -75,6 +76,21 @@ export const GET = withErrorHandling(async (req) => {
     });
   }
 
+  if (view === "control_plane") {
+    const liveRunControlPlane = await buildLiveRunControlPlaneAdminReportAsync();
+    return NextResponse.json({
+      ok: true,
+      view: "control_plane",
+      liveRunControlPlane,
+      providerCalled: false,
+      authenticatedModelsApiCalls: 0,
+      genuineGenerationCalls: 0,
+      productionAuthorizationCreated: false,
+      providerCallAllowed: false,
+      liveExecutionReady: false,
+    });
+  }
+
   if (view === "evidence") {
     const evidenceId = url.searchParams.get("id");
     const projectId = url.searchParams.get("project_id") || PILOT_PROJECT_ID;
@@ -109,6 +125,25 @@ export const GET = withErrorHandling(async (req) => {
   }
 
   const status = buildLivePilotStatus({ authenticated: true, authorized: true });
+  try {
+    status.liveRunControlPlane = await buildLiveRunControlPlaneAdminReportAsync();
+  } catch {
+    // Fail closed — never crash Admin/status because authorization table is absent.
+    status.liveRunControlPlane = {
+      ...status.liveRunControlPlane,
+      authorizationStoreStatus: "unavailable",
+      authorizationStoreReason: "authorization_store_unavailable",
+      migrationApplied: false,
+      providerCallAllowed: false,
+      liveExecutionReady: false,
+      remainingBlockers: [
+        ...new Set([
+          ...(status.liveRunControlPlane?.remainingBlockers || []),
+          "authorization_store_unavailable",
+        ]),
+      ],
+    };
+  }
   return NextResponse.json({ ok: true, view: "status", ...status });
 });
 

@@ -42,8 +42,29 @@ describe("live-agent-pilot API", () => {
     expect(res.status).toBe(200);
     expect(json.provider.providerName).toBe("none");
     expect(json.eligibility.runButtonEnabled).toBe(false);
+    expect(json.liveRunControlPlane?.accountAccessStatus).toBe("not_checked");
+    expect(json.liveRunControlPlane?.runNowActionPresent).toBe(false);
+    expect(json.liveRunControlPlane?.migrationApplied).toBe(false);
+    expect(
+      ["not_applied", "unavailable", "unknown", "available"].includes(
+        json.liveRunControlPlane?.authorizationStoreStatus
+      )
+    ).toBe(true);
+    expect(json.liveRunControlPlane?.providerCallAllowed).toBe(false);
     expect(JSON.stringify(json)).not.toMatch(/sk-[a-z0-9]{10,}/i);
     expect(JSON.stringify(json)).not.toContain("service_role");
+  });
+
+  it("GET control_plane view is read-only preparation", async () => {
+    const res = await GET(
+      req("GET", "http://local/api/admin/live-agent-pilot?view=control_plane")
+    );
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.view).toBe("control_plane");
+    expect(json.productionAuthorizationCreated).toBe(false);
+    expect(json.authenticatedModelsApiCalls).toBe(0);
+    expect(json.genuineGenerationCalls).toBe(0);
   });
 
   it("POST execution_prepare never calls provider and returns 503", async () => {

@@ -311,6 +311,128 @@ export default function LiveAgentPilotClient() {
             </ul>
           </section>
 
+          <section style={{ marginTop: "1.5rem" }} data-testid="live-pilot-control-plane">
+            <h2 className="admin-section-title">
+              {data.liveRunControlPlane?.heading || "One-agent live-run control plane"}
+            </h2>
+            <p className="wa-metric-hint" role="status" data-testid="live-pilot-control-plane-warning">
+              Preparation only — no genuine OpenAI generation — no Production authorization created
+              by this page. No Run-now action. No API key field.
+            </p>
+            <div className="workforce-status-grid">
+              <Row
+                label="Provider configured"
+                value={data.liveRunControlPlane?.providerConfigured ? "Yes" : "No"}
+                testId="cp-provider-configured"
+              />
+              <Row
+                label="API key configured"
+                value={data.liveRunControlPlane?.apiKeyConfigured ? "Yes" : "No"}
+                testId="cp-api-key"
+              />
+              <Row
+                label="Official catalog status"
+                value={String(data.liveRunControlPlane?.officialCatalogStatus || "not_checked")}
+                testId="cp-catalog"
+              />
+              <Row
+                label="Account access status"
+                value={String(data.liveRunControlPlane?.accountAccessStatus || "not_checked")}
+                testId="cp-account-access"
+              />
+              <Row
+                label="Approved model"
+                value={String(data.liveRunControlPlane?.approvedModel || "—")}
+                testId="cp-approved-model"
+              />
+              <Row
+                label="Approved snapshot"
+                value={String(data.liveRunControlPlane?.approvedSnapshot || "—")}
+                testId="cp-approved-snapshot"
+              />
+              <Row
+                label="Official pricing status"
+                value={String(data.liveRunControlPlane?.officialPricingStatus || "not_checked")}
+                testId="cp-pricing"
+              />
+              <Row
+                label="Billing-path status"
+                value={String(data.liveRunControlPlane?.billingPathStatus || "unknown")}
+                testId="cp-billing"
+              />
+              <Row
+                label="Authorization-store status"
+                value={String(
+                  data.liveRunControlPlane?.authorizationStoreStatus || "not_applied"
+                )}
+                testId="cp-auth-store"
+              />
+              <Row
+                label="Authorization status"
+                value={String(data.liveRunControlPlane?.authorizationStatus || "none")}
+                testId="cp-auth-status"
+              />
+              <Row
+                label="Authorization expiry"
+                value={String(data.liveRunControlPlane?.authorizationExpiry || "—")}
+                testId="cp-auth-expiry"
+              />
+              <Row
+                label="Authorization consumed"
+                value={data.liveRunControlPlane?.authorizationConsumed ? "Yes" : "No"}
+                testId="cp-auth-consumed"
+              />
+              <Row
+                label="Execution switch"
+                value={data.liveRunControlPlane?.executionSwitch ? "On" : "Off"}
+                testId="cp-exec-switch"
+              />
+              <Row
+                label="Pilot switch"
+                value={data.liveRunControlPlane?.pilotSwitch ? "On" : "Off"}
+                testId="cp-pilot-switch"
+              />
+              <Row
+                label="Queue count"
+                value={String(data.liveRunControlPlane?.queueCount ?? 0)}
+                testId="cp-queue"
+              />
+              <Row
+                label="Concurrent runs"
+                value={String(data.liveRunControlPlane?.concurrentRuns ?? 0)}
+                testId="cp-concurrent"
+              />
+              <Row
+                label="Scheduler health"
+                value={String(data.liveRunControlPlane?.schedulerHealth || "unknown")}
+                testId="cp-scheduler"
+              />
+              <Row
+                label="Evidence store"
+                value={String(data.liveRunControlPlane?.evidenceStore || "unavailable")}
+                testId="cp-evidence"
+              />
+              <Row
+                label="Provider-call allowed"
+                value={data.liveRunControlPlane?.providerCallAllowed ? "Yes" : "No"}
+                testId="cp-provider-allowed"
+              />
+              <Row
+                label="Live execution ready"
+                value={data.liveRunControlPlane?.liveExecutionReady ? "Yes" : "No"}
+                testId="cp-live-ready"
+              />
+            </div>
+            <h3 className="admin-section-title" style={{ marginTop: "1rem" }}>
+              Remaining blockers
+            </h3>
+            <ul data-testid="live-pilot-control-plane-blockers">
+              {(data.liveRunControlPlane?.remainingBlockers || []).map((b) => (
+                <li key={b}>{b}</li>
+              ))}
+            </ul>
+          </section>
+
           <section style={{ marginTop: "1.5rem" }} data-testid="live-pilot-blockers">
             <h2 className="admin-section-title">Blocking reasons</h2>
             <ul data-testid="live-pilot-disabled-reasons">

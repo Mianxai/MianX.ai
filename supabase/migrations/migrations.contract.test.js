@@ -51,14 +51,41 @@ describe("migration contract (static, not applied)", () => {
 
   it("expected dry-run order lists newer additive migrations last", () => {
     const expectedTail = [
-      "20260728200000_phase_g_workforce_runtime.sql",
       "20260728210000_phase_h_integration_runtime.sql",
       "20260730180000_phase_i2_workforce_registry.sql",
       "20260730190000_phase_i3_workforce_rls.sql",
       "20260731180000_phase_i9_supabase_cron_scheduler.sql",
       "20260801120000_phase_ii1_live_agent_pilot.sql",
+      "20260803120000_pilot_live_run_authorizations.sql",
     ];
     expect(files.slice(-6)).toEqual(expectedTail);
+  });
+
+  it("pilot live-run authorizations migration is additive with RLS and not auto-applied", () => {
+    const sql = readMigration("20260803120000_pilot_live_run_authorizations.sql");
+    expect(sql).toMatch(/create table if not exists public\.pilot_live_run_authorizations/i);
+    expect(sql).toMatch(/status in \('draft', 'authorized', 'consumed', 'expired', 'revoked'\)/);
+    expect(sql).toMatch(/maximum_input_tokens integer not null check \(maximum_input_tokens >= 0\)/);
+    expect(sql).toMatch(/maximum_cost_microusd bigint not null check \(maximum_cost_microusd >= 0\)/);
+    expect(sql).toMatch(/pilot_lra_consumed_requires_timestamp/);
+    expect(sql).toMatch(/pilot_lra_revoked_requires_timestamp/);
+    expect(sql).toMatch(/pilot_lra_expires_after_authorized/);
+    expect(sql).toMatch(/on delete set null/i);
+    expect(sql).not.toMatch(/on delete cascade/i);
+    expect(sql).toMatch(/enable row level security/i);
+    expect(sql).toMatch(/revoke all on table public\.pilot_live_run_authorizations from anon/i);
+    expect(sql).toMatch(/revoke all on table public\.pilot_live_run_authorizations from authenticated/i);
+    expect(sql).toMatch(/grant all on table public\.pilot_live_run_authorizations to service_role/i);
+    expect(sql).toMatch(/create or replace function public\.consume_pilot_live_run_authorization/i);
+    expect(sql).toMatch(/security definer/i);
+    expect(sql).toMatch(/set search_path = public/i);
+    expect(sql).toMatch(/revoke all on function public\.consume_pilot_live_run_authorization/i);
+    expect(sql).toMatch(/grant execute on function public\.consume_pilot_live_run_authorization/i);
+    expect(sql).toMatch(/DO NOT apply without Founder approval/i);
+    expect(sql).toMatch(/migrationApplied: no/);
+    expect(sql).not.toMatch(/OPENAI_API_KEY/);
+    expect(sql).not.toMatch(/truncate /i);
+    expect(sql).not.toMatch(/delete from /i);
   });
 
   it("phase_ii1 live agent pilot migration is additive with RLS and secret-free", () => {
