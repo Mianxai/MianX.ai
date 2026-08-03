@@ -100,24 +100,65 @@ export default function LiveAgentPilotClient() {
 
       {data ? (
         <>
-          <div className="workforce-status-grid" data-testid="live-pilot-status-grid">
-            <Row label="Pilot agent" value={data.agent?.name || "—"} testId="live-pilot-agent" />
-            <Row label="Slug" value={data.agent?.slug || "—"} testId="live-pilot-slug" />
-            <Row label="Project" value={data.project?.name || "—"} testId="live-pilot-project" />
+          <div className="workforce-status-grid" data-testid="live-pilot-activation-preflight">
             <Row
               label="Provider"
-              value={
-                providerName === "none"
-                  ? "none — Provider setup required"
-                  : `${providerName} — configured`
-              }
+              value={data.activationPreflight?.display?.provider || "Not configured"}
               testId="live-pilot-provider"
             />
             <Row
-              label="Provider configured"
-              value={data.provider?.configured ? "yes" : "no"}
-              testId="live-pilot-provider-configured"
+              label="API key configured"
+              value={data.activationPreflight?.display?.apiKeyConfigured || "No"}
+              testId="live-pilot-api-key"
             />
+            <Row
+              label="Model verification"
+              value={data.activationPreflight?.display?.modelVerification || "Not checked"}
+              testId="live-pilot-model-verification"
+            />
+            <Row
+              label="Pricing verification"
+              value={data.activationPreflight?.display?.pricingVerification || "Not checked"}
+              testId="live-pilot-pricing-verification"
+            />
+            <Row
+              label="Execution switch"
+              value={data.activationPreflight?.display?.executionSwitch || "Off"}
+              testId="live-pilot-global-switch"
+            />
+            <Row
+              label="Pilot switch"
+              value={data.activationPreflight?.display?.pilotSwitch || "Off"}
+              testId="live-pilot-pilot-switch"
+            />
+            <Row
+              label="Agent allocated"
+              value={data.activationPreflight?.display?.agentAllocated || "No"}
+              testId="live-pilot-allocated"
+            />
+            <Row
+              label="Agent active"
+              value={data.activationPreflight?.display?.agentActive || "No"}
+              testId="live-pilot-active"
+            />
+            <Row
+              label="Agent live-tested"
+              value={data.activationPreflight?.display?.agentLiveTested || "No"}
+              testId="live-pilot-live-tested"
+            />
+            <Row
+              label="Provider calls"
+              value={data.activationPreflight?.display?.providerCalls || "0"}
+              testId="live-pilot-provider-calls"
+            />
+            <Row
+              label="Live execution ready"
+              value={data.activationPreflight?.display?.liveExecutionReady || "No"}
+              testId="live-pilot-live-ready"
+            />
+            <Row label="Pilot agent" value={data.agent?.name || "—"} testId="live-pilot-agent" />
+            <Row label="Slug" value={data.agent?.slug || "—"} testId="live-pilot-slug" />
+            <Row label="Project" value={data.project?.name || "—"} testId="live-pilot-project" />
             <Row
               label="Selected model"
               value={data.model?.selected || "none"}
@@ -129,57 +170,9 @@ export default function LiveAgentPilotClient() {
               testId="live-pilot-model-allowlisted"
             />
             <Row
-              label="Pricing version"
-              value={data.provider?.pricingVersion || "none"}
-              testId="live-pilot-pricing"
-            />
-            <Row
-              label="Worst-case cost"
-              value={
-                data.budget?.worstCaseCostUsd != null
-                  ? `USD ${data.budget.worstCaseCostUsd}`
-                  : "n/a"
-              }
-              testId="live-pilot-worst-case-cost"
-            />
-            <Row
-              label="Latest run cost"
-              value={
-                data.budget?.latestRunCostUsd != null
-                  ? `USD ${data.budget.latestRunCostUsd}`
-                  : "none"
-              }
-              testId="live-pilot-latest-cost"
-            />
-            <Row
-              label="Global live execution"
-              value={globalOn ? "enabled" : "disabled"}
-              testId="live-pilot-global-switch"
-            />
-            <Row
-              label="Pilot execution"
-              value={pilotOn ? "enabled" : "disabled"}
-              testId="live-pilot-pilot-switch"
-            />
-            <Row
               label="Kill switch"
               value={killOn ? "active" : "inactive"}
               testId="live-pilot-kill-switch"
-            />
-            <Row
-              label="Agent allocated"
-              value={data.agent?.allocated ? "yes" : "no"}
-              testId="live-pilot-allocated"
-            />
-            <Row
-              label="Agent active"
-              value={data.agent?.active ? "yes" : "no"}
-              testId="live-pilot-active"
-            />
-            <Row
-              label="Live tested"
-              value={(data.workforce?.liveTestedSeats || 0) > 0 ? "yes" : "no"}
-              testId="live-pilot-live-tested"
             />
             <Row
               label="Execution eligible"
@@ -215,36 +208,30 @@ export default function LiveAgentPilotClient() {
               value={data.latestProviderRequestId || "none"}
               testId="live-pilot-provider-request"
             />
-            <Row
-              label="Latest tokens"
-              value={
-                data.latestRun?.totalTokens != null
-                  ? String(data.latestRun.totalTokens)
-                  : "none"
-              }
-              testId="live-pilot-latest-tokens"
-            />
-            <Row
-              label="Latest evidence"
-              value={
-                data.latestEvidence?.id
-                  ? `${data.latestEvidence.id.slice(0, 8)}…`
-                  : "none"
-              }
-              testId="live-pilot-latest-evidence"
-            />
-            <Row
-              label="Failure reason"
-              value={data.failureReason || "none"}
-              testId="live-pilot-failure"
-            />
           </div>
+
+          <section style={{ marginTop: "1.5rem" }} data-testid="live-pilot-blockers">
+            <h2 className="admin-section-title">Blocking reasons</h2>
+            <ul data-testid="live-pilot-disabled-reasons">
+              {(data.activationPreflight?.blockingReasons || []).map((r) => (
+                <li key={r}>{r}</li>
+              ))}
+              {disabledReasons.map((r) => (
+                <li key={`elig-${r}`}>{r}</li>
+              ))}
+            </ul>
+            <p className="wa-metric-hint" style={{ marginTop: "0.75rem" }}>
+              {data.vercelSecretGuidance ||
+                "Configure OPENAI_API_KEY only through the Vercel Production sensitive environment UI. Never enter secrets on this page."}{" "}
+              See <code>doc/ONE-AGENT-PROVIDER-ACTIVATION-RUNBOOK.md</code>.
+            </p>
+          </section>
 
           <section style={{ marginTop: "1.5rem" }}>
             <h2 className="admin-section-title">Controls</h2>
             <p className="wa-metric-hint">
               Run stays disabled until the server status endpoint reports every gate.
-              This UI never calls OpenAI directly.
+              This UI never calls OpenAI directly and has no API-secret input field.
             </p>
             <div
               style={{
@@ -287,11 +274,6 @@ export default function LiveAgentPilotClient() {
                 Clear kill switch
               </button>
             </div>
-            <ul data-testid="live-pilot-disabled-reasons" style={{ marginTop: "1rem" }}>
-              {disabledReasons.map((r) => (
-                <li key={r}>{r}</li>
-              ))}
-            </ul>
             <p style={{ marginTop: "1rem" }}>
               <StatusBadge tone="warning">
                 liveExecutionReady:{" "}
