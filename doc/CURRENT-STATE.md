@@ -30,17 +30,17 @@ live-tested AI agents.
 
 ## Current Production commit (latest origin/main)
 
-`da558a094a41842884791ea8432fd13c6f8379b4`
+`44baa7a99935fe37463aaae5daaf8eeb2df1cb76`
 
-(Merge of PR #81 — Admin workforce responsibility map and Unavailable metric wiring. Does not imply Founder Final Review approval or a live provider run.)
+(Merge of PR #82 — shared WorkforceMetricCard + summary normalization + Runtime Agents tab label. Does not imply Founder Final Review approval or a live provider run.)
 
 ## Deployment state
 
 | Item | Value |
 |------|-------|
 | Production URL | https://mian-x-ai.vercel.app |
-| Production alias target | deployment for merge commit `da558a0` (Ready) |
-| Manual Production deploy from follow-on foundation-metrics Draft PR | not performed |
+| Production alias target | deployment for merge commit `44baa7a` (Ready) |
+| Manual Production deploy from provider-activation-readiness Draft PR | not performed |
 | Environment / secrets changed by docs or workforce PRs | no |
 
 ## Scheduler state
@@ -81,11 +81,20 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 
 | Item | Value |
 |------|-------|
-| OpenAI execution path | merged into main |
+| OpenAI execution path | merged into main (path); activation-readiness Draft until merge |
 | Provider configured | no |
 | providerName | none |
 | Genuine provider calls | 0 |
 | liveExecutionReady | false |
+| officialCatalogStatus (gpt-5.4-mini) | verified (docs 2026-08-03) |
+| accountAccessStatus | not_checked |
+| officialPricingStatus | verified (standard $0.75/$0.075/$4.50 per 1M) |
+| billingModeStatus | unknown |
+| standard worst-case at pilot caps | $0.0084 (not authorizing) |
+| responseStorageEnabled | false |
+| zeroDataRetentionVerified | false |
+| Authenticated Models API verification | not performed |
+| Provider activation readiness PR | Draft/Preview only until merged |
 
 ## Live execution truth
 
@@ -95,6 +104,7 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 | LIVE_AGENT_PILOT_ENABLED | false |
 | Pilot agent allocated / activated | no |
 | Real OpenAI network proof run | not performed |
+| Authenticated Models API verification | not performed |
 
 ## Founder Proof truth
 
@@ -129,11 +139,14 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 
 ## Known verified issues
 
-- Shared foundation metric presentation and Runtime Agents tab clarification are in a follow-on Draft PR (preview only until merge). Setup + Readiness were not collapsed. Routes were not deleted or redirected.
+- Shared foundation metric presentation and Runtime Agents tab clarification — **fixed; Production deployed after exact-head merge** (2026-08-03, merged PR [#82](https://github.com/Mianxai/MianX.ai/pull/82), merge commit `44baa7a99935fe37463aaae5daaf8eeb2df1cb76`). Setup + Readiness were not collapsed. Routes were not deleted or redirected. Authenticated Production UI not directly browser-verified because no safe credentials were available.
+- One-agent provider activation readiness (preflight, fail-closed verification statuses, runbook) — **Draft/Preview only** on branch `cursor/one-agent-provider-activation-readiness`. Does not configure provider, enable switches, or perform Models API / generation calls.
 - GitHub scheduled fallback external-delivery proof remains pending.
 
 ## Resolved issues
 
+- **Admin workforce foundation metrics + Runtime Agents label (PR #82)** — **fixed; Production deployed after merge** (2026-08-03, merge commit `44baa7a99935fe37463aaae5daaf8eeb2df1cb76`).
+  - Shared `WorkforceMetricCard`, `normalizeWorkforceSummary` wired into Setup/Readiness/Ops, Runtime Agents tab label (id `agents` preserved), global `/admin/agents` unchanged.
 - **Admin workforce responsibility overlap (label/truth headers)** — **fixed; Production deployed after merge** (2026-08-03, merged PR [#81](https://github.com/Mianxai/MianX.ai/pull/81), merge commit `da558a094a41842884791ea8432fd13c6f8379b4`).
   - Ownership map, terminology, nav labels (Setup / Readiness / Workforce Ops), purpose headers, coalesce-without-inventing-zeros for Unavailable.
   - Authenticated Production UI not directly browser-verified because no safe credentials were available.
@@ -154,9 +167,10 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 
 1. Founder Final Review not approved (independent of docs).
 2. Provider not configured (`providerName: none`).
-3. Live switches not enabled; no Founder-authorized live pilot run.
-4. Documentation Stage 2+ refactor (README/roadmap split) not started.
-5. Remaining UI debt: further catalogue-card dedupe; Setup+Readiness collapse not authorized.
+3. Model availability and pricing verification pending (official docs / separately authorized Models API).
+4. Live switches not enabled; no Founder-authorized live pilot run.
+5. Documentation Stage 2+ refactor (README/roadmap split) not started.
+6. Remaining UI debt: further catalogue-card dedupe; Setup+Readiness collapse not authorized.
 
 ## Next operational milestone
 
@@ -174,6 +188,8 @@ without declaring Stage 2 complete before Stage 1 exit criteria.
 - `doc/DOCUMENT-STATUS-REGISTRY.md`
 - `doc/CANONICAL-DOCUMENT-MAP.md`
 - `doc/ADMIN-WORKFORCE-RESPONSIBILITY-MAP.md`
+- `doc/ONE-AGENT-PROVIDER-ACTIVATION-RUNBOOK.md`
+- `doc/ONE-AGENT-OPENAI-CONTRACT-NOTES.md`
 - Branch preservation: `backup/docs-upgrade-raw-20260803`
 
 ## Explicit non-claims
