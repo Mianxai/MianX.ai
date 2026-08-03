@@ -85,6 +85,7 @@ Envelope (template only — not queued):
 - caps: 4000 / 1200 / 5200 tokens  
 - tools: `[]` · `store: false`  
 - standard estimate: 8400 µUSD · ceiling: 100000 µUSD  
+- provider timeout: 60s · wall timeout: 90s  
 - max attempts: 1 · concurrency: 1 · queued tasks: 1  
 - approved model/snapshot: `gpt-5.4-mini` / `gpt-5.4-mini-2026-03-17`
 
@@ -103,22 +104,28 @@ No automatic retry of uncertain calls.
 Enable: (1) execution (2) pilot  
 Disable: (1) pilot (2) execution  
 
-Rollback classes cover before/after model check, before/after queue, after auth
+Rollback classes cover before/after key configuration, before/after model check,
+before authorization, before allocation, before/after queue, after auth
 consume, after provider response, evidence failure, and indeterminate attempt.
 **Never delete historical evidence.**
 
 ## C6 — Founder authorization templates
 
-Non-executable templates exist in code for: key confirmation, Models API check,
-live-run authorization, task queue, switch enablement, generation attempt,
-post-run switch-off, evidence acceptance. Each names scope, model/snapshot, cost
-ceiling, expiry, and prohibitions.
+Nine non-executable templates exist in code for: key confirmation, Models API
+check, live-run authorization, pilot-agent allocation, task queue, switch
+enablement, generation attempt, post-run switch-off, evidence acceptance. Each
+names repository/project scope, model/snapshot, task/envelope, cost ceiling,
+expiry, and shared prohibitions (extra calls/tasks, unrelated migrations,
+database resets/repairs, unrelated env changes, Founder Proof, Founder Final
+Review).
 
 ## C7 — Admin Founder checklist
 
-Read-only Admin section shows completed foundation, current blockers, next
-manual Founder action, and prohibited actions. No secret field, Run now, switch
-controls, allocation, or automatic authorization.
+Read-only Admin section shows baseline zero-state (auth store, provider, API
+key, account access, billing, authorization, allocated/queued/concurrent,
+switches, call counters, readiness flags), completed foundation, current
+blockers, next manual Founder action, and prohibited actions. No secret field,
+Run now, switch controls, allocation, or automatic authorization.
 
 ## Next exact Founder action
 

@@ -478,6 +478,169 @@ export default function LiveAgentPilotClient() {
               Preparation only. No secret entry. No Run-now action. No switch controls. No
               automatic allocation. No automatic authorization.
             </p>
+            <div className="workforce-status-grid" data-testid="live-pilot-baseline-zero-state">
+              <Row
+                label="Authorization storage"
+                value={
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.authorizationStore === "available"
+                    ? "Available"
+                    : String(
+                        data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                          ?.authorizationStore || "—"
+                      )
+                }
+                testId="flr-auth-store"
+              />
+              <Row
+                label="Provider configured"
+                value={
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.providerConfigured === "none" ||
+                  !data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.providerConfigured
+                    ? "No"
+                    : "Yes"
+                }
+                testId="flr-provider"
+              />
+              <Row
+                label="API key configured"
+                value={
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.apiKeyConfigured
+                    ? "Yes"
+                    : "No"
+                }
+                testId="flr-api-key"
+              />
+              <Row
+                label="Account access"
+                value={String(
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.accountAccessStatus || "not_checked"
+                )}
+                testId="flr-account-access"
+              />
+              <Row
+                label="Billing path"
+                value={
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.billingPathStatus === "unknown" ||
+                  !data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.billingPathStatus
+                    ? "Unknown / not checked"
+                    : String(
+                        data.liveRunControlPlane.firstLiveRunFounderChecklist.baselineZeroState
+                          .billingPathStatus
+                      )
+                }
+                testId="flr-billing"
+              />
+              <Row
+                label="Real authorization"
+                value={
+                  !data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.realAuthorization ||
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.realAuthorization === "none"
+                    ? "None"
+                    : String(
+                        data.liveRunControlPlane.firstLiveRunFounderChecklist.baselineZeroState
+                          .realAuthorization
+                      )
+                }
+                testId="flr-auth"
+              />
+              <Row
+                label="Allocated agents"
+                value={String(
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.allocatedAgents ?? 0
+                )}
+                testId="flr-allocated"
+              />
+              <Row
+                label="Queued tasks"
+                value={String(
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.queuedTasks ?? 0
+                )}
+                testId="flr-queued"
+              />
+              <Row
+                label="Concurrent runs"
+                value={String(
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.concurrentRuns ?? 0
+                )}
+                testId="flr-concurrent"
+              />
+              <Row
+                label="Execution switch"
+                value={
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.executionSwitch
+                    ? "On"
+                    : "Off"
+                }
+                testId="flr-exec-switch"
+              />
+              <Row
+                label="Pilot switch"
+                value={
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.pilotSwitch
+                    ? "On"
+                    : "Off"
+                }
+                testId="flr-pilot-switch"
+              />
+              <Row
+                label="Provider calls"
+                value={String(
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.providerCalls ?? 0
+                )}
+                testId="flr-provider-calls"
+              />
+              <Row
+                label="Models API calls"
+                value={String(
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.modelsApiCalls ?? 0
+                )}
+                testId="flr-models-calls"
+              />
+              <Row
+                label="Generation calls"
+                value={String(
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.generationCalls ?? 0
+                )}
+                testId="flr-gen-calls"
+              />
+              <Row
+                label="Provider-call allowed"
+                value={
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.providerCallAllowed
+                    ? "Yes"
+                    : "No"
+                }
+                testId="flr-call-allowed"
+              />
+              <Row
+                label="Live execution ready"
+                value={
+                  data.liveRunControlPlane?.firstLiveRunFounderChecklist?.baselineZeroState
+                    ?.liveExecutionReady
+                    ? "Yes"
+                    : "No"
+                }
+                testId="flr-live-ready"
+              />
+            </div>
             <h3 className="admin-section-title" style={{ marginTop: "0.75rem" }}>
               Completed foundation
             </h3>
