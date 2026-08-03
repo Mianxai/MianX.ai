@@ -30,19 +30,21 @@ live-tested AI agents.
 
 ## Current Production commit (latest origin/main)
 
-`405171beb3a3b15f4fffd161903c6c39844d34fe`
+`da4e19bce6bf19c54b76dfaa8382fee082e79a9c`
 
-(Merge of PR #84 — one-agent dry-run evidence rehearsal. Fake provider remains
-Vitest-only. Does not imply Founder Final Review approval or a live provider run.)
+(Merge of PR #85 — one-agent live-run control plane. Migration included but
+**not applied**. Fail-closed `authorization_store_unavailable`. Does not imply
+Founder Final Review approval or a live provider run.)
 
 ## Deployment state
 
 | Item | Value |
 |------|-------|
 | Production URL | https://mian-x-ai.vercel.app |
-| Production alias target | deployment for merge commit `405171b` (Ready/success) |
-| Manual Production deploy from control-plane Draft PR | not performed |
-| Environment / secrets changed by dry-run/control-plane PRs | no |
+| Production alias target | deployment for merge commit `da4e19b` (Ready/success) |
+| Authorization migration applied | **no** |
+| Production database changed by PR #85 | **no** |
+| Environment / secrets changed | no |
 
 ## Scheduler state
 
@@ -97,7 +99,8 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 | Authenticated Models API verification | not performed |
 | Provider activation readiness PR | **merged** (PR #83 → `940c227`); Production verified after merge |
 | Dry-run evidence rehearsal PR | **merged** (PR #84 → `405171b`); Vitest-only fake provider; Production verified |
-| Live-run control-plane PR | Draft/Preview — fail-closed without migration (`authorization_store_unavailable`); migration included, not applied |
+| Live-run control-plane PR | **merged** (PR #85 → `da4e19b`); Production verified **without** migration apply; fail-closed store |
+| Live-run authorization migration | Included on main; **not applied**; rollout-readiness Draft follows |
 
 ## Live execution truth
 
