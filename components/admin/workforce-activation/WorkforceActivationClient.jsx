@@ -6,9 +6,10 @@ import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import StatusBadge from "@/components/admin/StatusBadge";
 import {
-  formatWorkforceMetric,
   coalesceWorkforceCount,
 } from "@/lib/core/workforce-i2/terminology.js";
+import { normalizeWorkforceSummary } from "@/lib/core/workforce-i2/summary-normalize.js";
+import WorkforceMetricCard from "@/components/admin/workforce/WorkforceMetricCard";
 
 const CONFIRM_PHRASE = "BOOTSTRAP 445";
 
@@ -29,16 +30,6 @@ const CHECKLIST_STEPS = [
   { id: "live", label: "Controlled activation check" },
   { id: "acceptance", label: "AI Software House acceptance" },
 ];
-
-function MetricCard({ label, value, testId, hint }) {
-  return (
-    <div className="workforce-status-card" data-testid={testId}>
-      <span className="workforce-status-label">{label}</span>
-      <strong className="workforce-status-value">{value}</strong>
-      {hint ? <span className="wa-metric-hint">{hint}</span> : null}
-    </div>
-  );
-}
 
 function ResultCard({ title, children, testId }) {
   return (
@@ -169,6 +160,19 @@ export default function WorkforceActivationClient() {
   );
   const bootstrapComplete = persistedSeats === 445 && readySeats === 445;
   const providerConfigured = Boolean(checks.openRouterKeyPresent || verify.providerReady);
+  const inventorySummary = normalizeWorkforceSummary({
+    registered: 445,
+    persisted: persistedSeats,
+    ready: readySeats,
+    allocated: coalesceWorkforceCount(capacity.allocated),
+    active: coalesceWorkforceCount(
+      verify.activeInstances,
+      data?.verify?.activeInstances
+    ),
+    liveTested: coalesceWorkforceCount(data?.liveTested),
+    providerName: providerConfigured ? "configured" : "none",
+    liveExecutionReady: false,
+  });
 
   const applyEnabled = useMemo(() => {
     if (bootstrapComplete) return false;
@@ -210,59 +214,54 @@ export default function WorkforceActivationClient() {
   const metricCards = [
     {
       label: "Capacity seats",
-      value: formatWorkforceMetric(445).label,
+      value: inventorySummary.registered,
       testId: "wa-capacity",
+      proves: "Registered planning capacity — not active agents",
     },
     {
       label: "Compiled seats",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(capacity.compiledSeats)
-      ).label,
+      value: coalesceWorkforceCount(capacity.compiledSeats),
       testId: "wa-compiled",
     },
     {
       label: "Persisted in database",
-      value: formatWorkforceMetric(persistedSeats).label,
+      value: inventorySummary.persisted,
       testId: "wa-persisted",
     },
     {
       label: "Ready to allocate",
-      value: formatWorkforceMetric(readySeats).label,
+      value: inventorySummary.ready,
       testId: "wa-ready",
+      proves: "Ready ≠ allocated or active",
     },
     {
       label: "Allocated",
-      value: formatWorkforceMetric(coalesceWorkforceCount(capacity.allocated)).label,
+      value: inventorySummary.allocated,
       testId: "wa-allocated",
     },
     {
       label: "Active instances",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(
-          verify.activeInstances,
-          data?.verify?.activeInstances
-        )
-      ).label,
+      value: inventorySummary.active,
       testId: "wa-active",
     },
     {
       label: "Live tested",
-      value: formatWorkforceMetric(coalesceWorkforceCount(data?.liveTested)).label,
+      value: inventorySummary.liveTested,
       testId: "wa-live-tested",
     },
     {
       label: "Departments",
-      value: bp?.departmentCount ?? 20,
+      value: coalesceWorkforceCount(bp?.departmentCount),
       testId: "wa-departments",
     },
     {
       label: "Archetypes",
-      value: bp?.archetypeCount ?? verify.archetypeCount ?? 148,
+      value: coalesceWorkforceCount(bp?.archetypeCount, verify.archetypeCount),
       testId: "wa-archetypes",
     },
     {
       label: "Workflow families",
-      value: bp?.workflowFamilyCount ?? 13,
+      value: coalesceWorkforceCount(bp?.workflowFamilyCount),
       testId: "wa-workflows",
     },
     {
@@ -272,16 +271,19 @@ export default function WorkforceActivationClient() {
           ? "Durable"
           : "Not durable",
       testId: "wa-db-durable",
+      literal: true,
     },
     {
       label: "Queue durability",
       value: checks.queue || verify.queueDurable ? "Durable" : "Not durable",
       testId: "wa-queue-durable",
+      literal: true,
     },
     {
       label: "Lease durability",
       value: checks.leases || verify.leaseDurable || verify.leasesDurable ? "Durable" : "Not durable",
       testId: "wa-lease-durable",
+      literal: true,
     },
     {
       label: "Rate-limit durability",
@@ -290,11 +292,13 @@ export default function WorkforceActivationClient() {
           ? "Durable"
           : "Not durable",
       testId: "wa-rate-durable",
+      literal: true,
     },
     {
       label: "Provider status",
       value: providerConfigured ? "Configured" : "AI provider unconfigured",
       testId: "wa-provider",
+      literal: true,
     },
     {
       label: "Live execution readiness",
@@ -303,6 +307,7 @@ export default function WorkforceActivationClient() {
         : "Unavailable until provider configuration",
       testId: "wa-live-exec",
       hint: "liveExecutionReady remains false without a provider",
+      literal: true,
     },
   ];
 
@@ -352,8 +357,16 @@ export default function WorkforceActivationClient() {
         <h2 className="wa-section-title">Foundation metrics</h2>
         <div className="workforce-status-grid" data-testid="wa-truth-cards">
           {metricCards.map((c) => (
-            <MetricCard key={c.testId} {...c} />
-          ))}
+              <WorkforceMetricCard
+                key={c.testId}
+                label={c.label}
+                value={c.value}
+                testId={c.testId}
+                note={c.hint}
+                proves={c.proves}
+                literal={c.literal === true}
+              />
+            ))}
         </div>
       </section>
 

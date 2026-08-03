@@ -162,6 +162,9 @@ test.describe("admin authenticated route sweep", () => {
     ).toHaveCount(1);
     await expect(page.getByTestId("page-how-this-works")).toBeVisible();
 
+    await expect(page.getByRole("tab", { name: /runtime agents/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /^agents$/i })).toHaveCount(1);
+
     const dashboard = page.getByTestId("workforce-dashboard");
     await expect(dashboard).toBeVisible();
     await expect(page.getByTestId("workforce-status-cards")).toBeVisible();

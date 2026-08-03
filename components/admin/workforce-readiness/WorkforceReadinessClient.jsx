@@ -6,19 +6,10 @@ import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import StatusBadge from "@/components/admin/StatusBadge";
 import {
-  formatWorkforceMetric,
   coalesceWorkforceCount,
 } from "@/lib/core/workforce-i2/terminology.js";
-
-function MetricCard({ label, value, testId, hint }) {
-  return (
-    <div className="workforce-status-card" data-testid={testId}>
-      <span className="workforce-status-label">{label}</span>
-      <strong className="workforce-status-value">{value}</strong>
-      {hint ? <span className="wa-metric-hint">{hint}</span> : null}
-    </div>
-  );
-}
+import { normalizeWorkforceSummary } from "@/lib/core/workforce-i2/summary-normalize.js";
+import WorkforceMetricCard from "@/components/admin/workforce/WorkforceMetricCard";
 
 export default function WorkforceReadinessClient() {
   const [data, setData] = useState(null);
@@ -137,103 +128,132 @@ export default function WorkforceReadinessClient() {
     );
   }
 
+  const inventorySummary = normalizeWorkforceSummary({
+    registered: foundation.capacitySeats,
+    persisted: foundation.persistedSeats,
+    ready: foundation.readyToAllocateSeats,
+    allocated: foundation.allocatedSeats,
+    active: foundation.activeInstances,
+    liveTested: coalesceWorkforceCount(
+      foundation.liveTestedSeats,
+      readiness?.live_tested
+    ),
+    providerName: foundation.providerName ?? (providerConfigured ? "configured" : "none"),
+    liveExecutionReady:
+      typeof foundation.liveExecutionReady === "boolean"
+        ? foundation.liveExecutionReady
+        : false,
+  });
+
   const capacityMetrics = [
     {
       label: "Documented / capacity seats",
-      value: formatWorkforceMetric(foundation.capacitySeats).label,
+      value: inventorySummary.registered,
       testId: "wr-capacity",
+      proves: "Registered capacity — not active agents",
     },
     {
       label: "Compiled seats",
-      value: formatWorkforceMetric(foundation.compiledSeats).label,
+      value: coalesceWorkforceCount(foundation.compiledSeats),
       testId: "wr-compiled",
     },
     {
       label: "Persisted seats",
-      value: formatWorkforceMetric(foundation.persistedSeats).label,
+      value: inventorySummary.persisted,
       testId: "wr-persisted",
     },
     {
       label: "Ready to allocate",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(foundation.readyToAllocateSeats)
-      ).label,
+      value: inventorySummary.ready,
       testId: "wr-ready",
+      proves: "Ready ≠ allocated or active",
     },
     {
       label: "Allocated seats",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(foundation.allocatedSeats)
-      ).label,
+      value: inventorySummary.allocated,
       testId: "wr-allocated",
     },
     {
       label: "Active instances",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(foundation.activeInstances)
-      ).label,
+      value: inventorySummary.active,
       testId: "wr-active",
     },
     {
       label: "Live-tested seats",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(
-          foundation.liveTestedSeats,
-          readiness?.live_tested
-        )
-      ).label,
+      value: inventorySummary.liveTested,
       testId: "wr-live-tested",
     },
     {
       label: "Archetypes",
-      value: foundation.archetypes ?? foundation.archetypeCount ?? 148,
+      value: coalesceWorkforceCount(
+        foundation.archetypes,
+        foundation.archetypeCount
+      ),
       testId: "wr-archetypes",
     },
     {
       label: "Departments",
-      value: foundation.departments ?? foundation.departmentCount ?? 20,
+      value: coalesceWorkforceCount(
+        foundation.departments,
+        foundation.departmentCount
+      ),
       testId: "wr-departments",
     },
     {
       label: "Workflow families",
-      value: `${foundation.workflowFamilies ?? foundation.workflowFamilyCount ?? 13} / ${
-        foundation.workflowFamiliesRequired ?? 13
-      }`,
+      value:
+        foundation.workflowFamilies != null || foundation.workflowFamilyCount != null
+          ? `${foundation.workflowFamilies ?? foundation.workflowFamilyCount} / ${
+              foundation.workflowFamiliesRequired ?? "Unavailable"
+            }`
+          : null,
       testId: "wr-workflows",
+      literal: foundation.workflowFamilies != null || foundation.workflowFamilyCount != null,
     },
   ];
 
   const executableMetrics = [
     {
       label: "Catalogue entries",
-      value: executable.catalogueEntries ?? totals?.catalogue ?? "—",
+      value: coalesceWorkforceCount(
+        executable.catalogueEntries,
+        totals?.catalogue
+      ),
       testId: "wr-catalogue-entries",
       hint: "Includes intentionally non-executable superseded definitions",
     },
     {
       label: "Executable definitions",
-      value: executable.executableDefinitions ?? totals?.executable ?? "—",
+      value: coalesceWorkforceCount(
+        executable.executableDefinitions,
+        totals?.executable
+      ),
       testId: "wr-executable-count",
       hint: "Runtime-capable catalogue subset — not capacity seats",
     },
     {
       label: "Intentionally non-executable",
       value:
-        executable.intentionallyNonExecutable ??
-        (executable.catalogueEntries != null && executable.executableDefinitions != null
-          ? Math.max(0, executable.catalogueEntries - executable.executableDefinitions)
-          : "—"),
+        coalesceWorkforceCount(executable.intentionallyNonExecutable) ??
+        (executable.catalogueEntries != null &&
+        executable.executableDefinitions != null
+          ? Math.max(
+              0,
+              Number(executable.catalogueEntries) -
+                Number(executable.executableDefinitions)
+            )
+          : null),
       testId: "wr-non-executable",
     },
     {
       label: "Named/runtime role registry entries",
-      value: executable.namedRoleRegistryEntries ?? "—",
+      value: coalesceWorkforceCount(executable.namedRoleRegistryEntries),
       testId: "wr-named-role-registry",
       hint: "Org + runtime inventory count — not compiled seats",
     },
     {
       label: "Capacity-reserve gaps (named inventory)",
-      value: executable.capacityReserveGaps ?? "—",
+      value: coalesceWorkforceCount(executable.capacityReserveGaps),
       testId: "wr-capacity-gaps",
       hint: "Documented reserves without separate named personas — valid mapped seats still count in 445",
     },
@@ -265,18 +285,33 @@ export default function WorkforceReadinessClient() {
         <h2 className="wa-section-title">Capacity truth</h2>
         <div className="workforce-status-grid" data-testid="wr-capacity-cards">
           {capacityMetrics.map((c) => (
-            <MetricCard key={c.testId} {...c} />
-          ))}
-        </div>
+              <WorkforceMetricCard
+                key={c.testId}
+                label={c.label}
+                value={c.value}
+                testId={c.testId}
+                note={c.hint}
+                proves={c.proves}
+                literal={c.literal === true}
+              />
+            ))}
+          </div>
       </section>
 
       <section aria-label="Executable runtime metrics">
         <h2 className="wa-section-title">Executable / runtime catalogue</h2>
         <div className="workforce-status-grid" data-testid="wr-executable-cards">
           {executableMetrics.map((c) => (
-            <MetricCard key={c.testId} {...c} />
-          ))}
-        </div>
+              <WorkforceMetricCard
+                key={c.testId}
+                label={c.label}
+                value={c.value}
+                testId={c.testId}
+                note={c.hint}
+                literal={c.literal === true}
+              />
+            ))}
+          </div>
         <p className="cc-muted" data-testid="wr-executable-note">
           Catalogue entries and executable definitions are different concepts. Never read either as
           compiled seats.

@@ -30,18 +30,18 @@ live-tested AI agents.
 
 ## Current Production commit (latest origin/main)
 
-`de3972eb55ee27b201119e5bf23d1e38b72651f2`
+`da558a094a41842884791ea8432fd13c6f8379b4`
 
-(Merge of PR #80 — Admin truth consistency for Projects Founder Proof and Objectives loading. Does not imply Founder Final Review approval or a live provider run.)
+(Merge of PR #81 — Admin workforce responsibility map and Unavailable metric wiring. Does not imply Founder Final Review approval or a live provider run.)
 
 ## Deployment state
 
 | Item | Value |
 |------|-------|
 | Production URL | https://mian-x-ai.vercel.app |
-| Production alias target | deployment for merge commit `de3972e` (Ready) |
-| Manual Production deploy from documentation / workforce-audit PRs | not performed from those PRs |
-| Environment / secrets changed by docs or workforce-audit work | no |
+| Production alias target | deployment for merge commit `da558a0` (Ready) |
+| Manual Production deploy from follow-on foundation-metrics Draft PR | not performed |
+| Environment / secrets changed by docs or workforce PRs | no |
 
 ## Scheduler state
 
@@ -129,12 +129,14 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 
 ## Known verified issues
 
-- Workforce Setup, Readiness, Workforce Ops, and Agents still share some foundation counters; ownership map and truth headers shipped in Draft PR #81. Routes are not deleted or redirected. Shared metric presentation component remains a follow-on.
-- PR #81 audit (pre-merge): Unavailable path for missing counters was incomplete until a focused coalesce/format fix on the same branch — preview/audit only until merge + Production deploy.
+- Shared foundation metric presentation and Runtime Agents tab clarification are in a follow-on Draft PR (preview only until merge). Setup + Readiness were not collapsed. Routes were not deleted or redirected.
 - GitHub scheduled fallback external-delivery proof remains pending.
 
 ## Resolved issues
 
+- **Admin workforce responsibility overlap (label/truth headers)** — **fixed; Production deployed after merge** (2026-08-03, merged PR [#81](https://github.com/Mianxai/MianX.ai/pull/81), merge commit `da558a094a41842884791ea8432fd13c6f8379b4`).
+  - Ownership map, terminology, nav labels (Setup / Readiness / Workforce Ops), purpose headers, coalesce-without-inventing-zeros for Unavailable.
+  - Authenticated Production UI not directly browser-verified because no safe credentials were available.
 - **Projects card Founder Proof contradiction** — **fixed; PR preview verified; Production deployed after merge** (2026-08-03, merged PR [#80](https://github.com/Mianxai/MianX.ai/pull/80), merge commit `de3972eb55ee27b201119e5bf23d1e38b72651f2`).
   - **Root cause:** `/admin/projects` treated missing/`null` operational summary (including in-flight load and fetch failure) as “No active Founder Proof”, and labeled proof from `canonical_integration_run` alone instead of the shared `founder_proof_ui` / status classification. During load, metrics showed “…” while Founder Proof falsely claimed no active proof.
   - **Fix:** Shared `lib/core/integration/founder-proof-status.js` classification; Projects card uses `resolveProjectsFounderProofDisplay` so `awaiting_final_review` / `founder_final_review` is **active review-pending** (not inactive/terminal); explicit Loading… / real value including `0` / Unavailable metric states; per-project ops load errors no longer map to empty proof.
@@ -154,7 +156,7 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 2. Provider not configured (`providerName: none`).
 3. Live switches not enabled; no Founder-authorized live pilot run.
 4. Documentation Stage 2+ refactor (README/roadmap split) not started.
-5. Remaining UI debt: Workforce Setup / Readiness / Workforce Ops overlap (responsibility map started; consolidation deferred).
+5. Remaining UI debt: further catalogue-card dedupe; Setup+Readiness collapse not authorized.
 
 ## Next operational milestone
 
