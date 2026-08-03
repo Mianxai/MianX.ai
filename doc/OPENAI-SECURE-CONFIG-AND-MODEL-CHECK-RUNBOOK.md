@@ -50,16 +50,28 @@ Current Production truth (post authorization-store migration apply):
 - Never paste the key in chat, Cursor prompts, PRs, issues, or docs.
 - Never commit the key to Git (including `.env*` tracked files).
 - Never print the key in Terminal, CI logs, or screenshots.
+- Never store the key in documentation, fixtures, or comments.
+- Never store the key in the database or any Admin/browser field.
 - Never add a browser / Admin API-key input field.
-- Never dump `process.env` in Admin responses.
+- Never dump `process.env` or all Vercel environment values in Admin responses.
+- Never copy the secret into an Admin page.
 
 ### Safe presence verification (boolean only)
 
 After redeploy, Founder verifies **only**:
 
-- `apiKeyConfigured: true|false`
-- `providerName` remains non-secret (`openai` vs `none`)
-- Never ask for prefix, suffix, length, or hash of the key
+```json
+{ "apiKeyConfigured": true }
+```
+
+or
+
+```json
+{ "apiKeyConfigured": false }
+```
+
+Never ask for prefix, suffix, length, hash, or any key fragment.
+`providerName` is reported separately (non-secret: `none` / `openai`).
 
 Rollback: remove or rotate the variable in Vercel Production, redeploy.
 
