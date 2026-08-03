@@ -56,6 +56,36 @@ begin
     when check_violation then
       null; -- expected
   end;
+
+  -- NULL organization_id (legacy) must NOT match Tenant B org via durable filter.
+  insert into public.admin_memberships (user_id, email, role, status, organization_id, project_id)
+  values ('d0000000-0000-4000-8000-000000000001', 'legacy@example.test', 'admin', 'active', null, null);
+
+  select count(*) into cnt
+  from public.projects p
+  join public.admin_memberships m on m.user_id = 'd0000000-0000-4000-8000-000000000001'
+  where p.organization_id = org_b
+    and m.organization_id is not null
+    and p.organization_id = m.organization_id;
+  if cnt <> 0 then
+    raise exception 'ASSERT_FAIL: NULL org scope must not authorize Tenant B via org filter';
+  end if;
+
+  -- Suspended/removed membership must not authorize via active filter.
+  update public.admin_memberships
+    set status = 'revoked', revoked_at = now()
+    where user_id = user_a;
+
+  select count(*) into cnt
+  from public.projects p
+  join public.admin_memberships m on m.user_id = user_a
+  where p.id = proj_a
+    and m.status = 'active'
+    and m.revoked_at is null
+    and m.project_id = proj_a;
+  if cnt <> 0 then
+    raise exception 'ASSERT_FAIL: revoked membership still authorized Project A';
+  end if;
 end $$;
 
 select 'isolation_ok' as status;

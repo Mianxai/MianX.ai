@@ -37,17 +37,31 @@ Suite: `supabase/tests/membership-scope/`
 CI job: `Membership Scope Migration DB`  
 Validates apply → schema → RLS/grants → Tenant A/B isolation → rollback → reapply.
 
-## Linked dry-run
+## Linked dry-run (merge gate)
 
 Founder runs `npx supabase db push --linked --dry-run` (see runbook).  
-Agents must not apply.
+Agents must not apply. Agents must not `supabase link`.
 
-Agent observation (2026-08-03): local worktree CLI reported
-`LegacyProjectNotLinkedError` (project not linked in this environment).
-Founder must run the linked dry-run from an authorized linked machine.
-Ephemeral disposable validation is covered by CI job
-`Membership Scope Migration DB` and
+| Attempt | Result |
+|---------|--------|
+| Agent 2026-08-03 (unlinked CLI) | `LegacyProjectNotLinkedError` — **exit non-zero** |
+| Expected pending file | `20260803180000_admin_memberships_optional_tenant_scope.sql` only |
+| Mutation | none (dry-run only) |
+
+**Merge policy:** PR #93 stays Draft until Founder-linked dry-run returns exit 0
+with exactly that pending migration (no siblings, no repair/reset/seed).
+
+Ephemeral disposable validation (apply/rollback/reapply + Tenant A/B filters +
+RLS/grants catalog) is covered by CI job `Membership Scope Migration DB` and
 `npm run verify:membership-scope-migration:ephemeral`.
+
+## Honest RLS scope of this PR
+
+This Step 4 PR does **not** add JWT organization-scoped RLS policies for
+projects/tasks/agents/audit. It hardens optional membership scope columns,
+application durable-scope wiring, and deny-by-default RLS posture on
+`admin_memberships` (RLS on, zero policies, no anon writes). JWT membership RLS
+and remaining unscoped service-role routes are Phase 1 Step 5.
 
 ## Phase 1 Step 5 remaining-risk matrix
 

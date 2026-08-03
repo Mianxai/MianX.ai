@@ -68,10 +68,13 @@ Not machine-verified by MianX.ai.
 
 ## Tenancy model (runtime truth)
 
-**Single-tenant Founder platform** — global `admin_memberships`; one default org;
-project isolation is application-level when `project_id` is provided. See
-`doc/PHASE-1-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md` and
-`doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md` (Step 3 Draft).
+**Single-tenant Founder platform** — global `admin_memberships` until optional
+org/project columns are Founder-applied; one default org (`mianx`); workspaces
+not implemented; JWT org-scoped RLS not complete. Project list/detail scoping is
+application-level (PR #92). See
+`doc/PHASE-1-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md`,
+`doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md`, and
+`doc/PHASE-1-RLS-SCOPE-MIGRATION-READINESS.md` (Step 4 Draft).
 
 ## Scheduler state
 

@@ -104,7 +104,7 @@ payload sanitization, platform vs tenant admin.
 | Migration included in this Draft | yes — `20260803180000_admin_memberships_optional_tenant_scope.sql` |
 | Migration applied | **no** |
 | Rollback | `supabase/rollbacks/20260803180000_admin_memberships_optional_tenant_scope.rollback.sql` |
-| Compatibility | Additive nullable columns; NULL preserves current global membership |
+| Compatibility | Additive nullable columns; NULL = legacy default-org only (not multi-org global) |
 
 ## Remaining risks (honest remediation buckets)
 
