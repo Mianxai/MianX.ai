@@ -25,14 +25,20 @@ begin
 
   if cfg is not null then
     foreach item in array cfg loop
-      -- SET search_path = '' is stored as search_path=
-      if item = 'search_path=' then
+      -- SET search_path = '' may be stored as search_path= or search_path=""
+      if item = 'search_path='
+         or item = 'search_path=""'
+         or item = 'search_path=''''' then
         path_ok := true;
+      end if;
+      -- Reject broad public search_path
+      if item ilike 'search_path=%public%' then
+        raise exception 'ASSERT_FAIL: insecure search_path contains public: %', item;
       end if;
     end loop;
   end if;
   if not path_ok then
-    raise exception 'ASSERT_FAIL: search_path must be empty (search_path=), got %', cfg;
+    raise exception 'ASSERT_FAIL: search_path must be empty, got %', cfg;
   end if;
 
   if has_table_privilege('anon', 'public.pilot_live_run_authorizations', 'SELECT')
