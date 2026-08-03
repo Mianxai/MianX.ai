@@ -30,17 +30,18 @@ live-tested AI agents.
 
 ## Current Production commit (latest origin/main)
 
-`e5b0f503841e6fafbfb4f1d2e1e93c3b17bd17aa`
+`de3972eb55ee27b201119e5bf23d1e38b72651f2`
 
-(Includes merged Phase II.2 OpenAI one-agent live path. Does not imply a live provider run.)
+(Merge of PR #80 — Admin truth consistency for Projects Founder Proof and Objectives loading. Does not imply Founder Final Review approval or a live provider run.)
 
 ## Deployment state
 
 | Item | Value |
 |------|-------|
 | Production URL | https://mian-x-ai.vercel.app |
-| Manual Production deploy from this documentation PR | not performed |
-| Environment / secrets changed by this docs work | no |
+| Production alias target | deployment for merge commit `de3972e` (Ready) |
+| Manual Production deploy from documentation / workforce-audit PRs | not performed from those PRs |
+| Environment / secrets changed by docs or workforce-audit work | no |
 
 ## Scheduler state
 
@@ -58,13 +59,13 @@ live-tested AI agents.
 |------|-------|
 | Phase II.1 pilot migration | applied |
 | Pending database migrations (last verification) | none |
-| Migrations changed by this documentation PR | no |
+| Migrations changed by PR #80 or workforce-audit PR | no |
 
 ## Workforce truth
 
 | Metric | Value |
 |--------|-------|
-| capacitySeats | 445 |
+| capacitySeats / registered | 445 |
 | compiledSeats | 445 (planning capacity) |
 | persistedSeats | 445 |
 | readyToAllocateSeats | 445 |
@@ -73,6 +74,8 @@ live-tested AI agents.
 | liveTestedSeats / live-tested agents | 0 |
 
 **445 is capacity planning, not 445 running or live-tested agents.**
+
+Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY-MAP.md`.
 
 ## AI provider truth
 
@@ -98,6 +101,7 @@ live-tested AI agents.
 | Item | Value |
 |------|-------|
 | status | awaiting_final_review |
+| stage | founder_final_review |
 | Final Founder Review | not approved |
 | Auto-approval | forbidden |
 
@@ -109,6 +113,7 @@ live-tested AI agents.
 | Master roadmap (`doc/complete-roadmap.md`) | planning monolith; future sections planned |
 | Canonical map / registry / baseline | Stage 1 created |
 | Large split of README/roadmap | **not done** (deferred) |
+| Workforce Admin responsibility map | created (`doc/ADMIN-WORKFORCE-RESPONSIBILITY-MAP.md`) |
 
 ## Core platform maturity
 
@@ -124,23 +129,24 @@ live-tested AI agents.
 
 ## Known verified issues
 
-- Workforce, Readiness, and Workforce Ops responsibility overlap requires audit before consolidation.
+- Workforce Setup, Readiness, Workforce Ops, and Agents still share some foundation counters; ownership map and truth headers shipped in Draft PR #81. Routes are not deleted or redirected. Shared metric presentation component remains a follow-on.
+- PR #81 audit (pre-merge): Unavailable path for missing counters was incomplete until a focused coalesce/format fix on the same branch — preview/audit only until merge + Production deploy.
 - GitHub scheduled fallback external-delivery proof remains pending.
 
 ## Resolved issues
 
-- **Projects card Founder Proof contradiction** — **fixed and verified in PR preview; Production deployment pending merge** (2026-08-03, Draft PR [#80](https://github.com/Mianxai/MianX.ai/pull/80)).
+- **Projects card Founder Proof contradiction** — **fixed; PR preview verified; Production deployed after merge** (2026-08-03, merged PR [#80](https://github.com/Mianxai/MianX.ai/pull/80), merge commit `de3972eb55ee27b201119e5bf23d1e38b72651f2`).
   - **Root cause:** `/admin/projects` treated missing/`null` operational summary (including in-flight load and fetch failure) as “No active Founder Proof”, and labeled proof from `canonical_integration_run` alone instead of the shared `founder_proof_ui` / status classification. During load, metrics showed “…” while Founder Proof falsely claimed no active proof.
   - **Fix:** Shared `lib/core/integration/founder-proof-status.js` classification; Projects card uses `resolveProjectsFounderProofDisplay` so `awaiting_final_review` / `founder_final_review` is **active review-pending** (not inactive/terminal); explicit Loading… / real value including `0` / Unavailable metric states; per-project ops load errors no longer map to empty proof.
-  - **Verification evidence:** executed classifier truth table + unit/component tests (`founder-proof-status.test.js`, `projects-truth.test.jsx`, `admin-ops-summary.test.js`); CI Lint/Build, Chrome harness, Playwright on PR #80; Vercel Preview for the PR branch.
-  - **Resulting truthful behavior (preview):** project with `awaiting_final_review` shows active Founder Proof “Waiting for final Founder review”. **Founder Final Review remains not approved. Provider remains none. Allocated/active/live-tested remains 0/0/0.** Not claimed as Production-resolved until merge + deploy.
+  - **Verification evidence:** executed classifier truth table + unit/component tests; CI Lint/Build, Chrome harness, Playwright on PR #80; Vercel Preview; Production health after merge deploy (`providerName: none`, workforce 445/445/445, allocated/active/liveTested 0/0/0, proof `awaiting_final_review` / `founder_final_review`).
+  - **Authenticated Production UI:** not directly browser-verified without credentials; behaviour proven by source, tests, CI, Preview, and Production health. **Founder Final Review remains not approved.**
 
 ## Suspected issues requiring reproduction
 
-- Objectives loading anomaly — **client failure modes reproduced and hardened in PR preview; Production deployment pending merge** (2026-08-03, Draft PR [#80](https://github.com/Mianxai/MianX.ai/pull/80)).
+- Objectives loading anomaly — **client failure modes reproduced and hardened; Production deployed after merge** (2026-08-03, merged PR [#80](https://github.com/Mianxai/MianX.ai/pull/80)).
   - **Root cause:** (1) uncaught `fetch` throw left `loading` true without `finally`; (2) unstable router-dependent effect deps could retrigger loads; (3) `DelayedLoader` misuse; (4) missing unmount abort / stale-response guards.
   - **Fix:** try/finally, named 30s `OBJECTIVES_FETCH_TIMEOUT_MS` abort, unmount abort without misleading errors, request-id stale protection, schema/invalid-JSON handling, ErrorState + single Retry.
-  - **Evidence:** `ObjectivesClient.test.jsx` lifecycle coverage (success/empty/HTTP/auth/JSON/schema/timeout/unmount/stale/retry). Empty/error states remain truthful (no fabricated objectives).
+  - **Evidence:** `ObjectivesClient.test.jsx` lifecycle coverage. Authenticated Production Objectives UI not directly browser-verified without credentials.
 
 ## Current blockers
 
@@ -148,11 +154,11 @@ live-tested AI agents.
 2. Provider not configured (`providerName: none`).
 3. Live switches not enabled; no Founder-authorized live pilot run.
 4. Documentation Stage 2+ refactor (README/roadmap split) not started.
-5. Remaining UI debt: Workforce / Readiness / Workforce Ops overlap (out of PR #80 scope).
+5. Remaining UI debt: Workforce Setup / Readiness / Workforce Ops overlap (responsibility map started; consolidation deferred).
 
 ## Next operational milestone
 
-Complete Stage 1 documentation canonicalization (this stage), then proceed to a
+Complete Stage 1 documentation canonicalization and Admin workforce truth alignment, then proceed to a
 **Founder-authorized** controlled one-agent Production proof only after provider
 configuration, both live switches, exact approval, and separate run authorization —
 without declaring Stage 2 complete before Stage 1 exit criteria.
@@ -165,6 +171,7 @@ without declaring Stage 2 complete before Stage 1 exit criteria.
 - `execution/PHASE-II2-OPENAI-LIVE-PILOT-PATH.md`
 - `doc/DOCUMENT-STATUS-REGISTRY.md`
 - `doc/CANONICAL-DOCUMENT-MAP.md`
+- `doc/ADMIN-WORKFORCE-RESPONSIBILITY-MAP.md`
 - Branch preservation: `backup/docs-upgrade-raw-20260803`
 
 ## Explicit non-claims
@@ -180,4 +187,5 @@ This baseline does **not** claim:
 - that documentation completeness equals Production readiness of every described system;
 - that GitHub scheduled fallback delivery is verified;
 - that Founder Final Review is approved;
-- that any genuine OpenAI call has been made.
+- that any genuine OpenAI call has been made;
+- that authenticated Production Projects/Objectives UI was browser-verified without credentials.

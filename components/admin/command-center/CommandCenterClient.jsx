@@ -26,6 +26,11 @@ import ProductionReadinessCentre from "@/components/admin/ProductionReadinessCen
 import { resolveProjectDisplayName } from "@/lib/admin/resolve-project-label";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { adminFetch } from "@/lib/admin-fetch";
+import PageHeader from "@/components/admin/PageHeader";
+import {
+  WORKFORCE_SURFACE_IDS,
+  WORKFORCE_SURFACE_PURPOSE,
+} from "@/lib/core/workforce-i2/terminology.js";
 
 const AGENTS_PAGE_SIZE = 16;
 
@@ -371,7 +376,15 @@ export default function CommandCenterClient({
               </section>
             ) : null}
 
-            {agentsPage ? <FounderAuthorityBanner /> : null}
+            {agentsPage ? (
+              <>
+                <PageHeader
+                  description="Individual agent catalogue records — roles, departments, and lifecycle detail. Catalogue size is not the same as active or live-tested runtime agents."
+                  howThisWorks={`${WORKFORCE_SURFACE_PURPOSE[WORKFORCE_SURFACE_IDS.AGENTS].owns} ${WORKFORCE_SURFACE_PURPOSE[WORKFORCE_SURFACE_IDS.AGENTS].doesNotProve}`}
+                />
+                <FounderAuthorityBanner />
+              </>
+            ) : null}
 
             {projectId ? (
               agentsPage ? (
@@ -487,7 +500,7 @@ export default function CommandCenterClient({
                       }
                       className="header-btn-ghost"
                     >
-                      Open Workforce ops
+                      Open Workforce Ops
                     </Link>
                   </div>
                 </details>

@@ -44,13 +44,17 @@ describe("admin navigation uniqueness", () => {
     expect(primaryNavHrefs().filter((h) => h === "/admin/planning")).toHaveLength(1);
   });
 
-  it("includes Workforce ops under Workforce without duplicates", () => {
+  it("includes Workforce Ops under Workforce without duplicates", () => {
     const wf = ADMIN_NAV_GROUPS.find((g) => g.id === "workforce");
     const labels = wf.items.map((i) => i.label);
-    expect(labels).toContain("Workforce ops");
-    expect(labels.filter((l) => l === "Workforce ops")).toHaveLength(1);
+    expect(labels).toContain("Workforce Setup");
+    expect(labels).toContain("Readiness");
+    expect(labels).toContain("Workforce Ops");
+    expect(labels.filter((l) => l === "Workforce Ops")).toHaveLength(1);
     expect(primaryNavHrefs().filter((h) => h === "/admin/workforce")).toHaveLength(1);
     expect(labels).not.toContain("Live Workforce");
+    // Setup label must not collide with group-only "Workforce"
+    expect(labels.filter((l) => l === "Workforce")).toHaveLength(0);
   });
 
   it("uses Founder Mode IA with Home primary and Advanced Operations collapsed", () => {
