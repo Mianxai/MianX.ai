@@ -45,6 +45,10 @@ under Founder authorization. Live-run track paused; OpenAI credits not_checked.)
 | Authorization migration applied | **yes** (2026-08-03) |
 | Membership scope migration applied | **yes** — `20260803180000_admin_memberships_optional_tenant_scope.sql` |
 | Scope migration checksum | `6ae5e95605342b529b561b3fb366dd5eace626d41a7c92ccfd363aa07b1e5ed7` |
+| Pending migrations | **0** |
+| Post-apply manual logical backup | **yes** (outside Git; checksummed; restore-tested) |
+| managedBackupReady / pitrReady | **false** / **false** |
+| manualRecoveryReady | **true** |
 | Authorization store | available (table present; **0** real authorization rows) |
 | Environment / secrets changed by code PRs | no (Founder-only Vercel UI for key) |
 | providerName (core health) | none — execution blocked |

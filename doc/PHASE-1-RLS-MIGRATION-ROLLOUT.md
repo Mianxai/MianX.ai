@@ -2,8 +2,10 @@
 
 As-of: 2026-08-03  
 migrationApplied: **yes** (Production, Founder-authorized)  
-ProductionDatabaseChanged: **yes** (exactly one migration)  
-Phase 1 status: **ready_for_final_verification**
+ProductionDatabaseChanged: **yes** (exactly one migration; recovery mission did not mutate)  
+Phase 1 status: **ready_for_final_verification**  
+manualRecoveryReady: **true** (post-apply dump + local PG16 restore-test)  
+managedBackupReady / pitrReady: **false** / **false**
 
 ## Exact migration
 

@@ -4,7 +4,10 @@ Status: **merged** (PR #94 → `2d9b486…`)
 As-of: 2026-08-03  
 Phase 1 status: **ready_for_final_verification** (not complete)  
 migrationApplied: **yes**  
-ProductionDatabaseChanged: **yes** (exactly one authorized migration)
+ProductionDatabaseChanged: **yes** (exactly one authorized migration; no further mutation in recovery mission)  
+manualRecoveryReady: **true** (post-apply logical backup restore-tested locally)
+
+See `doc/PHASE-1-POST-MIGRATION-VERIFICATION.md` for backup path (outside Git), checksums, and restore evidence.
 
 ## Prerequisites verified
 

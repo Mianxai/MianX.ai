@@ -42,6 +42,7 @@ Verified complete:
 - [x] Phase 1 Step 4 RLS/scope readiness PR #93 merged (`c6a273a…`); Production verified
 - [x] Phase 1 Step 5 final cross-tenant security closure PR #94 merged (`2d9b486…`); Production verified
 - [x] Optional `admin_memberships` org/project scope migration Founder-applied (`20260803180000…`)
+- [x] Post-apply manual logical backup created outside Git and restore-tested (`manualRecoveryReady: true`)
 - [ ] Phase 1 marked complete (Founder only after final-verification Draft review + explicit sign-off)
 
 Primary docs:
