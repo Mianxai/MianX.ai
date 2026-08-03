@@ -129,7 +129,8 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 
 ## Known verified issues
 
-- Workforce Setup, Readiness, Workforce Ops, and Agents still share some foundation counters; ownership map and truth headers are in progress (Draft workforce responsibility PR). Routes are not deleted or redirected.
+- Workforce Setup, Readiness, Workforce Ops, and Agents still share some foundation counters; ownership map and truth headers shipped in Draft PR #81. Routes are not deleted or redirected. Shared metric presentation component remains a follow-on.
+- PR #81 audit (pre-merge): Unavailable path for missing counters was incomplete until a focused coalesce/format fix on the same branch — preview/audit only until merge + Production deploy.
 - GitHub scheduled fallback external-delivery proof remains pending.
 
 ## Resolved issues

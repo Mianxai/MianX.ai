@@ -16,7 +16,10 @@ import {
 } from "@/lib/admin-ops-summary";
 import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import { normalizeCapacityTruth } from "@/lib/core/workforce-i2/ui-truth";
-import { formatWorkforceMetric } from "@/lib/core/workforce-i2/terminology.js";
+import {
+  formatWorkforceMetric,
+  coalesceWorkforceCount,
+} from "@/lib/core/workforce-i2/terminology.js";
 
 const TABS = [
   { id: "dashboard", label: "Dashboard" },
@@ -172,12 +175,15 @@ export default function WorkforceClient() {
   const counts = dash?.counts || {};
   const capacityTruth = normalizeCapacityTruth(dash?.capacityTruth || {});
   const executableCount = dash?.executable_agents;
-  const assignedCount = Number(dash?.assigned_count ?? counts.busy ?? 0);
+  const assignedCount = coalesceWorkforceCount(
+    dash?.assigned_count,
+    counts.busy
+  );
   const simState =
     simResult?.simulation?.status ||
     dash?.simulation_state?.status ||
     "none";
-  const isZeroAssignment = assignedCount === 0;
+  const isZeroAssignment = assignedCount == null || assignedCount === 0;
 
   const statusCards = [
     {
@@ -192,52 +198,52 @@ export default function WorkforceClient() {
     },
     {
       label: "Ready to Allocate",
-      value: formatWorkforceMetric(capacityTruth.readyToAllocate).label,
+      value: capacityTruth.readyToAllocateDisplay,
       testId: "wf-card-ready-to-allocate",
     },
     {
       label: "Allocated",
       value: formatWorkforceMetric(
-        capacityTruth.allocated || assignedCount
+        coalesceWorkforceCount(capacityTruth.allocated, assignedCount)
       ).label,
       testId: "wf-card-allocated",
     },
     {
       label: "Active",
       value: formatWorkforceMetric(
-        capacityTruth.active || counts.busy || 0
+        coalesceWorkforceCount(capacityTruth.active, counts.busy)
       ).label,
       testId: "wf-card-active",
     },
     {
       label: "Waiting",
-      value: formatWorkforceMetric(counts.waiting ?? 0).label,
+      value: formatWorkforceMetric(coalesceWorkforceCount(counts.waiting)).label,
       testId: "wf-card-waiting",
     },
     {
       label: "Reviewing",
       value: formatWorkforceMetric(
-        counts.review ?? capacityTruth.reviewing
+        coalesceWorkforceCount(counts.review, capacityTruth.reviewing)
       ).label,
       testId: "wf-card-reviewing",
     },
     {
       label: "Blocked",
       value: formatWorkforceMetric(
-        capacityTruth.blocked || counts.blocked || 0
+        coalesceWorkforceCount(capacityTruth.blocked, counts.blocked)
       ).label,
       testId: "wf-card-blocked",
     },
     {
       label: "Released",
       value: formatWorkforceMetric(
-        capacityTruth.released || counts.completed || 0
+        coalesceWorkforceCount(capacityTruth.released, counts.completed)
       ).label,
       testId: "wf-card-released",
     },
     {
       label: "Live Tested",
-      value: formatWorkforceMetric(capacityTruth.liveTested).label,
+      value: capacityTruth.liveTestedDisplay,
       testId: "wf-card-live-tested",
     },
     {
@@ -325,11 +331,14 @@ export default function WorkforceClient() {
             >
               <p>
                 <strong>
-                  {capacityTruth.readyToAllocate} seats ready to allocate
+                  {capacityTruth.readyToAllocateDisplay} seats ready to allocate
                 </strong>
               </p>
               <p>
-                <strong>0 allocated · Live tested: {capacityTruth.liveTested}</strong>
+                <strong>
+                  {capacityTruth.allocatedDisplay} allocated · Live tested:{" "}
+                  {capacityTruth.liveTestedDisplay}
+                </strong>
               </p>
               <p className="cc-muted">
                 Reason: Agent allocation begins only after simulation approval and

@@ -193,6 +193,42 @@ describe("WorkforceActivationClient foundation closeout", () => {
     );
   });
 
+  it("shows Unavailable for missing counters and 0 for trusted zeros", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        if (String(url).includes("preflight")) {
+          return {
+            ok: true,
+            json: async () => ({
+              preflight: { checks: { durableDatabase: true, freeOnlyMode: true } },
+              verifySummary: {},
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            capacity: {
+              capacitySeats: 445,
+              compiledSeats: 445,
+              // persisted / ready / allocated / active / liveTested intentionally absent
+            },
+            verify: {},
+            foundationReady: false,
+            providerReady: false,
+          }),
+        };
+      })
+    );
+    render(<WorkforceActivationClient />);
+    await waitFor(() => expect(screen.getByTestId("wa-persisted")).toHaveTextContent("Unavailable"));
+    expect(screen.getByTestId("wa-ready")).toHaveTextContent("Unavailable");
+    expect(screen.getByTestId("wa-allocated")).toHaveTextContent("Unavailable");
+    expect(screen.getByTestId("wa-active")).toHaveTextContent("Unavailable");
+    expect(screen.getByTestId("wa-live-tested")).toHaveTextContent("Unavailable");
+  });
+
   it("shows post-bootstrap metric truth without raw JSON primary UI", async () => {
     render(<WorkforceActivationClient />);
     await waitFor(() => expect(screen.getByTestId("wa-persisted")).toHaveTextContent("445"));

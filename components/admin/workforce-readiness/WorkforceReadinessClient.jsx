@@ -5,7 +5,10 @@ import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import StatusBadge from "@/components/admin/StatusBadge";
-import { formatWorkforceMetric } from "@/lib/core/workforce-i2/terminology.js";
+import {
+  formatWorkforceMetric,
+  coalesceWorkforceCount,
+} from "@/lib/core/workforce-i2/terminology.js";
 
 function MetricCard({ label, value, testId, hint }) {
   return (
@@ -152,23 +155,32 @@ export default function WorkforceReadinessClient() {
     },
     {
       label: "Ready to allocate",
-      value: formatWorkforceMetric(foundation.readyToAllocateSeats ?? 0).label,
+      value: formatWorkforceMetric(
+        coalesceWorkforceCount(foundation.readyToAllocateSeats)
+      ).label,
       testId: "wr-ready",
     },
     {
       label: "Allocated seats",
-      value: formatWorkforceMetric(foundation.allocatedSeats ?? 0).label,
+      value: formatWorkforceMetric(
+        coalesceWorkforceCount(foundation.allocatedSeats)
+      ).label,
       testId: "wr-allocated",
     },
     {
       label: "Active instances",
-      value: formatWorkforceMetric(foundation.activeInstances ?? 0).label,
+      value: formatWorkforceMetric(
+        coalesceWorkforceCount(foundation.activeInstances)
+      ).label,
       testId: "wr-active",
     },
     {
       label: "Live-tested seats",
       value: formatWorkforceMetric(
-        foundation.liveTestedSeats ?? readiness?.live_tested ?? 0
+        coalesceWorkforceCount(
+          foundation.liveTestedSeats,
+          readiness?.live_tested
+        )
       ).label,
       testId: "wr-live-tested",
     },

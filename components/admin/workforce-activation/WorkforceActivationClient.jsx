@@ -5,7 +5,10 @@ import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import StatusBadge from "@/components/admin/StatusBadge";
-import { formatWorkforceMetric } from "@/lib/core/workforce-i2/terminology.js";
+import {
+  formatWorkforceMetric,
+  coalesceWorkforceCount,
+} from "@/lib/core/workforce-i2/terminology.js";
 
 const CONFIRM_PHRASE = "BOOTSTRAP 445";
 
@@ -156,8 +159,14 @@ export default function WorkforceActivationClient() {
   const capacity = useMemo(() => data?.capacity || {}, [data]);
   const bp = bootPreflight;
 
-  const persistedSeats = Number(capacity.persistedSeats ?? verify.persistedSeats ?? 0);
-  const readySeats = Number(capacity.readyToAllocate ?? verify.readyToAllocateSeats ?? 0);
+  const persistedSeats = coalesceWorkforceCount(
+    capacity.persistedSeats,
+    verify.persistedSeats
+  );
+  const readySeats = coalesceWorkforceCount(
+    capacity.readyToAllocate,
+    verify.readyToAllocateSeats
+  );
   const bootstrapComplete = persistedSeats === 445 && readySeats === 445;
   const providerConfigured = Boolean(checks.openRouterKeyPresent || verify.providerReady);
 
@@ -206,14 +215,14 @@ export default function WorkforceActivationClient() {
     },
     {
       label: "Compiled seats",
-      value: formatWorkforceMetric(capacity.compiledSeats ?? 445).label,
+      value: formatWorkforceMetric(
+        coalesceWorkforceCount(capacity.compiledSeats)
+      ).label,
       testId: "wa-compiled",
     },
     {
       label: "Persisted in database",
-      value: formatWorkforceMetric(
-        Number.isFinite(persistedSeats) ? persistedSeats : null
-      ).label,
+      value: formatWorkforceMetric(persistedSeats).label,
       testId: "wa-persisted",
     },
     {
@@ -223,19 +232,22 @@ export default function WorkforceActivationClient() {
     },
     {
       label: "Allocated",
-      value: formatWorkforceMetric(capacity.allocated ?? 0).label,
+      value: formatWorkforceMetric(coalesceWorkforceCount(capacity.allocated)).label,
       testId: "wa-allocated",
     },
     {
       label: "Active instances",
       value: formatWorkforceMetric(
-        verify.activeInstances ?? data?.verify?.activeInstances ?? 0
+        coalesceWorkforceCount(
+          verify.activeInstances,
+          data?.verify?.activeInstances
+        )
       ).label,
       testId: "wa-active",
     },
     {
       label: "Live tested",
-      value: formatWorkforceMetric(data?.liveTested ?? 0).label,
+      value: formatWorkforceMetric(coalesceWorkforceCount(data?.liveTested)).label,
       testId: "wa-live-tested",
     },
     {
@@ -312,7 +324,11 @@ export default function WorkforceActivationClient() {
     return shell(<p role="alert">{error}</p>);
   }
   if (!data || !preflight) {
-    return shell(<p className="cc-muted">Loading workforce setup…</p>);
+    return shell(
+      <p className="cc-muted" aria-busy="true" aria-live="polite">
+        Loading workforce setup…
+      </p>
+    );
   }
 
   return shell(
