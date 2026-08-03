@@ -241,6 +241,76 @@ export default function LiveAgentPilotClient() {
               "store:false disables persistent Responses resource storage. It does not by itself establish Zero Data Retention."}
           </p>
 
+          <section style={{ marginTop: "1.5rem" }} data-testid="live-pilot-dry-run-report">
+            <h2 className="admin-section-title">
+              {data.dryRunRehearsal?.heading || "Dry-run rehearsal"}
+            </h2>
+            <p className="wa-metric-hint" role="status" data-testid="live-pilot-test-only-warning">
+              Test only — fake provider — not Production. Fake provider runs only inside Vitest.
+              This Admin page cannot run a fake provider and cannot call OpenAI.
+            </p>
+            <div className="workforce-status-grid">
+              <Row
+                label="Rehearsal status"
+                value={data.dryRunRehearsal?.rehearsalStatus || "documented_test_only"}
+                testId="live-pilot-rehearsal-status"
+              />
+              <Row label="Test only" value="Yes" testId="live-pilot-test-only" />
+              <Row
+                label="Fake provider"
+                value={data.dryRunRehearsal?.fakeProviderLabel || "fake_openai_test_only"}
+                testId="live-pilot-fake-label"
+              />
+              <Row label="Not Production" value="Yes" testId="live-pilot-not-production" />
+              <Row
+                label="Genuine provider calls"
+                value={String(data.dryRunRehearsal?.genuineProviderCalls ?? 0)}
+                testId="live-pilot-genuine-call"
+              />
+              <Row
+                label="Agent live-tested"
+                value={data.dryRunRehearsal?.agentLiveTested ? "Yes" : "No"}
+                testId="live-pilot-rehearsal-live-tested"
+              />
+              <Row
+                label="Production switches unchanged"
+                value="Yes"
+                testId="live-pilot-switches-unchanged"
+              />
+              <Row
+                label="Evidence schema readiness"
+                value={data.dryRunRehearsal?.evidenceSchemaReadiness || "ready_for_test_evidence"}
+                testId="live-pilot-evidence-schema"
+              />
+              <Row
+                label="Checksum result"
+                value={data.dryRunRehearsal?.checksumResult || "content_integrity_checksum_supported"}
+                testId="live-pilot-checksum-result"
+              />
+              <Row
+                label="Idempotency result"
+                value={
+                  data.dryRunRehearsal?.idempotencyResult ||
+                  "at_most_one_provider_attempt_per_authorized_run"
+                }
+                testId="live-pilot-idempotency-result"
+              />
+              <Row
+                label="Rollback readiness"
+                value={data.dryRunRehearsal?.rollbackReadiness || "switches_off_available"}
+                testId="live-pilot-rollback"
+              />
+            </div>
+            <h3 className="admin-section-title" style={{ marginTop: "1rem" }}>
+              Blockers remaining
+            </h3>
+            <ul data-testid="live-pilot-rehearsal-blockers">
+              {(data.dryRunRehearsal?.blockersRemaining || []).map((b) => (
+                <li key={b}>{b}</li>
+              ))}
+            </ul>
+          </section>
+
           <section style={{ marginTop: "1.5rem" }} data-testid="live-pilot-blockers">
             <h2 className="admin-section-title">Blocking reasons</h2>
             <ul data-testid="live-pilot-disabled-reasons">

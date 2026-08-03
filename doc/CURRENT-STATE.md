@@ -30,18 +30,18 @@ live-tested AI agents.
 
 ## Current Production commit (latest origin/main)
 
-`44baa7a99935fe37463aaae5daaf8eeb2df1cb76`
+`940c2272d2875106bc96bdf8db3d3e072f181d56`
 
-(Merge of PR #82 — shared WorkforceMetricCard + summary normalization + Runtime Agents tab label. Does not imply Founder Final Review approval or a live provider run.)
+(Merge of PR #83 — one-agent provider activation preflight with separated catalog/account/pricing/billing dimensions. Does not imply Founder Final Review approval or a live provider run.)
 
 ## Deployment state
 
 | Item | Value |
 |------|-------|
 | Production URL | https://mian-x-ai.vercel.app |
-| Production alias target | deployment for merge commit `44baa7a` (Ready) |
-| Manual Production deploy from provider-activation-readiness Draft PR | not performed |
-| Environment / secrets changed by docs or workforce PRs | no |
+| Production alias target | deployment for merge commit `940c227` (Ready) |
+| Manual Production deploy from dry-run rehearsal Draft PR | not performed |
+| Environment / secrets changed by activation/dry-run PRs | no |
 
 ## Scheduler state
 
@@ -94,7 +94,8 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 | responseStorageEnabled | false |
 | zeroDataRetentionVerified | false |
 | Authenticated Models API verification | not performed |
-| Provider activation readiness PR | Draft/Preview only until merged |
+| Provider activation readiness PR | **merged** (PR #83 → `940c227`); Production verified after merge |
+| Dry-run evidence rehearsal PR | Audit corrections in progress on Draft PR #84; Vitest-only fake provider; Production index exports Admin report only |
 
 ## Live execution truth
 
