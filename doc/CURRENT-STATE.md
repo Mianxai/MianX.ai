@@ -97,7 +97,7 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 | Authenticated Models API verification | not performed |
 | Provider activation readiness PR | **merged** (PR #83 → `940c227`); Production verified after merge |
 | Dry-run evidence rehearsal PR | **merged** (PR #84 → `405171b`); Vitest-only fake provider; Production verified |
-| Live-run control-plane PR | Draft/Preview only — not merged; fixture auth only; migration not applied |
+| Live-run control-plane PR | Draft/Preview — fail-closed without migration (`authorization_store_unavailable`); migration included, not applied |
 
 ## Live execution truth
 

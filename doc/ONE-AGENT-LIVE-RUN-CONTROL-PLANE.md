@@ -50,6 +50,20 @@ Dedicated migration included (not applied):
 | migrationIncluded | yes |
 | migrationApplied | **no** |
 | ProductionDatabaseChanged | **no** |
+| Fail-closed without migration | **yes** — `authorization_store_unavailable`; Admin/status/runtime tick must not crash; `providerCallAllowed` stays false |
+
+## Fail-closed compatibility (migration unapplied)
+
+When `pilot_live_run_authorizations` is absent:
+
+- Admin Live Agent Pilot loads with truthful `authorizationStoreStatus: not_applied|unavailable`
+- Blocker includes `authorization_store_unavailable`
+- No fabricated authorization
+- No silent bypass
+- No provider call
+- Runtime tick does not query the missing table in a hot loop
+
+Migration application requires separate Founder authorization (not this PR merge).
 
 ## Authorization state machine
 
@@ -57,10 +71,22 @@ Dedicated migration included (not applied):
 
 Terminal alternatives: `expired`, `revoked`
 
-Atomic consumption: compare-and-set / `UPDATE … WHERE status='authorized'`.
+**Database guarantee (when migration applied):** single guarded
+`UPDATE … WHERE status='authorized' AND consumed_at IS NULL AND expires_at > now() … RETURNING`
+via `consume_pilot_live_run_authorization` (SECURITY DEFINER, `search_path=public`,
+execute granted to `service_role` only). Duplicate callers receive zero rows
+(`ALREADY_CONSUMED_OR_CONFLICT`).
+
+Honest wording: **atomic one-time authorization consumption** /
+**duplicate-consumption protection** / **at-most-one authorized
+provider-attempt boundary**. This is **not** a claim of distributed
+exactly-once provider execution.
+
 A crash after consumption must **not** permit a second provider call.
 Recovery: do not un-consume; Founder may issue a **new** authorization only
-after explicit review (`authorizationCrashRecoveryProcedure`).
+after explicit review (`authorizationCrashRecoveryProcedure`). When it is
+unclear whether the provider was invoked, enter manual-review/indeterminate
+— never auto-retry the same authorization.
 
 Independent from Founder Final Review and Founder Proof. Never auto-created
 from Final Review, project state, or a queued task alone.

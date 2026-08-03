@@ -45,6 +45,12 @@ describe("live-agent-pilot API", () => {
     expect(json.liveRunControlPlane?.accountAccessStatus).toBe("not_checked");
     expect(json.liveRunControlPlane?.runNowActionPresent).toBe(false);
     expect(json.liveRunControlPlane?.migrationApplied).toBe(false);
+    expect(
+      ["not_applied", "unavailable", "unknown", "available"].includes(
+        json.liveRunControlPlane?.authorizationStoreStatus
+      )
+    ).toBe(true);
+    expect(json.liveRunControlPlane?.providerCallAllowed).toBe(false);
     expect(JSON.stringify(json)).not.toMatch(/sk-[a-z0-9]{10,}/i);
     expect(JSON.stringify(json)).not.toContain("service_role");
   });

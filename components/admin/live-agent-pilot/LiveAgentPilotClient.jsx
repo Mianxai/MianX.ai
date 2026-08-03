@@ -361,6 +361,13 @@ export default function LiveAgentPilotClient() {
                 testId="cp-billing"
               />
               <Row
+                label="Authorization-store status"
+                value={String(
+                  data.liveRunControlPlane?.authorizationStoreStatus || "not_applied"
+                )}
+                testId="cp-auth-store"
+              />
+              <Row
                 label="Authorization status"
                 value={String(data.liveRunControlPlane?.authorizationStatus || "none")}
                 testId="cp-auth-status"
