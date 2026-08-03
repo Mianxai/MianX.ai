@@ -30,18 +30,18 @@ live-tested AI agents.
 
 ## Current Production commit (latest origin/main)
 
-`c7ee98616b96b73d71c00d2df3f87169c4740307`
+`92897d657a3ed6ab5c08f0365060230766f9989b`
 
-(Merge of PR #91 — Phase 1 tenant isolation / Admin authorization foundation.
-Optional membership scope migration remains **unapplied**. Live-run track paused;
-OpenAI credits not_checked.)
+(Merge of PR #92 — Phase 1 membership-scoped project reads. Optional
+`admin_memberships` org/project scope migration remains **unapplied**.
+Live-run track paused; OpenAI credits not_checked.)
 
 ## Deployment state
 
 | Item | Value |
 |------|-------|
 | Production URL | https://mian-x-ai.vercel.app |
-| Production alias target | Ready deployment for commit `c7ee986…` |
+| Production alias target | Ready deployment for commit `92897d6…` |
 | Authorization migration applied | **yes** (2026-08-03) |
 | Migration checksum | `82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8` |
 | Authorization store | available (table present; **0** real authorization rows) |
@@ -60,17 +60,21 @@ OpenAI credits not_checked.)
 | No-credit safe readiness | **merged** (PR #89 → `70b9382…`) |
 | Master completion phases | `doc/MIANX-AI-MASTER-COMPLETION-PHASES.md` — Phase 1 in progress |
 | Phase 1 tenant/authz foundation | **merged** (PR #91 → `c7ee986…`); migration still **unapplied** |
-| Phase 1 membership-scoped data access | Draft/Preview on `cursor/phase1-membership-scoped-data-access` |
+| Phase 1 membership-scoped data access | **merged** (PR #92 → `92897d6…`) |
+| Phase 1 RLS/scope migration readiness | Draft/Preview on `cursor/phase1-rls-scope-rollout` |
 
 Founder-observed billing balance on 2026-08-03: $0.00.  
 Not machine-verified by MianX.ai.
 
 ## Tenancy model (runtime truth)
 
-**Single-tenant Founder platform** — global `admin_memberships`; one default org;
-project isolation is application-level when `project_id` is provided. See
-`doc/PHASE-1-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md` and
-`doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md` (Step 3 Draft).
+**Single-tenant Founder platform** — global `admin_memberships` until optional
+org/project columns are Founder-applied; one default org (`mianx`); workspaces
+not implemented; JWT org-scoped RLS not complete. Project list/detail scoping is
+application-level (PR #92). See
+`doc/PHASE-1-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md`,
+`doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md`, and
+`doc/PHASE-1-RLS-SCOPE-MIGRATION-READINESS.md` (Step 4 Draft).
 
 ## Scheduler state
 

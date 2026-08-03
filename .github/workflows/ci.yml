@@ -190,3 +190,40 @@ jobs:
           export EXPECTED_MIGRATION_SHA256="${SHA}"
           chmod +x supabase/tests/live-run-auth/*.sh
           bash supabase/tests/live-run-auth/run-ephemeral-validation.sh
+
+  membership-scope-db:
+    name: Membership Scope Migration DB
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: mianx_scope_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mianx_scope_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install psql client
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: Ephemeral membership scope apply / RLS / Tenant A-B / rollback / reapply
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mianx_scope_test
+        run: |
+          set -euo pipefail
+          SHA=$(shasum -a 256 supabase/migrations/20260803180000_admin_memberships_optional_tenant_scope.sql | awk '{print $1}')
+          echo "Migration checksum ${SHA}"
+          export EXPECTED_MEMBERSHIP_SCOPE_SHA256="${SHA}"
+          chmod +x supabase/tests/membership-scope/*.sh
+          bash supabase/tests/membership-scope/run-ephemeral-validation.sh

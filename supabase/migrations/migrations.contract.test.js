@@ -65,7 +65,12 @@ describe("migration contract (static, not applied)", () => {
     const sql = readMigration("20260803180000_admin_memberships_optional_tenant_scope.sql");
     expect(sql).toMatch(/add column if not exists organization_id/i);
     expect(sql).toMatch(/add column if not exists project_id/i);
+    expect(sql).toMatch(/admin_memberships_project_requires_org/);
+    expect(sql).toMatch(/DOES NOT authorize multi-organization global access/i);
     expect(sql).toMatch(/DO NOT apply without Founder/i);
+    expect(sql).not.toMatch(/drop table/i);
+    expect(sql).not.toMatch(/truncate /i);
+    expect(sql).not.toMatch(/delete from /i);
   });
 
   it("pilot live-run authorizations migration is additive with RLS and not auto-applied", () => {

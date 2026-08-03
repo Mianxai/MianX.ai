@@ -38,14 +38,17 @@ Verified complete:
 - [x] Production redeploy Ready on merge SHA; `apiKeyConfigured: true` (boolean)
 - [x] Live OpenAI execution remains paused (credits not_checked / not funded)
 - [x] Phase 1 tenant/authz Draft PR #91 merged (`c7ee986…`); Production verified
+- [x] Phase 1 membership-scoped data access PR #92 merged (`92897d6…`); Production verified
 - [ ] Optional `admin_memberships` org/project scope migration Founder-applied
-- [ ] Phase 1 Step 3 membership-scoped data access Draft reviewed and merged
-- [ ] Remaining Admin analytics/export scoping after Step 3
+- [ ] Phase 1 Step 4 RLS/scope readiness Draft reviewed and merged
+- [ ] Phase 1 Step 5 remaining Admin list/export/RLS closeout
 
 Primary docs:
 
 - `doc/PHASE-1-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md`
-- `doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md` (Step 3 Draft)
+- `doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md`
+- `doc/PHASE-1-RLS-SCOPE-MIGRATION-READINESS.md` (Step 4 Draft)
+- `doc/PHASE-1-RLS-SCOPE-MIGRATION-RUNBOOK.md`
 - `doc/CURRENT-STATE.md`
 
 ---
