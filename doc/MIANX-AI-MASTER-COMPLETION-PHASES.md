@@ -39,9 +39,10 @@ Verified complete:
 - [x] Live OpenAI execution remains paused (credits not_checked / not funded)
 - [x] Phase 1 tenant/authz Draft PR #91 merged (`c7ee986…`); Production verified
 - [x] Phase 1 membership-scoped data access PR #92 merged (`92897d6…`); Production verified
+- [x] Phase 1 Step 4 RLS/scope readiness PR #93 merged (`c6a273a…`); Production verified
 - [ ] Optional `admin_memberships` org/project scope migration Founder-applied
-- [ ] Phase 1 Step 4 RLS/scope readiness Draft reviewed and merged
-- [ ] Phase 1 Step 5 remaining Admin list/export/RLS closeout
+- [ ] Phase 1 Step 5 final cross-tenant security closure Draft reviewed/merged
+- [ ] Phase 1 marked complete (Founder only after post-apply verification)
 
 Primary docs:
 

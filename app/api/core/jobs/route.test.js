@@ -15,9 +15,27 @@ async function withAuth(user) {
   vi.doMock("@/lib/auth", () => ({ getSessionUser: vi.fn(async () => user) }));
 }
 
+function mockProjectAccess(projectId = UUID) {
+  vi.doMock("@/lib/tenant/project-access", () => ({
+    requireProjectAccess: vi.fn(async () => ({
+      authCtx: {
+        user: { id: "u1", email: "admin@mianx.ai" },
+        membership: { role: "admin", status: "active" },
+        mode: "membership",
+        capabilities: ["manage_jobs", "read", "platform.admin"],
+      },
+      scope: { ok: true, organizationId: "org", mode: "organization" },
+      project: { id: projectId, organization_id: "org", archived_at: null },
+    })),
+  }));
+}
+
 describe("GET /api/core/jobs", () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.doUnmock("@/lib/tenant/project-access");
+    vi.doUnmock("@/lib/core/repo");
+    vi.doUnmock("@/lib/auth");
   });
 
   it("requires authentication", async () => {
@@ -30,6 +48,7 @@ describe("GET /api/core/jobs", () => {
 
   it("rejects an unknown status filter", async () => {
     await withAuth({ email: "admin@mianx.ai" });
+    mockProjectAccess();
     const { GET } = await import("./route.js");
     const res = await GET(fakeReq({}, `project_id=${UUID}&status=exploded`));
     expect(res.status).toBe(400);
@@ -38,6 +57,7 @@ describe("GET /api/core/jobs", () => {
 
   it("lists jobs with counts and pagination metadata", async () => {
     await withAuth({ email: "admin@mianx.ai" });
+    mockProjectAccess();
     const jobs = [{ id: "j1", status: "queued" }];
     vi.doMock("@/lib/core/repo", () => ({
       listJobs: vi.fn(async ({ limit, offset }) => ({ rows: jobs, total: 1, limit, offset })),
@@ -56,6 +76,7 @@ describe("GET /api/core/jobs", () => {
 
   it("requires project_id", async () => {
     await withAuth({ email: "admin@mianx.ai" });
+    mockProjectAccess();
     const { GET } = await import("./route.js");
     const res = await GET(fakeReq({}, "limit=10"));
     expect(res.status).toBe(400);
@@ -64,6 +85,7 @@ describe("GET /api/core/jobs", () => {
 
   it("clamps the limit to the server ceiling", async () => {
     await withAuth({ email: "admin@mianx.ai" });
+    mockProjectAccess();
     const listJobs = vi.fn(async () => ({ rows: [], total: 0 }));
     vi.doMock("@/lib/core/repo", () => ({
       listJobs,
@@ -80,6 +102,9 @@ describe("GET /api/core/jobs", () => {
 describe("POST /api/core/jobs", () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.doUnmock("@/lib/tenant/project-access");
+    vi.doUnmock("@/lib/core/repo");
+    vi.doUnmock("@/lib/auth");
   });
 
   it("requires authentication", async () => {
@@ -92,6 +117,7 @@ describe("POST /api/core/jobs", () => {
 
   it("rejects an unknown agent slug with a standardized 400", async () => {
     await withAuth({ email: "admin@mianx.ai" });
+    mockProjectAccess();
     vi.doMock("@/lib/core/repo", () => ({
       getProject: vi.fn(async () => ({ id: UUID })),
     }));
@@ -106,6 +132,7 @@ describe("POST /api/core/jobs", () => {
 
   it("scopes task_id to the project (404 when the task is elsewhere)", async () => {
     await withAuth({ email: "admin@mianx.ai" });
+    mockProjectAccess();
     vi.doMock("@/lib/core/repo", () => ({
       getProject: vi.fn(async () => ({ id: UUID })),
       getTask: vi.fn(async () => {
@@ -124,6 +151,7 @@ describe("POST /api/core/jobs", () => {
 
   it("enqueues a job (201) and replays idempotent duplicates (200)", async () => {
     await withAuth({ email: "admin@mianx.ai" });
+    mockProjectAccess();
     let calls = 0;
     vi.doMock("@/lib/core/repo", () => ({
       getProject: vi.fn(async () => ({ id: UUID })),
@@ -152,6 +180,7 @@ describe("POST /api/core/jobs", () => {
 
   it("never mass-assigns queue-internal fields from the body", async () => {
     await withAuth({ email: "admin@mianx.ai" });
+    mockProjectAccess();
     const createJob = vi.fn(async (row) => ({ row: { id: "j1", ...row }, created: true }));
     vi.doMock("@/lib/core/repo", () => ({
       getProject: vi.fn(async () => ({ id: UUID })),

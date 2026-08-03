@@ -30,9 +30,9 @@ live-tested AI agents.
 
 ## Current Production commit (latest origin/main)
 
-`92897d657a3ed6ab5c08f0365060230766f9989b`
+`c6a273ae7859c7e3a20320526b3c2e9647d71765`
 
-(Merge of PR #92 — Phase 1 membership-scoped project reads. Optional
+(Merge of PR #93 — Phase 1 membership scope migration readiness. Optional
 `admin_memberships` org/project scope migration remains **unapplied**.
 Live-run track paused; OpenAI credits not_checked.)
 
@@ -41,7 +41,7 @@ Live-run track paused; OpenAI credits not_checked.)
 | Item | Value |
 |------|-------|
 | Production URL | https://mian-x-ai.vercel.app |
-| Production alias target | Ready deployment for commit `92897d6…` |
+| Production alias target | Ready deployment for commit `c6a273a…` |
 | Authorization migration applied | **yes** (2026-08-03) |
 | Migration checksum | `82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8` |
 | Authorization store | available (table present; **0** real authorization rows) |
@@ -61,7 +61,9 @@ Live-run track paused; OpenAI credits not_checked.)
 | Master completion phases | `doc/MIANX-AI-MASTER-COMPLETION-PHASES.md` — Phase 1 in progress |
 | Phase 1 tenant/authz foundation | **merged** (PR #91 → `c7ee986…`); migration still **unapplied** |
 | Phase 1 membership-scoped data access | **merged** (PR #92 → `92897d6…`) |
-| Phase 1 RLS/scope migration readiness | Draft/Preview on `cursor/phase1-rls-scope-rollout` |
+| Phase 1 RLS/scope migration readiness | **merged** (PR #93 → `c6a273a…`); migration still **unapplied** |
+| Phase 1 final security closure | Draft on `cursor/phase1-final-cross-tenant-security-closure` |
+| Phase 1 status | `ready_for_migration_rollout` (not complete) |
 
 Founder-observed billing balance on 2026-08-03: $0.00.  
 Not machine-verified by MianX.ai.
@@ -74,7 +76,8 @@ not implemented; JWT org-scoped RLS not complete. Project list/detail scoping is
 application-level (PR #92). See
 `doc/PHASE-1-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md`,
 `doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md`, and
-`doc/PHASE-1-RLS-SCOPE-MIGRATION-READINESS.md` (Step 4 Draft).
+`doc/PHASE-1-RLS-SCOPE-MIGRATION-READINESS.md` (Step 4 merged),
+`doc/PHASE-1-FINAL-CROSS-TENANT-SECURITY-CLOSURE.md` (Step 5 Draft).
 
 ## Scheduler state
 
