@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling } from "@/lib/core/errors";
-import { requireAdmin } from "@/lib/core/auth";
 import { runtimeConfigStatus } from "@/lib/core/config";
 import { isSupabaseConfigured, getSupabaseAdmin } from "@/lib/supabase";
 import * as repo from "@/lib/core/repo";
 import { notConfigured } from "@/lib/core/errors";
+import {
+  requireTenantListScope,
+  scopeToListProjectsOpts,
+} from "@/lib/tenant/project-access";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +34,7 @@ function sourceFail(code) {
 }
 
 export const GET = withErrorHandling(async (req) => {
-  await requireAdmin(req);
+  const { scope } = await requireTenantListScope(req);
 
   if (!isSupabaseConfigured() || !getSupabaseAdmin()) {
     throw notConfigured(
@@ -43,6 +46,7 @@ export const GET = withErrorHandling(async (req) => {
   const config = runtimeConfigStatus();
   const sources = {};
   let partial = false;
+  const listOpts = scopeToListProjectsOpts(scope);
 
   try {
     sources.submissions = sourceOk(await leadStatusCounts(admin));
@@ -52,17 +56,21 @@ export const GET = withErrorHandling(async (req) => {
   }
 
   try {
-    const projectsActive = await repo.countActiveProjects();
-    const taskDist = await repo.countByStatus("tasks");
-    const approvalDist = await repo.countByStatus("approval_requests");
-    const runDist = await repo.countByStatus("agent_runs");
+    const scopedProjects = await repo.listProjects(listOpts);
+    const projectIds = scopedProjects.map((p) => p.id);
+    const projectsActive = await repo.countActiveProjects(listOpts);
+    const taskDist = await repo.countByStatus("tasks", { projectIds });
+    const approvalDist = await repo.countByStatus("approval_requests", {
+      projectIds,
+    });
+    const runDist = await repo.countByStatus("agent_runs", { projectIds });
     let jobCounts = {};
     try {
-      jobCounts = await repo.countJobsByStatus();
+      jobCounts = await repo.countJobsByStatus(undefined, { projectIds });
     } catch {
       jobCounts = {};
     }
-    const recentAudit = await repo.listRecentAudit(5);
+    const recentAudit = await repo.listRecentAudit(5, { projectIds });
 
     sources.projects = sourceOk({ active: projectsActive });
     sources.tasks = sourceOk({
@@ -93,7 +101,6 @@ export const GET = withErrorHandling(async (req) => {
   const runs = sources.runs?.available ? sources.runs.value : null;
   const audit = sources.audit?.available ? sources.audit.value : null;
 
-  // Additive truthful metrics from status-count maps only (no invented KPIs).
   const jobCountMap = sources.jobs?.available ? sources.jobs.value : null;
   const runtimeMetrics = {
     data_available: Boolean(jobCountMap),
@@ -140,7 +147,6 @@ export const GET = withErrorHandling(async (req) => {
     generatedAt: new Date().toISOString(),
     partial,
     sources,
-    // Convenience mirrors: null when unavailable (never a misleading zero).
     submissions,
     projects,
     tasks,
@@ -156,5 +162,10 @@ export const GET = withErrorHandling(async (req) => {
     },
     config,
     audit,
+    scope: {
+      mode: scope.mode,
+      organizationId: scope.organizationId,
+      platformAdmin: scope.platformAdmin === true,
+    },
   });
 });

@@ -1,19 +1,51 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling, badRequest } from "@/lib/core/errors";
-import { requireAdmin, requireCapability, actorFromUser, CAPABILITIES } from "@/lib/core/auth";
+import {
+  requireCapability,
+  actorFromUser,
+  CAPABILITIES,
+} from "@/lib/core/auth";
 import { parseJsonBody, clip, isSlug } from "@/lib/core/validate";
 import { rateLimit } from "@/lib/core/ratelimit";
 import * as repo from "@/lib/core/repo";
 import { recordAudit, buildAuditEntry } from "@/lib/core/audit";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import {
+  requireTenantListScope,
+  scopeToListProjectsOpts,
+  auditScopePayload,
+} from "@/lib/tenant/project-access";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/core/projects  -> all non-archived projects
+// GET /api/core/projects  -> projects in trusted membership/org scope
 export const GET = withErrorHandling(async (req) => {
-  await requireAdmin(req);
-  const projects = await repo.listProjects();
-  return NextResponse.json({ projects });
+  const { authCtx, scope } = await requireTenantListScope(req);
+  const projects = await repo.listProjects(scopeToListProjectsOpts(scope));
+
+  // Platform-admin global org list is intentional; record safe audit evidence.
+  if (scope.platformAdmin && scope.mode === "platform_organization") {
+    await recordAudit(
+      getSupabaseAdmin(),
+      buildAuditEntry({
+        projectId: null,
+        actor: actorFromUser(authCtx.user),
+        action: "project.list_scoped",
+        resourceType: "project",
+        resourceId: null,
+        metadata: auditScopePayload(scope, { resultCount: projects.length }),
+      })
+    ).catch(() => {});
+  }
+
+  return NextResponse.json({
+    projects,
+    scope: {
+      mode: scope.mode,
+      organizationId: scope.organizationId,
+      platformAdmin: scope.platformAdmin === true,
+    },
+  });
 });
 
 // POST /api/core/projects  { name, slug? }
@@ -42,6 +74,7 @@ export const POST = withErrorHandling(async (req) => {
     throw badRequest("Invalid project status. Use active or paused.");
   }
 
+  // Never trust client organization_id — always default org.
   const org = await repo.getOrCreateDefaultOrg();
   const project = await repo.createProject({
     organization_id: org.id,

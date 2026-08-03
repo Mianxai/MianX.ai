@@ -1,12 +1,29 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 const UUID = "11111111-1111-4111-8111-111111111111";
+const ORG = "22222222-2222-4222-8222-222222222222";
 
 function fakeReq(body = {}) {
   return {
     text: async () => JSON.stringify(body),
     cookies: { get: () => undefined },
   };
+}
+
+function mockRepo(extra = {}) {
+  vi.doMock("@/lib/core/repo", () => ({
+    getOrCreateDefaultOrg: vi.fn(async () => ({ id: ORG, slug: "mianx" })),
+    getProject: vi.fn(async () => ({
+      id: UUID,
+      name: "Demo",
+      slug: "demo",
+      status: "active",
+      organization_id: ORG,
+      archived_at: null,
+    })),
+    updateProject: vi.fn(),
+    ...extra,
+  }));
 }
 
 describe("PATCH /api/core/projects/[id]", () => {
@@ -32,6 +49,7 @@ describe("PATCH /api/core/projects/[id]", () => {
       id: UUID,
       name: "Demo",
       status: "active",
+      organization_id: ORG,
       archived_at: null,
     };
     const archived = {
@@ -39,10 +57,10 @@ describe("PATCH /api/core/projects/[id]", () => {
       status: "archived",
       archived_at: "2026-07-25T00:00:00.000Z",
     };
-    vi.doMock("@/lib/core/repo", () => ({
+    mockRepo({
       getProject: vi.fn(async () => existing),
       updateProject: vi.fn(async () => archived),
-    }));
+    });
     vi.doMock("@/lib/supabase", async () => {
       const actual = await vi.importActual("@/lib/supabase");
       return {
@@ -71,10 +89,9 @@ describe("PATCH /api/core/projects/[id]", () => {
     vi.doMock("@/lib/auth", () => ({
       getSessionUser: vi.fn(async () => ({ id: "a", email: "a@mianx.ai" })),
     }));
-    vi.doMock("@/lib/core/repo", () => ({
-      getProject: vi.fn(async () => ({ id: UUID, status: "active" })),
+    mockRepo({
       updateProject: vi.fn(),
-    }));
+    });
     const { PATCH } = await import("./route.js");
     const res = await PATCH(
       fakeReq({ organization_id: "evil", id: "hijack" }),
@@ -95,14 +112,39 @@ describe("GET /api/core/projects/[id]", () => {
     vi.doMock("@/lib/auth", () => ({
       getSessionUser: vi.fn(async () => ({ id: "a", email: "a@mianx.ai" })),
     }));
-    vi.doMock("@/lib/core/repo", () => ({
-      getProject: vi.fn(async () => ({ id: UUID, name: "Demo", slug: "demo" })),
-    }));
+    mockRepo({
+      getProject: vi.fn(async () => ({
+        id: UUID,
+        name: "Demo",
+        slug: "demo",
+        organization_id: ORG,
+        archived_at: null,
+      })),
+    });
     const { GET } = await import("./route.js");
     const res = await GET(fakeReq(), { params: Promise.resolve({ id: UUID }) });
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.project.slug).toBe("demo");
+    vi.doUnmock("@/lib/auth");
+    vi.doUnmock("@/lib/core/repo");
+  });
+
+  it("returns privacy-preserving 404 for foreign organization project", async () => {
+    vi.doMock("@/lib/auth", () => ({
+      getSessionUser: vi.fn(async () => ({ id: "a", email: "a@mianx.ai" })),
+    }));
+    mockRepo({
+      getProject: vi.fn(async () => ({
+        id: UUID,
+        name: "Other",
+        organization_id: "33333333-3333-4333-8333-333333333333",
+        archived_at: null,
+      })),
+    });
+    const { GET } = await import("./route.js");
+    const res = await GET(fakeReq(), { params: Promise.resolve({ id: UUID }) });
+    expect(res.status).toBe(404);
     vi.doUnmock("@/lib/auth");
     vi.doUnmock("@/lib/core/repo");
   });

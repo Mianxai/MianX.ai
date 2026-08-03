@@ -1,32 +1,37 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling, badRequest } from "@/lib/core/errors";
-import { requireAdmin, requireCapability, actorFromUser, CAPABILITIES } from "@/lib/core/auth";
+import {
+  requireCapability,
+  actorFromUser,
+  CAPABILITIES,
+} from "@/lib/core/auth";
 import { parseJsonBody, clip } from "@/lib/core/validate";
 import { rateLimit } from "@/lib/core/ratelimit";
 import * as repo from "@/lib/core/repo";
 import { recordAudit, buildAuditEntry } from "@/lib/core/audit";
 import { getSupabaseAdmin } from "@/lib/supabase";
+import { requireProjectAccess } from "@/lib/tenant/project-access";
 
 export const dynamic = "force-dynamic";
 
 const PROJECT_STATUSES = new Set(["active", "paused", "archived"]);
 
-// GET /api/core/projects/:id
+// GET /api/core/projects/:id — scoped; foreign IDs → privacy-preserving 404
 export const GET = withErrorHandling(async (req, { params }) => {
-  await requireAdmin(req);
   const { id } = await params;
-  const project = await repo.getProject(id);
+  const { project } = await requireProjectAccess(req, id);
   return NextResponse.json({ project });
 });
 
 // PATCH /api/core/projects/:id  — status update or soft-archive (never hard delete)
 export const PATCH = withErrorHandling(async (req, { params }) => {
-  const { user } = await requireCapability(req, CAPABILITIES.MANAGE_PROJECTS);
-  const actor = actorFromUser(user);
   const { id } = await params;
+  const { authCtx, project: existing } = await requireProjectAccess(req, id, {
+    capability: CAPABILITIES.MANAGE_PROJECTS,
+  });
+  const actor = actorFromUser(authCtx.user);
   rateLimit(`project-patch:${actor}`, { max: 60, windowMs: 60_000 });
 
-  const existing = await repo.getProject(id);
   const body = await parseJsonBody(req);
 
   // Allowlist only — no mass assignment.

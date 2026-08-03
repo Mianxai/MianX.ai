@@ -121,7 +121,7 @@ payload sanitization, platform vs tenant admin.
 - Lists that already require `project_id` when callers pass it
 - Pilot evidence isolation helpers
 
-**Still open for Phase 1 Step 3**
+**Still open for Phase 1 Step 3** (see Draft `doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md`)
 1. Global memberships still allow any active admin to list all projects until
    org/project columns are applied **and** enforced in app code.
 2. Optional `project_id` on some list endpoints.
@@ -131,9 +131,9 @@ payload sanitization, platform vs tenant admin.
 
 ## Phase 1 implementation backlog
 
-1. ~~Founder review + merge this Draft PR~~ (Mission B)
+1. ~~Founder review + merge this Draft PR~~ (PR #91 merged → `c7ee986…`)
 2. Founder dry-run + apply optional membership scope migration (separate auth).
-3. **Step 3:** Enforce org/project filters in `listProjects` / Admin list routes.
+3. **Step 3:** Enforce org/project filters in `listProjects` / Admin list routes (Draft).
 4. Require `project_id` on remaining optional list endpoints.
 5. Expand `requireCapabilityAndProject` across `/api/core/*` mutations.
 6. Consider authenticated-role RLS only after membership scoping is live.

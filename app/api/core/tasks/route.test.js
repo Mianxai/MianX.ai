@@ -39,9 +39,15 @@ describe("POST /api/core/tasks", () => {
 
   it("creates a task for an authenticated admin", async () => {
     await withAuth({ email: "admin@mianx.ai" });
+    const ORG = "22222222-2222-4222-8222-222222222222";
     const task = { id: "t1", project_id: UUID, title: "Score", status: "pending" };
     vi.doMock("@/lib/core/repo", () => ({
-      getProject: vi.fn(async () => ({ id: UUID })),
+      getOrCreateDefaultOrg: vi.fn(async () => ({ id: ORG, slug: "mianx" })),
+      getProject: vi.fn(async () => ({
+        id: UUID,
+        organization_id: ORG,
+        archived_at: null,
+      })),
       createTask: vi.fn(async () => ({ row: task, created: true })),
     }));
     const { POST } = await import("./route.js");
@@ -56,9 +62,15 @@ describe("POST /api/core/tasks", () => {
 
   it("returns 200 + idempotentReplay when the idempotency key already exists", async () => {
     await withAuth({ email: "admin@mianx.ai" });
+    const ORG = "22222222-2222-4222-8222-222222222222";
     const task = { id: "t1", project_id: UUID, title: "Score", status: "pending" };
     vi.doMock("@/lib/core/repo", () => ({
-      getProject: vi.fn(async () => ({ id: UUID })),
+      getOrCreateDefaultOrg: vi.fn(async () => ({ id: ORG, slug: "mianx" })),
+      getProject: vi.fn(async () => ({
+        id: UUID,
+        organization_id: ORG,
+        archived_at: null,
+      })),
       createTask: vi.fn(async () => ({ row: task, created: false })),
     }));
     const { POST } = await import("./route.js");
@@ -94,10 +106,27 @@ describe("GET /api/core/tasks", () => {
     vi.doUnmock("@/lib/auth");
   });
 
+  it("requires project_id (never unscoped list)", async () => {
+    await withAuth({ email: "admin@mianx.ai" });
+    const { GET } = await import("./route.js");
+    const res = await GET(fakeReq({}, ""));
+    expect(res.status).toBe(400);
+    vi.doUnmock("@/lib/auth");
+  });
+
   it("lists tasks for an authenticated admin", async () => {
     await withAuth({ email: "admin@mianx.ai" });
-    const tasks = [{ id: "t1" }];
-    vi.doMock("@/lib/core/repo", () => ({ listTasks: vi.fn(async () => tasks) }));
+    const ORG = "22222222-2222-4222-8222-222222222222";
+    const tasks = [{ id: "t1", project_id: UUID }];
+    vi.doMock("@/lib/core/repo", () => ({
+      getOrCreateDefaultOrg: vi.fn(async () => ({ id: ORG, slug: "mianx" })),
+      getProject: vi.fn(async () => ({
+        id: UUID,
+        organization_id: ORG,
+        archived_at: null,
+      })),
+      listTasks: vi.fn(async () => tasks),
+    }));
     const { GET } = await import("./route.js");
     const res = await GET(fakeReq({}, `project_id=${UUID}`));
     expect(res.status).toBe(200);
