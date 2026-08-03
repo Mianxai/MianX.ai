@@ -10,7 +10,7 @@ WORKERS="${CONCURRENCY_WORKERS:-8}"
 echo "=== concurrent consume reps=${REPS} workers=${WORKERS} ==="
 
 for ((rep=1; rep<=REPS; rep++)); do
-  AUTH_ID=$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "
+  AUTH_ID=$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -XqAtc "
     insert into public.pilot_live_run_authorizations (
       project_id, agent_id, task_envelope_hash, provider_name,
       approved_model, maximum_input_tokens, maximum_output_tokens, maximum_total_tokens,
@@ -28,10 +28,10 @@ for ((rep=1; rep<=REPS; rep++)); do
       'authorized',
       md5(('c'||'${rep}')::text) || md5(('d'||'${rep}')::text)
     ) returning id;
-  " | tr -d '[:space:]')
+  " | head -n1 | tr -d '[:space:]')
 
-  THASH=$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "select md5('${rep}'::text) || md5(('x'||'${rep}')::text);" | tr -d '[:space:]')
-  CHKSUM=$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "select md5(('c'||'${rep}')::text) || md5(('d'||'${rep}')::text);" | tr -d '[:space:]')
+  THASH=$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -XqAtc "select md5('${rep}'::text) || md5(('x'||'${rep}')::text);" | head -n1 | tr -d '[:space:]')
+  CHKSUM=$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -XqAtc "select md5(('c'||'${rep}')::text) || md5(('d'||'${rep}')::text);" | head -n1 | tr -d '[:space:]')
 
   if [[ ! "$AUTH_ID" =~ ^[0-9a-fA-F-]{36}$ ]]; then
     echo "ASSERT_FAIL: bad AUTH_ID=${AUTH_ID}" >&2
@@ -41,7 +41,7 @@ for ((rep=1; rep<=REPS; rep++)); do
   TMPDIR=$(mktemp -d)
   for ((w=1; w<=WORKERS; w++)); do
     (
-      psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "
+      psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -XqAtc "
         select count(*) from public.consume_pilot_live_run_authorization(
           '${AUTH_ID}'::uuid,
           '61d3b1fd-c260-479b-9289-0c75f977e892'::uuid,
@@ -52,7 +52,7 @@ for ((rep=1; rep<=REPS; rep++)); do
           null,
           '${CHKSUM}'
         );
-      " > "${TMPDIR}/w${w}.out" 2>"${TMPDIR}/w${w}.err" || echo FAIL > "${TMPDIR}/w${w}.out"
+      " | head -n1 > "${TMPDIR}/w${w}.out" 2>"${TMPDIR}/w${w}.err" || echo FAIL > "${TMPDIR}/w${w}.out"
     ) &
   done
   wait
