@@ -20,24 +20,30 @@ Canonical code: `lib/core/live-pilot/control-plane/first-live-run-readiness.js`
 Related:
 
 - `doc/OPENAI-SECURE-CONFIG-AND-MODEL-CHECK-RUNBOOK.md`
+- `doc/OPENAI-NO-CREDIT-SAFE-READINESS.md`
 - `doc/ONE-AGENT-PROVIDER-ACTIVATION-RUNBOOK.md`
 - `doc/ONE-AGENT-LIVE-RUN-CONTROL-PLANE.md`
 
-## Current Production baseline (post PR #87 merge `8a2b6f5…`)
+## Current Production baseline (post PR #88 merge `715b700…`)
 
 | Field | Current |
 |------|---------|
 | Authorization store | available |
 | Authorization rows | 0 |
-| providerName | none |
-| apiKeyConfigured | false |
+| provider execution | blocked (key present ≠ live-ready) |
+| apiKeyConfigured | true (boolean only) |
 | officialCatalogStatus | verified |
 | accountAccessStatus | not_checked |
 | officialPricingStatus | verified |
 | billingModeStatus | unknown |
+| billingCreditStatus | not_checked |
 | providerCallAllowed | false |
 | liveExecutionReady | false |
 | switches | false |
+| Models API / generation | 0 / 0 |
+
+Founder-observed billing balance on 2026-08-03: $0.00.  
+Not machine-verified by MianX.ai. Key presence does not imply credits.
 | workforce | 445 / 445 / 445 |
 | allocated / active / live-tested | 0 / 0 / 0 |
 | Founder Proof | awaiting_final_review / founder_final_review |

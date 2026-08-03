@@ -343,24 +343,155 @@ export default function LiveAgentPilotClient() {
             </p>
             <div className="workforce-status-grid">
               <Row
-                label="Provider configured"
-                value={data.liveRunControlPlane?.providerConfigured ? "Yes" : "No"}
-                testId="cp-provider-configured"
-              />
-              <Row
                 label="API key configured"
                 value={data.liveRunControlPlane?.apiKeyConfigured ? "Yes" : "No"}
                 testId="cp-api-key"
               />
               <Row
-                label="Official catalog status"
-                value={String(data.liveRunControlPlane?.officialCatalogStatus || "not_checked")}
+                label="Provider configured"
+                value={
+                  data.liveRunControlPlane?.providerConfiguredDisplay ===
+                    "configuration_present_execution_blocked" ||
+                  (data.liveRunControlPlane?.apiKeyConfigured &&
+                    !data.liveRunControlPlane?.providerCallAllowed)
+                    ? "configuration present but execution blocked"
+                    : data.liveRunControlPlane?.providerConfigured
+                      ? "Yes"
+                      : "No"
+                }
+                testId="cp-provider-configured"
+              />
+              <Row
+                label="Account model access"
+                value={
+                  data.liveRunControlPlane?.accountAccessStatus === "not_checked" ||
+                  !data.liveRunControlPlane?.accountAccessStatus
+                    ? "Not checked"
+                    : String(data.liveRunControlPlane.accountAccessStatus)
+                }
+                testId="cp-account-access"
+              />
+              <Row
+                label="Billing credits"
+                value={
+                  !data.liveRunControlPlane?.billingCreditStatus ||
+                  data.liveRunControlPlane?.billingCreditStatus === "not_checked"
+                    ? "Not checked"
+                    : String(data.liveRunControlPlane.billingCreditStatus)
+                }
+                testId="cp-billing-credits"
+              />
+              <Row
+                label="Billing mode"
+                value={
+                  data.liveRunControlPlane?.billingModeStatus === "unknown" ||
+                  data.liveRunControlPlane?.billingPathStatus === "unknown" ||
+                  (!data.liveRunControlPlane?.billingModeStatus &&
+                    !data.liveRunControlPlane?.billingPathStatus)
+                    ? "Unknown"
+                    : String(
+                        data.liveRunControlPlane.billingModeStatus ||
+                          data.liveRunControlPlane.billingPathStatus
+                      )
+                }
+                testId="cp-billing"
+              />
+              <Row
+                label="Official catalog"
+                value={
+                  data.liveRunControlPlane?.officialCatalogStatus === "verified"
+                    ? "Verified"
+                    : String(data.liveRunControlPlane?.officialCatalogStatus || "Not checked")
+                }
                 testId="cp-catalog"
               />
               <Row
-                label="Account access status"
-                value={String(data.liveRunControlPlane?.accountAccessStatus || "not_checked")}
-                testId="cp-account-access"
+                label="Official pricing"
+                value={
+                  data.liveRunControlPlane?.officialPricingStatus === "verified"
+                    ? "Verified"
+                    : String(data.liveRunControlPlane?.officialPricingStatus || "Not checked")
+                }
+                testId="cp-pricing"
+              />
+              <Row
+                label="Authorization store"
+                value={
+                  data.liveRunControlPlane?.authorizationStoreStatus === "available"
+                    ? "Available"
+                    : String(
+                        data.liveRunControlPlane?.authorizationStoreStatus || "not_applied"
+                      )
+                }
+                testId="cp-auth-store"
+              />
+              <Row
+                label="Authorization rows"
+                value={String(data.liveRunControlPlane?.authorizationRowCount ?? 0)}
+                testId="cp-auth-rows"
+              />
+              <Row
+                label="Execution switch"
+                value={data.liveRunControlPlane?.executionSwitch ? "On" : "Off"}
+                testId="cp-exec-switch"
+              />
+              <Row
+                label="Pilot switch"
+                value={data.liveRunControlPlane?.pilotSwitch ? "On" : "Off"}
+                testId="cp-pilot-switch"
+              />
+              <Row
+                label="Allocated"
+                value={String(data.liveRunControlPlane?.allocatedAgents ?? 0)}
+                testId="cp-allocated"
+              />
+              <Row
+                label="Active"
+                value={String(data.liveRunControlPlane?.activeAgents ?? 0)}
+                testId="cp-active"
+              />
+              <Row
+                label="Live-tested"
+                value={String(data.liveRunControlPlane?.liveTestedAgents ?? 0)}
+                testId="cp-live-tested"
+              />
+              <Row
+                label="Models API calls"
+                value={String(data.liveRunControlPlane?.authenticatedModelsApiCalls ?? 0)}
+                testId="cp-models-calls"
+              />
+              <Row
+                label="Generation calls"
+                value={String(data.liveRunControlPlane?.genuineGenerationCalls ?? 0)}
+                testId="cp-gen-calls"
+              />
+              <Row
+                label="Queue count"
+                value={String(data.liveRunControlPlane?.queueCount ?? 0)}
+                testId="cp-queue"
+              />
+              <Row
+                label="Concurrent runs"
+                value={String(data.liveRunControlPlane?.concurrentRuns ?? 0)}
+                testId="cp-concurrent"
+              />
+              <Row
+                label="Provider-call allowed"
+                value={data.liveRunControlPlane?.providerCallAllowed ? "Yes" : "No"}
+                testId="cp-call-allowed"
+              />
+              <Row
+                label="Live execution ready"
+                value={data.liveRunControlPlane?.liveExecutionReady ? "Yes" : "No"}
+                testId="cp-live-ready"
+              />
+              <Row
+                label="Blocking reason"
+                value={
+                  data.liveRunControlPlane?.primaryBlockingReason ||
+                  "account access and billing readiness have not been verified"
+                }
+                testId="cp-primary-blocker"
               />
               <Row
                 label="Approved model"
@@ -371,32 +502,6 @@ export default function LiveAgentPilotClient() {
                 label="Approved snapshot"
                 value={String(data.liveRunControlPlane?.approvedSnapshot || "—")}
                 testId="cp-approved-snapshot"
-              />
-              <Row
-                label="Official pricing status"
-                value={String(data.liveRunControlPlane?.officialPricingStatus || "not_checked")}
-                testId="cp-pricing"
-              />
-              <Row
-                label="Billing-path status"
-                value={
-                  data.liveRunControlPlane?.billingPathStatus === "unknown" ||
-                  !data.liveRunControlPlane?.billingPathStatus
-                    ? "Not checked"
-                    : String(data.liveRunControlPlane.billingPathStatus)
-                }
-                testId="cp-billing"
-              />
-              <Row
-                label="Authorization-store status"
-                value={
-                  data.liveRunControlPlane?.authorizationStoreStatus === "available"
-                    ? "Available"
-                    : String(
-                        data.liveRunControlPlane?.authorizationStoreStatus || "not_applied"
-                      )
-                }
-                testId="cp-auth-store"
               />
               <Row
                 label="Real authorization"
@@ -419,26 +524,6 @@ export default function LiveAgentPilotClient() {
                 testId="cp-auth-consumed"
               />
               <Row
-                label="Execution switch"
-                value={data.liveRunControlPlane?.executionSwitch ? "On" : "Off"}
-                testId="cp-exec-switch"
-              />
-              <Row
-                label="Pilot switch"
-                value={data.liveRunControlPlane?.pilotSwitch ? "On" : "Off"}
-                testId="cp-pilot-switch"
-              />
-              <Row
-                label="Queue count"
-                value={String(data.liveRunControlPlane?.queueCount ?? 0)}
-                testId="cp-queue"
-              />
-              <Row
-                label="Concurrent runs"
-                value={String(data.liveRunControlPlane?.concurrentRuns ?? 0)}
-                testId="cp-concurrent"
-              />
-              <Row
                 label="Scheduler health"
                 value={String(data.liveRunControlPlane?.schedulerHealth || "unknown")}
                 testId="cp-scheduler"
@@ -447,16 +532,6 @@ export default function LiveAgentPilotClient() {
                 label="Evidence store"
                 value={String(data.liveRunControlPlane?.evidenceStore || "unavailable")}
                 testId="cp-evidence"
-              />
-              <Row
-                label="Provider-call allowed"
-                value={data.liveRunControlPlane?.providerCallAllowed ? "Yes" : "No"}
-                testId="cp-provider-allowed"
-              />
-              <Row
-                label="Live execution ready"
-                value={data.liveRunControlPlane?.liveExecutionReady ? "Yes" : "No"}
-                testId="cp-live-ready"
               />
             </div>
             <h3 className="admin-section-title" style={{ marginTop: "1rem" }}>
