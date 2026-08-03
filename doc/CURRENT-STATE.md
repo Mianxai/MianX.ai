@@ -30,17 +30,17 @@ live-tested AI agents.
 
 ## Current Production commit (latest origin/main)
 
-`715b70038b59732e6e7845bb28da7809494adcbb`
+`70b9382b0d99e26580ec329ca114f17c7d3ab69e`
 
-(Merge of PR #88 — first-live-run readiness packet. Founder later configured
-`OPENAI_API_KEY` via Vercel Production UI and redeployed the same commit.)
+(Merge of PR #89 — OpenAI no-credit fail-closed readiness. Live-run track paused
+until Founder adds API credits. Key presence boolean true; credits not_checked.)
 
 ## Deployment state
 
 | Item | Value |
 |------|-------|
 | Production URL | https://mian-x-ai.vercel.app |
-| Production alias target | Ready deployment for commit `715b700…` |
+| Production alias target | Ready deployment for commit `70b9382…` |
 | Authorization migration applied | **yes** (2026-08-03) |
 | Migration checksum | `82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8` |
 | Authorization store | available (table present; **0** real authorization rows) |
@@ -56,10 +56,17 @@ live-tested AI agents.
 | Founder Proof | awaiting_final_review / founder_final_review |
 | Founder Final Review | not approved |
 | First-live-run readiness packet | **merged** (PR #88 → `715b700…`) |
-| No-credit safe readiness | Draft/Preview on `cursor/openai-no-credit-safe-readiness` |
+| No-credit safe readiness | **merged** (PR #89 → `70b9382…`) |
+| Tenant isolation / Admin authz hardening | Draft/Preview on `cursor/core-platform-tenant-isolation-admin-authz` |
 
 Founder-observed billing balance on 2026-08-03: $0.00.  
 Not machine-verified by MianX.ai.
+
+## Tenancy model (runtime truth)
+
+**Single-tenant Founder platform** — global `admin_memberships`; one default org;
+project isolation is application-level when `project_id` is provided. See
+`doc/CORE-PLATFORM-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md` (Draft).
 
 ## Scheduler state
 
