@@ -30,21 +30,29 @@ live-tested AI agents.
 
 ## Current Production commit (latest origin/main)
 
-`da4e19bce6bf19c54b76dfaa8382fee082e79a9c`
+`5776160b2837ddd08dd5eb0d877a0fe3d0a4bac7`
 
-(Merge of PR #85 — one-agent live-run control plane. Migration included but
-**not applied**. Fail-closed `authorization_store_unavailable`. Does not imply
-Founder Final Review approval or a live provider run.)
+(Merge of PR #86 — live-run authorization migration readiness + SECURITY DEFINER
+hardening + ephemeral DB CI. Migration **applied** to linked Production on
+2026-08-03 under Founder authorization. Does not imply Founder Final Review
+approval, provider configuration, or a live provider run.)
 
 ## Deployment state
 
 | Item | Value |
 |------|-------|
 | Production URL | https://mian-x-ai.vercel.app |
-| Production alias target | deployment for merge commit `da4e19b` (Ready/success) |
-| Authorization migration applied | **no** |
-| Production database changed by PR #85 | **no** |
+| Production alias target | deployment for merge commit `5776160` (Ready/success) |
+| Authorization migration applied | **yes** (2026-08-03) |
+| Migration checksum | `82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8` |
+| Authorization store | available (table present; **0** real authorization rows) |
 | Environment / secrets changed | no |
+| providerName | none |
+| Models API / generation calls | 0 / 0 |
+| Switches | false |
+| allocated/active/live-tested | 0/0/0 |
+| Founder Proof | awaiting_final_review / founder_final_review |
+| Founder Final Review | not approved |
 
 ## Scheduler state
 
@@ -61,7 +69,7 @@ Founder Final Review approval or a live provider run.)
 | Item | Value |
 |------|-------|
 | Phase II.1 pilot migration | applied |
-| Pending database migrations (last verification) | none |
+| Pending database migrations (last verification) | none (auth migration applied 2026-08-03) |
 | Migrations changed by PR #80 or workforce-audit PR | no |
 
 ## Workforce truth
@@ -99,8 +107,10 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 | Authenticated Models API verification | not performed |
 | Provider activation readiness PR | **merged** (PR #83 → `940c227`); Production verified after merge |
 | Dry-run evidence rehearsal PR | **merged** (PR #84 → `405171b`); Vitest-only fake provider; Production verified |
-| Live-run control-plane PR | **merged** (PR #85 → `da4e19b`); Production verified **without** migration apply; fail-closed store |
-| Live-run authorization migration | Included on main via PR #85; **not applied**; PR #86 readiness adds ephemeral DB CI + SECURITY DEFINER `search_path=''` hardening |
+| Live-run control-plane PR | **merged** (PR #85 → `da4e19b`); Production verified **without** migration apply at that time |
+| Live-run authorization migration readiness | **merged** (PR #86 → `5776160`); ephemeral DB CI + `search_path=''` hardening |
+| Live-run authorization migration apply | **applied** 2026-08-03 — checksum `82b8223a…`; store available; **0** auth rows; provider still none |
+| OpenAI secure-config / model-check readiness | Draft PR on `cursor/openai-secure-config-and-model-check-readiness` (Preview truth) |
 
 ## Live execution truth
 

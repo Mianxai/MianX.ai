@@ -115,6 +115,28 @@ export default function LiveAgentPilotClient() {
               testId="live-pilot-api-key"
             />
             <Row
+              label="Authorization store"
+              value={
+                data.liveRunControlPlane?.authorizationStoreStatus === "available"
+                  ? "Available"
+                  : data.liveRunControlPlane?.authorizationStoreStatus === "not_applied"
+                    ? "Not applied"
+                    : data.activationPreflight?.display?.authorizationStore ||
+                      String(data.liveRunControlPlane?.authorizationStoreStatus || "Unavailable")
+              }
+              testId="live-pilot-auth-store"
+            />
+            <Row
+              label="Real authorization"
+              value={
+                !data.liveRunControlPlane?.authorizationStatus ||
+                data.liveRunControlPlane?.authorizationStatus === "none"
+                  ? "None"
+                  : String(data.liveRunControlPlane.authorizationStatus)
+              }
+              testId="live-pilot-real-auth"
+            />
+            <Row
               label="Configured model"
               value={data.activationPreflight?.display?.configuredModel || "none"}
               testId="live-pilot-model"
@@ -357,19 +379,33 @@ export default function LiveAgentPilotClient() {
               />
               <Row
                 label="Billing-path status"
-                value={String(data.liveRunControlPlane?.billingPathStatus || "unknown")}
+                value={
+                  data.liveRunControlPlane?.billingPathStatus === "unknown" ||
+                  !data.liveRunControlPlane?.billingPathStatus
+                    ? "Not checked"
+                    : String(data.liveRunControlPlane.billingPathStatus)
+                }
                 testId="cp-billing"
               />
               <Row
                 label="Authorization-store status"
-                value={String(
-                  data.liveRunControlPlane?.authorizationStoreStatus || "not_applied"
-                )}
+                value={
+                  data.liveRunControlPlane?.authorizationStoreStatus === "available"
+                    ? "Available"
+                    : String(
+                        data.liveRunControlPlane?.authorizationStoreStatus || "not_applied"
+                      )
+                }
                 testId="cp-auth-store"
               />
               <Row
-                label="Authorization status"
-                value={String(data.liveRunControlPlane?.authorizationStatus || "none")}
+                label="Real authorization"
+                value={
+                  !data.liveRunControlPlane?.authorizationStatus ||
+                  data.liveRunControlPlane?.authorizationStatus === "none"
+                    ? "None"
+                    : String(data.liveRunControlPlane.authorizationStatus)
+                }
                 testId="cp-auth-status"
               />
               <Row
@@ -452,9 +488,10 @@ export default function LiveAgentPilotClient() {
 
           <section style={{ marginTop: "1.5rem" }}>
             <h2 className="admin-section-title">Controls</h2>
-            <p className="wa-metric-hint">
-              Run stays disabled until the server status endpoint reports every gate.
-              This UI never calls OpenAI directly and has no API-secret input field.
+            <p className="wa-metric-hint" data-testid="live-pilot-no-run-now">
+              No Run-now action. No API-key input. No live-switch controls. No allocation
+              button. Execute remains Founder-gated via separately authorized server paths
+              only. This UI never calls OpenAI.
             </p>
             <div
               style={{
@@ -464,20 +501,6 @@ export default function LiveAgentPilotClient() {
                 marginTop: "0.75rem",
               }}
             >
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={!runEnabled || busy}
-                data-testid="live-pilot-run"
-                title={disabledReasons.join("; ") || "Run disabled"}
-                onClick={() => {
-                  setNote(
-                    "Execute via POST /api/admin/live-agent-pilot/execute with Founder approval fields. UI does not auto-fire provider calls."
-                  );
-                }}
-              >
-                {runEnabled ? "Run (server-eligible)" : "Run (disabled)"}
-              </button>
               <button
                 type="button"
                 className="btn"

@@ -20,6 +20,12 @@ approved by this document.
 model-access verification control, execution lock — Preview/Draft only).
 `doc/ONE-AGENT-DRY-RUN-EVIDENCE-REHEARSAL.md` (PR #84 merged — Vitest fake
 provider rehearsal only).
+`doc/OPENAI-SECURE-CONFIG-AND-MODEL-CHECK-RUNBOOK.md` (secure Vercel key
+configuration + Models API envelope readiness — **not executed**).
+
+Authorization store (Production): **available** after Founder-authorized apply
+of `20260803120000_pilot_live_run_authorizations.sql` (2026-08-03). No real
+authorization rows. Provider remains `none`. Models API calls remain 0.
 
 ## Execution flow (implemented path — not live-called)
 

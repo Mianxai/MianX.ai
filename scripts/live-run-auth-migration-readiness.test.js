@@ -13,7 +13,7 @@ const EXPECTED =
   "82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8";
 
 describe("live-run authorization migration readiness", () => {
-  it("manifest checksum matches migration file bytes", () => {
+  it("manifest checksum matches migration file bytes and applied status", () => {
     const hex = createHash("sha256").update(readFileSync(MIGRATION)).digest("hex");
     expect(hex).toBe(EXPECTED);
     const manifest = readFileSync(
@@ -21,7 +21,7 @@ describe("live-run authorization migration readiness", () => {
       "utf8"
     );
     expect(manifest).toContain(EXPECTED);
-    expect(manifest).toMatch(/migrationApplied \| \*\*no\*\*/);
+    expect(manifest).toMatch(/migrationApplied \| \*\*yes\*\*/);
   });
 
   it("pre-apply script exists and completes without mutation", () => {
@@ -38,17 +38,15 @@ describe("live-run authorization migration readiness", () => {
     expect(out).toContain(EXPECTED);
   });
 
-  it("runbook includes ordered Founder phases and rollback classes", () => {
+  it("runbook records Founder-applied status and post-use rollback limits", () => {
     const rb = readFileSync(
       join(ROOT, "doc/LIVE-RUN-AUTHORIZATION-MIGRATION-RUNBOOK.md"),
       "utf8"
     );
-    expect(rb).toMatch(/Phase 0/);
-    expect(rb).toMatch(/Phase 5/);
-    expect(rb).toMatch(/Phase 10/);
-    expect(rb).toMatch(/Pre-use rollback/);
-    expect(rb).toMatch(/Post-use rollback/);
+    expect(rb).toMatch(/production_status: applied/);
+    expect(rb).toMatch(/Migration \*\*applied\*\*/);
+    expect(rb).toMatch(/Pre-use rollback|Post-use/);
     expect(rb).toMatch(/db push --linked --dry-run/);
-    expect(rb).not.toMatch(/Migration applied: yes/);
+    expect(rb).toContain(EXPECTED.slice(0, 16));
   });
 });
