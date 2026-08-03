@@ -51,14 +51,21 @@ describe("migration contract (static, not applied)", () => {
 
   it("expected dry-run order lists newer additive migrations last", () => {
     const expectedTail = [
-      "20260728210000_phase_h_integration_runtime.sql",
       "20260730180000_phase_i2_workforce_registry.sql",
       "20260730190000_phase_i3_workforce_rls.sql",
       "20260731180000_phase_i9_supabase_cron_scheduler.sql",
       "20260801120000_phase_ii1_live_agent_pilot.sql",
       "20260803120000_pilot_live_run_authorizations.sql",
+      "20260803180000_admin_memberships_optional_tenant_scope.sql",
     ];
     expect(files.slice(-6)).toEqual(expectedTail);
+  });
+
+  it("optional admin membership tenant scope migration is additive and nullable", () => {
+    const sql = readMigration("20260803180000_admin_memberships_optional_tenant_scope.sql");
+    expect(sql).toMatch(/add column if not exists organization_id/i);
+    expect(sql).toMatch(/add column if not exists project_id/i);
+    expect(sql).toMatch(/DO NOT apply without Founder/i);
   });
 
   it("pilot live-run authorizations migration is additive with RLS and not auto-applied", () => {

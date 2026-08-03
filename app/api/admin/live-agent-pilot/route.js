@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling, ApiError, ERROR_CODES } from "@/lib/core/errors";
-import { requireAdmin, actorFromUser } from "@/lib/core/auth";
+import {
+  requireCapability,
+  actorFromUser,
+  CAPABILITIES,
+} from "@/lib/core/auth";
 import {
   PILOT_AGENT_SLUG,
   PILOT_PROJECT_ID,
@@ -53,7 +57,7 @@ function sanitizeBody(body) {
 
 /** GET — pilot status (read-only). Never starts execution. */
 export const GET = withErrorHandling(async (req) => {
-  await requireAdmin(req);
+  await requireCapability(req, CAPABILITIES.LIVE_PILOT_READ);
   const url = new URL(req.url);
   const view = url.searchParams.get("view") || "status";
 
@@ -150,10 +154,9 @@ export const GET = withErrorHandling(async (req) => {
 /**
  * POST — preparation / kill-switch only.
  * Never calls a provider in Phase II.1. No GET may start execution.
+ * eligibility → live_pilot.read; authorize/kill-switch → live_pilot.authorize (Founder/owner).
  */
 export const POST = withErrorHandling(async (req) => {
-  const admin = await requireAdmin(req);
-  const actor = actorFromUser(admin);
   let raw = {};
   try {
     raw = await req.json();
@@ -162,6 +165,13 @@ export const POST = withErrorHandling(async (req) => {
   }
   const body = sanitizeBody(raw);
   const action = String(raw.action || "").trim();
+
+  const authCtx =
+    action === "eligibility"
+      ? await requireCapability(req, CAPABILITIES.LIVE_PILOT_READ)
+      : await requireCapability(req, CAPABILITIES.LIVE_PILOT_AUTHORIZE);
+  const admin = authCtx.user;
+  const actor = actorFromUser(admin);
 
   if (action === "eligibility") {
     const eligibility = evaluatePilotEligibility({
