@@ -30,29 +30,31 @@ live-tested AI agents.
 
 ## Current Production commit (latest origin/main)
 
-`5776160b2837ddd08dd5eb0d877a0fe3d0a4bac7`
+`8a2b6f5e874b25419a1cfd66dca26da1406d262e`
 
-(Merge of PR #86 — live-run authorization migration readiness + SECURITY DEFINER
-hardening + ephemeral DB CI. Migration **applied** to linked Production on
-2026-08-03 under Founder authorization. Does not imply Founder Final Review
-approval, provider configuration, or a live provider run.)
+(Merge of PR #87 — OpenAI secure-config and model-check readiness. Does not
+configure `OPENAI_API_KEY`, call Models API, enable switches, or approve
+Founder Final Review.)
 
 ## Deployment state
 
 | Item | Value |
 |------|-------|
 | Production URL | https://mian-x-ai.vercel.app |
-| Production alias target | deployment for merge commit `5776160` (Ready/success) |
+| Production alias target | deployment for merge commit `8a2b6f5` (Ready/success) |
 | Authorization migration applied | **yes** (2026-08-03) |
 | Migration checksum | `82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8` |
 | Authorization store | available (table present; **0** real authorization rows) |
 | Environment / secrets changed | no |
 | providerName | none |
+| apiKeyConfigured | false |
+| accountAccessStatus | not_checked |
 | Models API / generation calls | 0 / 0 |
 | Switches | false |
 | allocated/active/live-tested | 0/0/0 |
 | Founder Proof | awaiting_final_review / founder_final_review |
 | Founder Final Review | not approved |
+| First-live-run readiness packet | Draft PR on `cursor/one-agent-first-live-run-readiness-packet` (Preview truth) |
 
 ## Scheduler state
 
@@ -110,7 +112,8 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 | Live-run control-plane PR | **merged** (PR #85 → `da4e19b`); Production verified **without** migration apply at that time |
 | Live-run authorization migration readiness | **merged** (PR #86 → `5776160`); ephemeral DB CI + `search_path=''` hardening |
 | Live-run authorization migration apply | **applied** 2026-08-03 — checksum `82b8223a…`; store available; **0** auth rows; provider still none |
-| OpenAI secure-config / model-check readiness | Draft PR on `cursor/openai-secure-config-and-model-check-readiness` (Preview truth) |
+| OpenAI secure-config / model-check readiness | **merged** (PR #87 → `8a2b6f5`); Production verified; key still not configured |
+| First-live-run readiness packet | Draft on `cursor/one-agent-first-live-run-readiness-packet` (Preview) |
 
 ## Live execution truth
 

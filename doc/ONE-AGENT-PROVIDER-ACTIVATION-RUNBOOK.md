@@ -22,6 +22,8 @@ model-access verification control, execution lock — Preview/Draft only).
 provider rehearsal only).
 `doc/OPENAI-SECURE-CONFIG-AND-MODEL-CHECK-RUNBOOK.md` (secure Vercel key
 configuration + Models API envelope readiness — **not executed**).
+`doc/ONE-AGENT-FIRST-LIVE-RUN-READINESS-PACKET.md` (final first-live-run
+Founder action packet — Preview/Draft only; no phase completed).
 
 Authorization store (Production): **available** after Founder-authorized apply
 of `20260803120000_pilot_live_run_authorizations.sql` (2026-08-03). No real

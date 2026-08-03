@@ -469,6 +469,58 @@ export default function LiveAgentPilotClient() {
             </ul>
           </section>
 
+          <section style={{ marginTop: "1.5rem" }} data-testid="live-pilot-first-live-checklist">
+            <h2 className="admin-section-title">
+              {data.liveRunControlPlane?.firstLiveRunFounderChecklist?.heading ||
+                "First live-run Founder checklist (read-only)"}
+            </h2>
+            <p className="wa-metric-hint" role="status" data-testid="live-pilot-first-live-checklist-warning">
+              Preparation only. No secret entry. No Run-now action. No switch controls. No
+              automatic allocation. No automatic authorization.
+            </p>
+            <h3 className="admin-section-title" style={{ marginTop: "0.75rem" }}>
+              Completed foundation
+            </h3>
+            <ul data-testid="live-pilot-foundation-done">
+              {(data.liveRunControlPlane?.firstLiveRunFounderChecklist?.completedFoundation || [])
+                .filter((x) => x.done)
+                .map((x) => (
+                  <li key={x.item}>{x.item}</li>
+                ))}
+            </ul>
+            <h3 className="admin-section-title" style={{ marginTop: "0.75rem" }}>
+              Current blockers
+            </h3>
+            <ul data-testid="live-pilot-first-live-blockers">
+              {(data.liveRunControlPlane?.firstLiveRunFounderChecklist?.currentBlockers || []).map(
+                (b) => (
+                  <li key={b}>{b}</li>
+                )
+              )}
+            </ul>
+            <h3 className="admin-section-title" style={{ marginTop: "0.75rem" }}>
+              Next manual Founder action
+            </h3>
+            <p data-testid="live-pilot-next-founder-action">
+              Phase{" "}
+              {data.liveRunControlPlane?.firstLiveRunFounderChecklist?.nextManualFounderAction
+                ?.phase || "—"}
+              :{" "}
+              {data.liveRunControlPlane?.firstLiveRunFounderChecklist?.nextManualFounderAction
+                ?.action || "—"}
+            </p>
+            <h3 className="admin-section-title" style={{ marginTop: "0.75rem" }}>
+              Prohibited actions
+            </h3>
+            <ul data-testid="live-pilot-prohibited-actions">
+              {(data.liveRunControlPlane?.firstLiveRunFounderChecklist?.prohibitedActions || []).map(
+                (p) => (
+                  <li key={p}>{p}</li>
+                )
+              )}
+            </ul>
+          </section>
+
           <section style={{ marginTop: "1.5rem" }} data-testid="live-pilot-blockers">
             <h2 className="admin-section-title">Blocking reasons</h2>
             <ul data-testid="live-pilot-disabled-reasons">
