@@ -26,14 +26,27 @@ Admin queue request (server)
   → terminal test run
 ```
 
+## Evidence content integrity
+
+Evidence uses a **content-integrity checksum** (SHA-256 over canonical critical
+fields). This is **not** a digital signature — there is no signing key.
+
+- Equivalent objects produce the same checksum
+- Token / cost / model / terminal-status mutation produces mismatch
+- Missing checksum → unavailable / unverified
+- Checksum mismatch cannot satisfy genuine live-tested criteria
+- Test evidence sets `evidenceEnvironment: test` and never promotes live-tested
+
 ## Fake-provider isolation
 
 - Module: `lib/core/live-pilot/dry-run/fake-provider.js`
 - Allowed only when `VITEST` / `NODE_ENV=test`
 - Forbidden when `VERCEL_ENV=production` or `NODE_ENV=production` outside Vitest
-- Any `LIVE_AGENT_FAKE_PROVIDER` env flag is rejected
+- Any `LIVE_AGENT_FAKE_PROVIDER` / `USE_FAKE_PROVIDER` env flag is rejected
+- Production index exports only the Admin report label helper — not the fake client
 - No Admin button can invoke the fake provider
 - No Production API route exposes it
+- Untrusted `providerName` selection of fake/mock is rejected
 
 ## Evidence schema
 
@@ -66,9 +79,17 @@ service-role values.
 
 ## Authorization contract
 
-Fixture-only live-run authorization requires id, timestamp, project, agent, task,
-max cost, model/snapshot, expiry, one-time consume. Independent from Founder Final
-Review. No real authorization records are created in Production by this PR.
+Fixture-only live-run authorization states: `draft` → `authorized` → `consumed`,
+plus `expired` / `revoked`. Independent from Founder Final Review and Founder Proof.
+No real authorization records are created in Production by this PR.
+
+## Manual Production rollback (future real pilot)
+
+1. Set `LIVE_AGENT_EXECUTION_ENABLED` and `LIVE_AGENT_PILOT_ENABLED` off in Vercel.
+2. Arm kill switch from Admin if a run is in flight.
+3. Do not delete historical evidence.
+4. Do not auto-reissue live-run authorization.
+5. Founder Proof / Final Review remain independent and unchanged.
 
 ## Remaining steps before a real call
 

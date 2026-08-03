@@ -95,7 +95,7 @@ Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY
 | zeroDataRetentionVerified | false |
 | Authenticated Models API verification | not performed |
 | Provider activation readiness PR | **merged** (PR #83 → `940c227`); Production verified after merge |
-| Dry-run evidence rehearsal PR | Draft/Preview only — not merged; Vitest-only fake provider |
+| Dry-run evidence rehearsal PR | Audit corrections in progress on Draft PR #84; Vitest-only fake provider; Production index exports Admin report only |
 
 ## Live execution truth
 
