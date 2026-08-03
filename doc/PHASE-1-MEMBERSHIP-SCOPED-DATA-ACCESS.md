@@ -52,20 +52,22 @@ New migration included: **no** (uses application authorization on existing schem
 
 Remediated (scoped queries):
 
-- project list / detail / counts
+- project list / detail / counts (`listProjects` / `getProject` require scope)
 - task list / detail (with required project_id)
 - agent instance list / patch (with required project_id)
 - overview + command-center project aggregates
 - recent audit when projectIds known
 
-Still open (later Phase 1 steps):
+Still open — **Step 4**:
 
-- Remaining Admin analytics/exports without project filter
-- Full membership column enforcement after Founder applies PR #91 migration
+- Durable membership `organization_id` / `project_id` columns (migration unapplied)
 - JWT/org RLS policies
-- ~70+ other service-role call sites not touched here
 
-Exact remaining inventory still tracked in `lib/tenant/service-role-inventory.js`.
+Still open — **Step 5**:
+
+- `GET /api/core/runs|jobs|approvals|audit` optional project_id paths
+- Admin analytics unscoped aggregates
+- Remaining Admin export/search surfaces
 
 ## Cross-tenant tests
 
