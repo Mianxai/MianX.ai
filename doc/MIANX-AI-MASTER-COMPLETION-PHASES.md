@@ -19,7 +19,7 @@ Only items with runtime evidence are marked complete.
 
 ## Phase 1 — Core Platform Security and Multi-Project Foundation
 
-**Status:** In progress (Draft PR)
+**Status:** `ready_for_final_verification` (not complete — Founder sign-off required)
 
 Goals:
 
@@ -29,8 +29,8 @@ Goals:
 - Admin route authorization matrix
 - Service-role inventory and fail-closed patterns
 - Cross-tenant (cross-project) regression fixtures
-- Optional membership scope migration (Draft only — not applied)
-- RLS audit + migration decision without Production apply
+- Optional membership scope migration (Founder-applied on Production)
+- RLS audit + post-apply verification (JWT RLS still Phase 2 / follow-on)
 
 Verified complete:
 
@@ -40,16 +40,18 @@ Verified complete:
 - [x] Phase 1 tenant/authz Draft PR #91 merged (`c7ee986…`); Production verified
 - [x] Phase 1 membership-scoped data access PR #92 merged (`92897d6…`); Production verified
 - [x] Phase 1 Step 4 RLS/scope readiness PR #93 merged (`c6a273a…`); Production verified
-- [ ] Optional `admin_memberships` org/project scope migration Founder-applied
-- [ ] Phase 1 Step 5 final cross-tenant security closure Draft reviewed/merged
-- [ ] Phase 1 marked complete (Founder only after post-apply verification)
+- [x] Phase 1 Step 5 final cross-tenant security closure PR #94 merged (`2d9b486…`); Production verified
+- [x] Optional `admin_memberships` org/project scope migration Founder-applied (`20260803180000…`)
+- [ ] Phase 1 marked complete (Founder only after final-verification Draft review + explicit sign-off)
 
 Primary docs:
 
 - `doc/PHASE-1-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md`
 - `doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md`
-- `doc/PHASE-1-RLS-SCOPE-MIGRATION-READINESS.md` (Step 4 Draft)
+- `doc/PHASE-1-RLS-SCOPE-MIGRATION-READINESS.md`
 - `doc/PHASE-1-RLS-SCOPE-MIGRATION-RUNBOOK.md`
+- `doc/PHASE-1-RLS-MIGRATION-ROLLOUT.md`
+- `doc/PHASE-1-POST-MIGRATION-VERIFICATION.md`
 - `doc/CURRENT-STATE.md`
 
 ---

@@ -30,20 +30,21 @@ live-tested AI agents.
 
 ## Current Production commit (latest origin/main)
 
-`c6a273ae7859c7e3a20320526b3c2e9647d71765`
+`2d9b4862e7764aae5c26f0e247bb85310bc752f8`
 
-(Merge of PR #93 — Phase 1 membership scope migration readiness. Optional
-`admin_memberships` org/project scope migration remains **unapplied**.
-Live-run track paused; OpenAI credits not_checked.)
+(Merge of PR #94 — Phase 1 Step 5 final cross-tenant security closure.
+Optional `admin_memberships` org/project scope migration **applied** 2026-08-03
+under Founder authorization. Live-run track paused; OpenAI credits not_checked.)
 
 ## Deployment state
 
 | Item | Value |
 |------|-------|
 | Production URL | https://mian-x-ai.vercel.app |
-| Production alias target | Ready deployment for commit `c6a273a…` |
+| Production alias target | Ready/success deployment for commit `2d9b486…` |
 | Authorization migration applied | **yes** (2026-08-03) |
-| Migration checksum | `82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8` |
+| Membership scope migration applied | **yes** — `20260803180000_admin_memberships_optional_tenant_scope.sql` |
+| Scope migration checksum | `6ae5e95605342b529b561b3fb366dd5eace626d41a7c92ccfd363aa07b1e5ed7` |
 | Authorization store | available (table present; **0** real authorization rows) |
 | Environment / secrets changed by code PRs | no (Founder-only Vercel UI for key) |
 | providerName (core health) | none — execution blocked |
@@ -58,26 +59,30 @@ Live-run track paused; OpenAI credits not_checked.)
 | Founder Final Review | not approved |
 | First-live-run readiness packet | **merged** (PR #88 → `715b700…`) |
 | No-credit safe readiness | **merged** (PR #89 → `70b9382…`) |
-| Master completion phases | `doc/MIANX-AI-MASTER-COMPLETION-PHASES.md` — Phase 1 in progress |
-| Phase 1 tenant/authz foundation | **merged** (PR #91 → `c7ee986…`); migration still **unapplied** |
+| Master completion phases | `doc/MIANX-AI-MASTER-COMPLETION-PHASES.md` — Phase 1 `ready_for_final_verification` |
+| Phase 1 tenant/authz foundation | **merged** (PR #91 → `c7ee986…`); scope columns **applied** |
 | Phase 1 membership-scoped data access | **merged** (PR #92 → `92897d6…`) |
-| Phase 1 RLS/scope migration readiness | **merged** (PR #93 → `c6a273a…`); migration still **unapplied** |
-| Phase 1 final security closure | Draft on `cursor/phase1-final-cross-tenant-security-closure` |
-| Phase 1 status | `ready_for_migration_rollout` (not complete) |
+| Phase 1 RLS/scope migration readiness | **merged** (PR #93 → `c6a273a…`) |
+| Phase 1 final security closure | **merged** (PR #94 → `2d9b486…`) |
+| Phase 1 post-migration verification | Draft on `cursor/phase1-post-migration-final-verification` |
+| Phase 1 status | `ready_for_final_verification` (not complete; Founder sign-off required) |
+| Phase 2 started | **no** |
 
 Founder-observed billing balance on 2026-08-03: $0.00.  
 Not machine-verified by MianX.ai.
 
 ## Tenancy model (runtime truth)
 
-**Single-tenant Founder platform** — global `admin_memberships` until optional
-org/project columns are Founder-applied; one default org (`mianx`); workspaces
-not implemented; JWT org-scoped RLS not complete. Project list/detail scoping is
-application-level (PR #92). See
+**Single-tenant Founder platform with optional membership scope columns applied** —
+`admin_memberships.organization_id` / `project_id` are nullable; existing rows
+remain null (legacy default-org semantics, not multi-org global). One default org
+(`mianx`); workspaces not implemented; JWT org-scoped RLS not complete. Project
+list/detail scoping is application-level (PR #92+#94). See
 `doc/PHASE-1-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md`,
-`doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md`, and
-`doc/PHASE-1-RLS-SCOPE-MIGRATION-READINESS.md` (Step 4 merged),
-`doc/PHASE-1-FINAL-CROSS-TENANT-SECURITY-CLOSURE.md` (Step 5 Draft).
+`doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md`,
+`doc/PHASE-1-RLS-SCOPE-MIGRATION-READINESS.md`,
+`doc/PHASE-1-FINAL-CROSS-TENANT-SECURITY-CLOSURE.md`,
+`doc/PHASE-1-POST-MIGRATION-VERIFICATION.md`.
 
 ## Scheduler state
 
@@ -94,7 +99,7 @@ application-level (PR #92). See
 | Item | Value |
 |------|-------|
 | Phase II.1 pilot migration | applied |
-| Pending database migrations (last verification) | none (auth migration applied 2026-08-03) |
+| Pending database migrations (last verification) | **none** (scope migration applied 2026-08-03; dry-run up to date) |
 | Migrations changed by PR #80 or workforce-audit PR | no |
 
 ## Workforce truth

@@ -1,9 +1,9 @@
 # Phase 1 — RLS / membership scope migration rollout packet
 
 As-of: 2026-08-03  
-migrationApplied: **no**  
-ProductionDatabaseChanged: **no**  
-Phase 1 status: **ready_for_migration_rollout**
+migrationApplied: **yes** (Production, Founder-authorized)  
+ProductionDatabaseChanged: **yes** (exactly one migration)  
+Phase 1 status: **ready_for_final_verification**
 
 ## Exact migration
 
@@ -32,13 +32,13 @@ Phase 1 status: **ready_for_migration_rollout**
 - Clients cannot self-assign scope columns.
 - Applying this migration does **not** complete JWT org-scoped RLS or full multi-tenant isolation.
 
-## Pre-apply application behavior
+## Pre-apply application behavior (historical)
 
 - App starts; health healthy; scheduler healthy.
 - `scopeColumnsAvailable: false` → default-org project scoping (Step 3/4 wiring).
 - Project-sensitive lists fail closed without `project_id` where required.
 
-## Post-apply application behavior
+## Post-apply application behavior (current Production)
 
 - Membership SELECT includes org/project columns; `scopeColumnsAvailable: true`.
 - Durable allowlist/org filters apply when columns set.
@@ -58,14 +58,25 @@ Phase 1 status: **ready_for_migration_rollout**
 npx supabase db push --linked --dry-run
 ```
 
-## Apply (Founder only — not agents)
+## Apply (completed 2026-08-03)
 
 ```bash
 npx supabase db push --linked --dry-run
 npx supabase db push --linked
 ```
 
-Exactly one migration. No repair / reset / seed.
+Applied exactly once under Founder authorization after backup/PITR, checksum,
+dry-run, Production SHA, and switch-off guards. No repair / reset / seed.
+
+| Field | Value |
+|-------|--------|
+| Apply start UTC | `2026-08-03T16:16:45Z` |
+| Apply finish UTC | `2026-08-03T16:17:07Z` |
+| Duration | 22s |
+| Exit status | 0 |
+| Post-apply pending | 0 |
+
+Full evidence: `doc/PHASE-1-POST-MIGRATION-VERIFICATION.md`.
 
 ## Post-apply verifier
 
