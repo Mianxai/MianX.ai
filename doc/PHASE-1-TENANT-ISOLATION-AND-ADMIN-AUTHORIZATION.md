@@ -72,8 +72,9 @@ Hardening in this Draft:
 See `lib/tenant/service-role-inventory.js`.
 
 - Factory: `getSupabaseAdmin` (server-only)
-- ~78 call sites / ~51 files
+- Exact (excl. tests): **79** call sites / **52** files
 - RLS: deny-anon; service_role bypass — application authz is mandatory
+- Remediation buckets: fixed / protected / partially_protected / still_open_for_step_3
 
 ## RLS inventory (summary)
 
@@ -105,19 +106,34 @@ payload sanitization, platform vs tenant admin.
 | Rollback | `supabase/rollbacks/20260803180000_admin_memberships_optional_tenant_scope.rollback.sql` |
 | Compatibility | Additive nullable columns; NULL preserves current global membership |
 
-## Remaining risks
+## Remaining risks (honest remediation buckets)
 
+**Fixed in this PR**
+- Live-pilot GET → `live_pilot.read`; authorize/kill POST → `live_pilot.authorize`
+- Unknown admin role → zero capabilities + membership reject
+- Trusted tenant-context helpers + outcome codes
+
+**Protected (existing controls)**
+- `getSupabaseAdmin` server-only; Admin routes behind session + membership
+- Pilot project hard-bind; no-credit provider block (PR #89)
+
+**Partially protected**
+- Lists that already require `project_id` when callers pass it
+- Pilot evidence isolation helpers
+
+**Still open for Phase 1 Step 3**
 1. Global memberships still allow any active admin to list all projects until
-   org/project columns are applied and enforced.
+   org/project columns are applied **and** enforced in app code.
 2. Optional `project_id` on some list endpoints.
-3. Service-role remains the Admin data path — must stay behind authz helpers.
-4. Docs elsewhere may still describe multi-tenant ideals; this file is runtime truth.
+3. Unscoped `listProjects` / Admin aggregates / id-only detail reads.
+4. Service-role remains the Admin data path — must stay behind authz helpers.
+5. Docs elsewhere may still describe multi-tenant ideals; this file is runtime truth.
 
 ## Phase 1 implementation backlog
 
-1. Founder review + merge this Draft PR (no Production migration apply yet).
-2. Founder dry-run + apply optional membership scope migration.
-3. Enforce org/project filters in `listProjects` / Admin list routes.
+1. ~~Founder review + merge this Draft PR~~ (Mission B)
+2. Founder dry-run + apply optional membership scope migration (separate auth).
+3. **Step 3:** Enforce org/project filters in `listProjects` / Admin list routes.
 4. Require `project_id` on remaining optional list endpoints.
 5. Expand `requireCapabilityAndProject` across `/api/core/*` mutations.
 6. Consider authenticated-role RLS only after membership scoping is live.
