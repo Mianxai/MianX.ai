@@ -6,19 +6,9 @@ import AdminShell from "@/components/admin/AdminShell";
 import PageHeader from "@/components/admin/PageHeader";
 import StatusBadge from "@/components/admin/StatusBadge";
 import {
-  formatWorkforceMetric,
   coalesceWorkforceCount,
 } from "@/lib/core/workforce-i2/terminology.js";
-
-function MetricCard({ label, value, testId, hint }) {
-  return (
-    <div className="workforce-status-card" data-testid={testId}>
-      <span className="workforce-status-label">{label}</span>
-      <strong className="workforce-status-value">{value}</strong>
-      {hint ? <span className="wa-metric-hint">{hint}</span> : null}
-    </div>
-  );
-}
+import WorkforceMetricCard from "@/components/admin/workforce/WorkforceMetricCard";
 
 export default function WorkforceReadinessClient() {
   const [data, setData] = useState(null);
@@ -140,58 +130,60 @@ export default function WorkforceReadinessClient() {
   const capacityMetrics = [
     {
       label: "Documented / capacity seats",
-      value: formatWorkforceMetric(foundation.capacitySeats).label,
+      value: coalesceWorkforceCount(foundation.capacitySeats),
       testId: "wr-capacity",
+      proves: "Registered capacity — not active agents",
     },
     {
       label: "Compiled seats",
-      value: formatWorkforceMetric(foundation.compiledSeats).label,
+      value: coalesceWorkforceCount(foundation.compiledSeats),
       testId: "wr-compiled",
     },
     {
       label: "Persisted seats",
-      value: formatWorkforceMetric(foundation.persistedSeats).label,
+      value: coalesceWorkforceCount(foundation.persistedSeats),
       testId: "wr-persisted",
     },
     {
       label: "Ready to allocate",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(foundation.readyToAllocateSeats)
-      ).label,
+      value: coalesceWorkforceCount(foundation.readyToAllocateSeats),
       testId: "wr-ready",
+      proves: "Ready ≠ allocated or active",
     },
     {
       label: "Allocated seats",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(foundation.allocatedSeats)
-      ).label,
+      value: coalesceWorkforceCount(foundation.allocatedSeats),
       testId: "wr-allocated",
     },
     {
       label: "Active instances",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(foundation.activeInstances)
-      ).label,
+      value: coalesceWorkforceCount(foundation.activeInstances),
       testId: "wr-active",
     },
     {
       label: "Live-tested seats",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(
-          foundation.liveTestedSeats,
-          readiness?.live_tested
-        )
-      ).label,
+      value: coalesceWorkforceCount(
+        foundation.liveTestedSeats,
+        readiness?.live_tested
+      ),
       testId: "wr-live-tested",
     },
     {
       label: "Archetypes",
-      value: foundation.archetypes ?? foundation.archetypeCount ?? 148,
+      value: coalesceWorkforceCount(
+        foundation.archetypes,
+        foundation.archetypeCount,
+        148
+      ),
       testId: "wr-archetypes",
     },
     {
       label: "Departments",
-      value: foundation.departments ?? foundation.departmentCount ?? 20,
+      value: coalesceWorkforceCount(
+        foundation.departments,
+        foundation.departmentCount,
+        20
+      ),
       testId: "wr-departments",
     },
     {
@@ -200,6 +192,7 @@ export default function WorkforceReadinessClient() {
         foundation.workflowFamiliesRequired ?? 13
       }`,
       testId: "wr-workflows",
+      literal: true,
     },
   ];
 
@@ -209,12 +202,14 @@ export default function WorkforceReadinessClient() {
       value: executable.catalogueEntries ?? totals?.catalogue ?? "—",
       testId: "wr-catalogue-entries",
       hint: "Includes intentionally non-executable superseded definitions",
+      literal: true,
     },
     {
       label: "Executable definitions",
       value: executable.executableDefinitions ?? totals?.executable ?? "—",
       testId: "wr-executable-count",
       hint: "Runtime-capable catalogue subset — not capacity seats",
+      literal: true,
     },
     {
       label: "Intentionally non-executable",
@@ -224,18 +219,22 @@ export default function WorkforceReadinessClient() {
           ? Math.max(0, executable.catalogueEntries - executable.executableDefinitions)
           : "—"),
       testId: "wr-non-executable",
+      literal: executable.intentionallyNonExecutable == null &&
+        !(executable.catalogueEntries != null && executable.executableDefinitions != null),
     },
     {
       label: "Named/runtime role registry entries",
       value: executable.namedRoleRegistryEntries ?? "—",
       testId: "wr-named-role-registry",
       hint: "Org + runtime inventory count — not compiled seats",
+      literal: true,
     },
     {
       label: "Capacity-reserve gaps (named inventory)",
       value: executable.capacityReserveGaps ?? "—",
       testId: "wr-capacity-gaps",
       hint: "Documented reserves without separate named personas — valid mapped seats still count in 445",
+      literal: true,
     },
   ];
 
@@ -265,18 +264,33 @@ export default function WorkforceReadinessClient() {
         <h2 className="wa-section-title">Capacity truth</h2>
         <div className="workforce-status-grid" data-testid="wr-capacity-cards">
           {capacityMetrics.map((c) => (
-            <MetricCard key={c.testId} {...c} />
-          ))}
-        </div>
+              <WorkforceMetricCard
+                key={c.testId}
+                label={c.label}
+                value={c.value}
+                testId={c.testId}
+                note={c.hint}
+                proves={c.proves}
+                literal={c.literal === true}
+              />
+            ))}
+          </div>
       </section>
 
       <section aria-label="Executable runtime metrics">
         <h2 className="wa-section-title">Executable / runtime catalogue</h2>
         <div className="workforce-status-grid" data-testid="wr-executable-cards">
           {executableMetrics.map((c) => (
-            <MetricCard key={c.testId} {...c} />
-          ))}
-        </div>
+              <WorkforceMetricCard
+                key={c.testId}
+                label={c.label}
+                value={c.value}
+                testId={c.testId}
+                note={c.hint}
+                literal={c.literal === true || c.value === "—"}
+              />
+            ))}
+          </div>
         <p className="cc-muted" data-testid="wr-executable-note">
           Catalogue entries and executable definitions are different concepts. Never read either as
           compiled seats.

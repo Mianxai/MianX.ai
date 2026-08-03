@@ -5,7 +5,7 @@ implementation_status: partial
 production_status: pilot
 verification_status: partially_verified
 updated: 2026-08-03
-pr: draft
+pr: draft-follow-on
 ---
 
 # Admin Workforce Responsibility Map
@@ -13,7 +13,9 @@ pr: draft
 Canonical ownership for Founder-facing Workforce Admin surfaces.  
 **Routes are not deleted or redirected by this document.** Consolidation is recommended only as a later Founder-approved phase.
 
-Current Production truth (health, 2026-08-03 after PR #80 merge deploy):
+**Setup + Readiness information-architecture collapse was not performed** and remains unauthorized without separate Founder approval.
+
+Current Production truth (health, after PR #81 merge deploy `da558a0`):
 
 | Counter | Value |
 |---------|-------|
@@ -33,6 +35,35 @@ Shared code:
 - Metrics: `lib/core/workforce-i2/foundation-metrics.js`
 - Capacity UI normalize: `lib/core/workforce-i2/ui-truth.js`
 - Terminology: `lib/core/workforce-i2/terminology.js`
+- Summary normalize: `lib/core/workforce-i2/summary-normalize.js`
+- Shared metric card: `components/admin/workforce/WorkforceMetricCard.jsx`
+
+### Shared metric presentation ownership
+
+`WorkforceMetricCard` + `normalizeWorkforceSummary` own loading / numeric / trusted-zero / Unavailable / error display for Setup, Readiness, and Workforce Ops capacity cards. Inventory counts must not imply runtime execution.
+
+### Runtime Agents vs global Agents
+
+| Surface | Route | Meaning |
+|---------|-------|---------|
+| **Agents** (global) | `/admin/agents` | Catalogue of individual agent records |
+| **Runtime Agents** (Ops tab) | `/admin/workforce` tab id `agents` | Project-scoped operational agent states |
+
+Tab **id** remains `agents` for deep-link stability; **label** is **Runtime Agents**. Global Agents route is unchanged. No redirect.
+
+### Zero versus Unavailable
+
+- Trusted numeric zero → `0`
+- Missing / failed trustworthy data → `Unavailable`
+- Loading → `Loading…` only while a request is active
+
+### Fixture-based browser evidence
+
+`scripts/verify-workforce-metric-fixtures.mjs` covers current truth, missing → Unavailable, error, loading, and a test-only future live fixture. Does not change Production truth.
+
+### Routes preserved
+
+No workforce route deleted or redirected. Setup and Readiness remain separate pages.
 
 ---
 
@@ -149,7 +180,6 @@ See `lib/core/workforce-i2/terminology.js`:
 
 ## Recommended next implementation phase (not this PR)
 
-1. Extract shared foundation metric card component fed only by `buildFoundationMetrics`.  
-2. Remove duplicate “Agents” runtime list from Ops or rename to “Runtime states”.  
-3. Optional IA: collapse Setup+Readiness under one shell with tabs — Founder approval required.  
-4. Do **not** auto-consolidate without explicit Founder authorization.
+1. Further dedupe executable-catalogue cards onto shared foundation feed only.
+2. Optional IA: collapse Setup+Readiness under one shell with tabs — **Founder approval required** (not performed).
+3. Do **not** auto-consolidate without explicit Founder authorization.

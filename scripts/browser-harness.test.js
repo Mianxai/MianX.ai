@@ -547,6 +547,26 @@ describeBrowserChrome("real Chrome (dynamic port discovery)", () => {
   );
 
   it(
+    "workforce metric fixtures cover truth / missing / error / loading / future",
+    async () => {
+      const summary = await runSequential(
+        [
+          {
+            name: "workforce-metric-fixtures",
+            script: "scripts/verify-workforce-metric-fixtures.mjs",
+          },
+        ],
+        { cwd: REPO_ROOT, stdio: "pipe" }
+      );
+      expect(summary.ok, summary.results[0]?.output).toBe(true);
+      expect(summary.results[0].output).toContain(
+        "PASS: workforce metric fixtures (5 scenarios)"
+      );
+    },
+    90000
+  );
+
+  it(
     "works while 9333-9336 are occupied, twice in a row, leaking nothing",
     async () => {
       const holders = await Promise.all(COLLISION_PORTS.map(occupyPort));

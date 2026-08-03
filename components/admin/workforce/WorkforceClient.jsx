@@ -20,10 +20,12 @@ import {
   formatWorkforceMetric,
   coalesceWorkforceCount,
 } from "@/lib/core/workforce-i2/terminology.js";
+import WorkforceMetricCard from "@/components/admin/workforce/WorkforceMetricCard";
 
 const TABS = [
   { id: "dashboard", label: "Dashboard" },
-  { id: "agents", label: "Agents" },
+  // Tab id stays "agents" for deep-link stability; label clarifies runtime scope.
+  { id: "agents", label: "Runtime Agents" },
   { id: "analytics", label: "Analytics" },
   { id: "health", label: "Health" },
   { id: "simulation", label: "Simulation" },
@@ -38,15 +40,6 @@ async function getJson(path, router) {
   }
   const data = await res.json().catch(() => null);
   return { ok: res.ok, data };
-}
-
-function StatusCard({ label, value, testId }) {
-  return (
-    <div className="workforce-status-card" data-testid={testId}>
-      <span className="workforce-status-label">{label}</span>
-      <strong className="workforce-status-value">{value}</strong>
-    </div>
-  );
 }
 
 export default function WorkforceClient() {
@@ -260,6 +253,7 @@ export default function WorkforceClient() {
       label: "Simulation state",
       value: String(simState).replace(/_/g, " "),
       testId: "wf-card-simulation",
+      literal: true,
     },
   ];
 
@@ -319,7 +313,15 @@ export default function WorkforceClient() {
 
           <div className="workforce-status-grid" data-testid="workforce-status-cards">
             {statusCards.map((c) => (
-              <StatusCard key={c.label} {...c} />
+              <WorkforceMetricCard
+                key={c.testId || c.label}
+                label={c.label}
+                value={c.value}
+                testId={c.testId}
+                note={c.note}
+                proves={c.proves}
+                literal={c.literal === true}
+              />
             ))}
           </div>
 
@@ -372,7 +374,12 @@ export default function WorkforceClient() {
           </section>
         ) : dash ? (
           <div className="admin-table-wrap">
-            <table className="admin-data-table">
+            <h2 className="wa-section-title">Runtime Agents</h2>
+            <p className="cc-muted" data-testid="wf-runtime-agents-note">
+              Project-scoped operational agent states for Workforce Ops — not the
+              global Agents catalogue at /admin/agents.
+            </p>
+            <table className="admin-data-table" aria-label="Runtime Agents">
               <thead>
                 <tr>
                   <th>Agent</th>
