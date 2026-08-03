@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling, ApiError, ERROR_CODES } from "@/lib/core/errors";
-import { requireAdmin, actorFromUser } from "@/lib/core/auth";
+import {
+  requireCapability,
+  actorFromUser,
+  CAPABILITIES,
+} from "@/lib/core/auth";
 import {
   PILOT_AGENT_SLUG,
   PILOT_PROJECT_ID,
@@ -23,7 +27,8 @@ export const GET = withErrorHandling(async () => {
  * Never calls OpenAI from this route.
  */
 export const POST = withErrorHandling(async (req) => {
-  const admin = await requireAdmin(req);
+  const authCtx = await requireCapability(req, CAPABILITIES.LIVE_PILOT_AUTHORIZE);
+  const admin = authCtx.user;
   actorFromUser(admin);
 
   const contentType = req.headers.get("content-type") || "";

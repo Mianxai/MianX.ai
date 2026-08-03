@@ -2,11 +2,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("@/lib/core/auth", () => ({
   requireAdmin: vi.fn(async () => ({ id: "admin-1", email: "admin@mianx.ai" })),
+  requireCapability: vi.fn(async () => ({
+    user: { id: "admin-1", email: "admin@mianx.ai" },
+    membership: { id: "m1", role: "owner" },
+    mode: "membership",
+    capabilities: ["read", "live_pilot.read", "live_pilot.authorize", "platform.admin"],
+  })),
   actorFromUser: vi.fn((u) => ({ id: u.id, email: u.email })),
+  CAPABILITIES: {
+    LIVE_PILOT_READ: "live_pilot.read",
+    LIVE_PILOT_AUTHORIZE: "live_pilot.authorize",
+  },
 }));
 
 import { GET, POST } from "@/app/api/admin/live-agent-pilot/route";
-import { requireAdmin } from "@/lib/core/auth";
+import { requireCapability } from "@/lib/core/auth";
 import {
   resetLivePilotStore,
   PILOT_PROJECT_ID,
@@ -25,9 +35,11 @@ function req(method, url, body) {
 describe("live-agent-pilot API", () => {
   beforeEach(() => {
     resetLivePilotStore();
-    requireAdmin.mockImplementation(async () => ({
-      id: "admin-1",
-      email: "admin@mianx.ai",
+    requireCapability.mockImplementation(async () => ({
+      user: { id: "admin-1", email: "admin@mianx.ai" },
+      membership: { id: "m1", role: "owner" },
+      mode: "membership",
+      capabilities: ["read", "live_pilot.read", "live_pilot.authorize", "platform.admin"],
     }));
   });
 
