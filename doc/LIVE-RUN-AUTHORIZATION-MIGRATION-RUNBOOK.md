@@ -1,22 +1,26 @@
 ---
 title: Live-Run Authorization Migration Runbook
-document_status: draft
-implementation_status: readiness_only
-production_status: not_applied
-verification_status: not_executed
-authority_status: founder_gated
+document_status: active
+implementation_status: applied
+production_status: applied
+verification_status: verified_post_apply
+authority_status: founder_applied
 as_of: 2026-08-03
 classification: Internal
 ---
 
 # Live-run authorization storage — migration application runbook
 
-No phase below claims completion. Migration is **not applied**.
-Production database is **unchanged**. Provider remains `none`.
+Migration **applied** to linked Production on 2026-08-03 under explicit Founder
+authorization. Checksum
+`82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8`.
+Provider remains `none`. No real authorization rows. Switches remain off.
 
-**STOP BEFORE APPLICATION:** Do not run `supabase db push` without `--dry-run`
-unless the Founder has issued the exact approval sentence in the final packet.
-This Draft/merged readiness work does **not** authorize Production apply.
+**Do not re-apply.** Linked dry-run after apply reports `upToDate: true`.
+
+Historical phases below remain for audit. Post-apply truth: store available,
+provider none, Models/generation 0, switches false, agents 0/0/0, Founder
+Proof unchanged, Founder Final Review not approved.
 
 Manifest: `doc/LIVE-RUN-AUTHORIZATION-MIGRATION-MANIFEST.md`  
 Checksum: `82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8`  
