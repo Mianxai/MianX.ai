@@ -16,6 +16,11 @@ executed for a genuine OpenAI generation call. Live switches remain off.
 Provider remains `none`. Founder Final Review remains independent and not
 approved by this document.
 
+**Related:** `doc/ONE-AGENT-LIVE-RUN-CONTROL-PLANE.md` (one-time authorization,
+model-access verification control, execution lock — Preview/Draft only).
+`doc/ONE-AGENT-DRY-RUN-EVIDENCE-REHEARSAL.md` (PR #84 merged — Vitest fake
+provider rehearsal only).
+
 ## Execution flow (implemented path — not live-called)
 
 ```text

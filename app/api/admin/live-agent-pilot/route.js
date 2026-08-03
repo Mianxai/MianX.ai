@@ -75,6 +75,19 @@ export const GET = withErrorHandling(async (req) => {
     });
   }
 
+  if (view === "control_plane") {
+    const status = buildLivePilotStatus({ authenticated: true, authorized: true });
+    return NextResponse.json({
+      ok: true,
+      view: "control_plane",
+      liveRunControlPlane: status.liveRunControlPlane,
+      providerCalled: false,
+      authenticatedModelsApiCalls: 0,
+      genuineGenerationCalls: 0,
+      productionAuthorizationCreated: false,
+    });
+  }
+
   if (view === "evidence") {
     const evidenceId = url.searchParams.get("id");
     const projectId = url.searchParams.get("project_id") || PILOT_PROJECT_ID;
