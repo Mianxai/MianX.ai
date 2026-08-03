@@ -40,7 +40,7 @@ Shared code:
 
 ### Shared metric presentation ownership
 
-`WorkforceMetricCard` + `normalizeWorkforceSummary` own loading / numeric / trusted-zero / Unavailable / error display for Setup, Readiness, and Workforce Ops capacity cards. Inventory counts must not imply runtime execution.
+`WorkforceMetricCard` owns loading / numeric / trusted-zero / Unavailable / error display for Setup, Readiness, and Workforce Ops capacity cards. `normalizeWorkforceSummary` is the shared presence-preserving contract those surfaces call for registered/persisted/ready/allocated/active/liveTested (and related) fields. Inventory counts must not imply runtime execution.
 
 ### Runtime Agents vs global Agents
 

@@ -16,10 +16,8 @@ import {
 } from "@/lib/admin-ops-summary";
 import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import { normalizeCapacityTruth } from "@/lib/core/workforce-i2/ui-truth";
-import {
-  formatWorkforceMetric,
-  coalesceWorkforceCount,
-} from "@/lib/core/workforce-i2/terminology.js";
+import { coalesceWorkforceCount } from "@/lib/core/workforce-i2/terminology.js";
+import { normalizeWorkforceSummary } from "@/lib/core/workforce-i2/summary-normalize.js";
 import WorkforceMetricCard from "@/components/admin/workforce/WorkforceMetricCard";
 
 const TABS = [
@@ -177,76 +175,77 @@ export default function WorkforceClient() {
     dash?.simulation_state?.status ||
     "none";
   const isZeroAssignment = assignedCount == null || assignedCount === 0;
+  const inventorySummary = normalizeWorkforceSummary({
+    registered: capacityTruth.capacitySeats,
+    persisted: capacityTruth.persistedSeats,
+    ready: capacityTruth.readyToAllocate,
+    allocated: coalesceWorkforceCount(capacityTruth.allocated, assignedCount),
+    active: coalesceWorkforceCount(capacityTruth.active, counts.busy),
+    running: coalesceWorkforceCount(counts.busy),
+    liveTested: capacityTruth.liveTested,
+    providerName: dash?.capacityTruth?.providerName,
+    liveExecutionReady: dash?.capacityTruth?.liveExecutionReady,
+  });
 
   const statusCards = [
     {
       label: "Compiled seats",
-      value: formatWorkforceMetric(capacityTruth.compiledSeats).label,
+      value: coalesceWorkforceCount(capacityTruth.compiledSeats),
       testId: "wf-card-capacity-seats",
     },
     {
       label: "Persisted in database",
-      value: capacityTruth.persistedDisplay,
+      value: inventorySummary.persisted,
       testId: "wf-card-persisted",
     },
     {
       label: "Ready to Allocate",
-      value: capacityTruth.readyToAllocateDisplay,
+      value: inventorySummary.ready,
       testId: "wf-card-ready-to-allocate",
     },
     {
       label: "Allocated",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(capacityTruth.allocated, assignedCount)
-      ).label,
+      value: inventorySummary.allocated,
       testId: "wf-card-allocated",
     },
     {
       label: "Active",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(capacityTruth.active, counts.busy)
-      ).label,
+      value: inventorySummary.active,
       testId: "wf-card-active",
     },
     {
       label: "Waiting",
-      value: formatWorkforceMetric(coalesceWorkforceCount(counts.waiting)).label,
+      value: coalesceWorkforceCount(counts.waiting),
       testId: "wf-card-waiting",
     },
     {
       label: "Reviewing",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(counts.review, capacityTruth.reviewing)
-      ).label,
+      value: coalesceWorkforceCount(counts.review, capacityTruth.reviewing),
       testId: "wf-card-reviewing",
     },
     {
       label: "Blocked",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(capacityTruth.blocked, counts.blocked)
-      ).label,
+      value: coalesceWorkforceCount(capacityTruth.blocked, counts.blocked),
       testId: "wf-card-blocked",
     },
     {
       label: "Released",
-      value: formatWorkforceMetric(
-        coalesceWorkforceCount(capacityTruth.released, counts.completed)
-      ).label,
+      value: coalesceWorkforceCount(capacityTruth.released, counts.completed),
       testId: "wf-card-released",
     },
     {
       label: "Live Tested",
-      value: capacityTruth.liveTestedDisplay,
+      value: inventorySummary.liveTested,
       testId: "wf-card-live-tested",
     },
     {
       label: "Runtime definitions (not all seats)",
-      value: formatWorkforceMetric(executableCount).label,
+      value: coalesceWorkforceCount(executableCount),
       testId: "wf-card-executable",
     },
     {
       label: "Current proof assignment",
-      value: formatWorkforceMetric(assignedCount).label,
+      value: assignedCount,
       testId: "wf-card-proof-assignment",
     },
     {
@@ -333,13 +332,13 @@ export default function WorkforceClient() {
             >
               <p>
                 <strong>
-                  {capacityTruth.readyToAllocateDisplay} seats ready to allocate
+                  {inventorySummary.displays.ready} seats ready to allocate
                 </strong>
               </p>
               <p>
                 <strong>
-                  {capacityTruth.allocatedDisplay} allocated · Live tested:{" "}
-                  {capacityTruth.liveTestedDisplay}
+                  {inventorySummary.displays.allocated} allocated · Live tested:{" "}
+                  {inventorySummary.displays.liveTested}
                 </strong>
               </p>
               <p className="cc-muted">

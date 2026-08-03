@@ -8,6 +8,7 @@ import StatusBadge from "@/components/admin/StatusBadge";
 import {
   coalesceWorkforceCount,
 } from "@/lib/core/workforce-i2/terminology.js";
+import { normalizeWorkforceSummary } from "@/lib/core/workforce-i2/summary-normalize.js";
 import WorkforceMetricCard from "@/components/admin/workforce/WorkforceMetricCard";
 
 const CONFIRM_PHRASE = "BOOTSTRAP 445";
@@ -159,6 +160,19 @@ export default function WorkforceActivationClient() {
   );
   const bootstrapComplete = persistedSeats === 445 && readySeats === 445;
   const providerConfigured = Boolean(checks.openRouterKeyPresent || verify.providerReady);
+  const inventorySummary = normalizeWorkforceSummary({
+    registered: 445,
+    persisted: persistedSeats,
+    ready: readySeats,
+    allocated: coalesceWorkforceCount(capacity.allocated),
+    active: coalesceWorkforceCount(
+      verify.activeInstances,
+      data?.verify?.activeInstances
+    ),
+    liveTested: coalesceWorkforceCount(data?.liveTested),
+    providerName: providerConfigured ? "configured" : "none",
+    liveExecutionReady: false,
+  });
 
   const applyEnabled = useMemo(() => {
     if (bootstrapComplete) return false;
@@ -200,7 +214,7 @@ export default function WorkforceActivationClient() {
   const metricCards = [
     {
       label: "Capacity seats",
-      value: 445,
+      value: inventorySummary.registered,
       testId: "wa-capacity",
       proves: "Registered planning capacity — not active agents",
     },
@@ -211,50 +225,43 @@ export default function WorkforceActivationClient() {
     },
     {
       label: "Persisted in database",
-      value: persistedSeats,
+      value: inventorySummary.persisted,
       testId: "wa-persisted",
     },
     {
       label: "Ready to allocate",
-      value: readySeats,
+      value: inventorySummary.ready,
       testId: "wa-ready",
       proves: "Ready ≠ allocated or active",
     },
     {
       label: "Allocated",
-      value: coalesceWorkforceCount(capacity.allocated),
+      value: inventorySummary.allocated,
       testId: "wa-allocated",
     },
     {
       label: "Active instances",
-      value: coalesceWorkforceCount(
-        verify.activeInstances,
-        data?.verify?.activeInstances
-      ),
+      value: inventorySummary.active,
       testId: "wa-active",
     },
     {
       label: "Live tested",
-      value: coalesceWorkforceCount(data?.liveTested),
+      value: inventorySummary.liveTested,
       testId: "wa-live-tested",
     },
     {
       label: "Departments",
-      value: coalesceWorkforceCount(bp?.departmentCount, 20),
+      value: coalesceWorkforceCount(bp?.departmentCount),
       testId: "wa-departments",
     },
     {
       label: "Archetypes",
-      value: coalesceWorkforceCount(
-        bp?.archetypeCount,
-        verify.archetypeCount,
-        148
-      ),
+      value: coalesceWorkforceCount(bp?.archetypeCount, verify.archetypeCount),
       testId: "wa-archetypes",
     },
     {
       label: "Workflow families",
-      value: coalesceWorkforceCount(bp?.workflowFamilyCount, 13),
+      value: coalesceWorkforceCount(bp?.workflowFamilyCount),
       testId: "wa-workflows",
     },
     {
