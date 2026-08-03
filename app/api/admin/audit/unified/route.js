@@ -35,11 +35,8 @@ export const GET = withErrorHandling(async (req) => {
     });
   }
   assertUuid(projectIdRaw, "project_id");
-  try {
-    await repo.getProject(projectIdRaw);
-  } catch {
-    throw badRequest("Project not found, inaccessible, or archived.");
-  }
+  const { requireProjectAccess } = await import("@/lib/tenant/project-access");
+  await requireProjectAccess(req, projectIdRaw);
 
   const events = [];
   const limitations = [];

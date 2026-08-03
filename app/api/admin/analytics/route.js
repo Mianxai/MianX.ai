@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { withErrorHandling, notConfigured } from "@/lib/core/errors";
-import { requireAdmin } from "@/lib/core/auth";
+import { withErrorHandling, notConfigured, badRequest } from "@/lib/core/errors";
+import { requireAdminUser, CAPABILITIES, hasCapability } from "@/lib/admin-auth";
+import { isPlatformAdminRole } from "@/lib/admin-capabilities";
 import { assertUuid } from "@/lib/core/validate";
 import { isSupabaseConfigured, getSupabaseAdmin } from "@/lib/supabase";
 import * as repo from "@/lib/core/repo";
@@ -13,6 +14,7 @@ import {
   analyticsMetricOk as ok,
   analyticsMetricFail as fail,
 } from "@/lib/admin-analytics-scope";
+import { requireProjectAccess } from "@/lib/tenant/project-access";
 
 export const dynamic = "force-dynamic";
 
@@ -53,9 +55,8 @@ function sumStatusMap(map) {
 }
 
 export const GET = withErrorHandling(async (req) => {
-  await requireAdmin(req);
-
   if (!isSupabaseConfigured() || !getSupabaseAdmin()) {
+    await requireAdminUser(req);
     throw notConfigured(
       "Configuration error: Supabase environment variables are not set."
     );
@@ -64,9 +65,25 @@ export const GET = withErrorHandling(async (req) => {
   const url = new URL(req.url);
   const projectIdRaw = url.searchParams.get("project_id");
   let projectId = null;
+  let platformAdmin = false;
+
   if (projectIdRaw) {
     assertUuid(projectIdRaw, "project_id");
     projectId = projectIdRaw;
+    const { authCtx } = await requireProjectAccess(req, projectId);
+    platformAdmin =
+      isPlatformAdminRole(authCtx?.membership?.role, authCtx?.mode) ||
+      hasCapability(authCtx?.capabilities || [], CAPABILITIES.PLATFORM_ADMIN);
+  } else {
+    const authCtx = await requireAdminUser(req);
+    platformAdmin =
+      isPlatformAdminRole(authCtx?.membership?.role, authCtx?.mode) ||
+      hasCapability(authCtx?.capabilities || [], CAPABILITIES.PLATFORM_ADMIN);
+    if (!platformAdmin) {
+      throw badRequest(
+        "project_id is required for tenant Admin analytics. Platform Admin may omit it for explicit organisation-wide metrics."
+      );
+    }
   }
 
   const admin = getSupabaseAdmin();
@@ -84,43 +101,92 @@ export const GET = withErrorHandling(async (req) => {
   let orgRunsByStatus = null;
 
   try {
-    const tasksByStatus = await repo.countByStatus("tasks");
-    const runsByStatus = await repo.countByStatus("agent_runs");
-    const projectsByStatus = await repo.countByStatus("projects");
-    const approvals = await repo.countByStatus("approval_requests");
-    orgTasksByStatus = tasksByStatus;
-    orgRunsByStatus = runsByStatus;
-    sources.tasksByStatus = ok(tasksByStatus, "organisation");
-    sources.runsByStatus = ok(runsByStatus, "organisation");
-    sources.projectsByStatus = ok(projectsByStatus, "organisation");
-    sources.pendingApprovals = ok(approvals.pending || 0, "organisation");
+    if (platformAdmin && !projectId) {
+      const tasksByStatus = await repo.countByStatus("tasks");
+      const runsByStatus = await repo.countByStatus("agent_runs");
+      const projectsByStatus = await repo.countByStatus("projects");
+      const approvals = await repo.countByStatus("approval_requests");
+      orgTasksByStatus = tasksByStatus;
+      orgRunsByStatus = runsByStatus;
+      sources.tasksByStatus = ok(tasksByStatus, "organisation");
+      sources.runsByStatus = ok(runsByStatus, "organisation");
+      sources.projectsByStatus = ok(projectsByStatus, "organisation");
+      sources.pendingApprovals = ok(approvals.pending || 0, "organisation");
 
-    const runs = await repo.listRuns({});
-    const durations = [];
-    for (const r of runs || []) {
-      if (r.started_at && r.finished_at) {
-        const ms = new Date(r.finished_at) - new Date(r.started_at);
-        if (Number.isFinite(ms) && ms >= 0) durations.push(ms);
+      // Org-wide listRuns only for explicit platform.admin (never tenant Admin).
+      const runs = await repo.listRuns({});
+      const durations = [];
+      for (const r of runs || []) {
+        if (r.started_at && r.finished_at) {
+          const ms = new Date(r.finished_at) - new Date(r.started_at);
+          if (Number.isFinite(ms) && ms >= 0) durations.push(ms);
+        }
       }
+      sources.averageRunDuration = ok(
+        durations.length > 0
+          ? {
+              sampleSize: durations.length,
+              averageMs: Math.round(
+                durations.reduce((a, b) => a + b, 0) / durations.length
+              ),
+            }
+          : { sampleSize: 0, averageMs: null },
+        "organisation"
+      );
+      sources.runSuccessFailure = ok(
+        {
+          succeeded: runsByStatus.succeeded || 0,
+          failed: runsByStatus.failed || 0,
+        },
+        "organisation"
+      );
+    } else if (projectId) {
+      const tasks = await repo.listTasks({ projectId });
+      const runs = await repo.listRuns({ projectId });
+      const tasksByStatus = {};
+      const runsByStatus = {};
+      for (const t of tasks || []) {
+        const s = t.status || "unknown";
+        tasksByStatus[s] = (tasksByStatus[s] || 0) + 1;
+      }
+      for (const r of runs || []) {
+        const s = r.status || "unknown";
+        runsByStatus[s] = (runsByStatus[s] || 0) + 1;
+      }
+      sources.tasksByStatus = ok(tasksByStatus, "selected_project");
+      sources.runsByStatus = ok(runsByStatus, "selected_project");
+      sources.projectsByStatus = ok({ active: 1 }, "selected_project");
+      const pending = await repo.listApprovals({
+        projectId,
+        status: "pending",
+      });
+      sources.pendingApprovals = ok((pending || []).length, "selected_project");
+      const durations = [];
+      for (const r of runs || []) {
+        if (r.started_at && r.finished_at) {
+          const ms = new Date(r.finished_at) - new Date(r.started_at);
+          if (Number.isFinite(ms) && ms >= 0) durations.push(ms);
+        }
+      }
+      sources.averageRunDuration = ok(
+        durations.length > 0
+          ? {
+              sampleSize: durations.length,
+              averageMs: Math.round(
+                durations.reduce((a, b) => a + b, 0) / durations.length
+              ),
+            }
+          : { sampleSize: 0, averageMs: null },
+        "selected_project"
+      );
+      sources.runSuccessFailure = ok(
+        {
+          succeeded: runsByStatus.succeeded || 0,
+          failed: runsByStatus.failed || 0,
+        },
+        "selected_project"
+      );
     }
-    sources.averageRunDuration = ok(
-      durations.length > 0
-        ? {
-            sampleSize: durations.length,
-            averageMs: Math.round(
-              durations.reduce((a, b) => a + b, 0) / durations.length
-            ),
-          }
-        : { sampleSize: 0, averageMs: null },
-      "organisation"
-    );
-    sources.runSuccessFailure = ok(
-      {
-        succeeded: runsByStatus.succeeded || 0,
-        failed: runsByStatus.failed || 0,
-      },
-      "organisation"
-    );
   } catch {
     partial = true;
     for (const key of [
@@ -131,7 +197,12 @@ export const GET = withErrorHandling(async (req) => {
       "averageRunDuration",
       "runSuccessFailure",
     ]) {
-      if (!sources[key]) sources[key] = fail("CORE_UNAVAILABLE", "organisation");
+      if (!sources[key]) {
+        sources[key] = fail(
+          "CORE_UNAVAILABLE",
+          projectId ? "selected_project" : "organisation"
+        );
+      }
     }
   }
 
@@ -233,17 +304,17 @@ export const GET = withErrorHandling(async (req) => {
     tasksByStatus: sources.tasksByStatus?.available
       ? sources.tasksByStatus.value
       : null,
-    tasksScope: "organisation",
+    tasksScope: projectId ? "selected_project" : "organisation",
     projectTasksByStatus,
     projectTasksScope: projectId ? "selected_project" : null,
     runsByStatus: sources.runsByStatus?.available
       ? sources.runsByStatus.value
       : null,
-    runsScope: "organisation",
+    runsScope: projectId ? "selected_project" : "organisation",
     projectsByStatus: sources.projectsByStatus?.available
       ? sources.projectsByStatus.value
       : null,
-    projectsScope: "organisation",
+    projectsScope: projectId ? "selected_project" : "organisation",
     pendingApprovals: sources.pendingApprovals?.available
       ? sources.pendingApprovals.value
       : null,
@@ -265,8 +336,9 @@ export const GET = withErrorHandling(async (req) => {
       value: runtimeAgentRunsTotal,
       available: runtimeAgentRunsTotal != null,
     },
+    platformAdminOrgWide: Boolean(platformAdmin && !projectId),
     reconciliation_note: projectId
-      ? "Organisation task counts include all projects. Selected-project Runtime Tasks may be zero while organisation completed tasks are non-zero. Cancelled Founder Proofs are historical and are not counted as active."
-      : "Select a project to see selected-project metrics. Founder Proof metrics below are organisation-wide unless a project is selected.",
+      ? "Selected-project metrics are scoped to the authorized project. Cancelled Founder Proofs are historical and are not counted as active."
+      : "Organisation-wide analytics require platform.admin. Tenant Admins must pass project_id.",
   });
 });

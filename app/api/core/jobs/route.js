@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling, badRequest } from "@/lib/core/errors";
-import { requireAdmin, requireCapability, actorFromUser, CAPABILITIES } from "@/lib/core/auth";
+import { requireAdmin, actorFromUser, CAPABILITIES } from "@/lib/core/auth";
 import { parseJsonBody, assertUuid, clip } from "@/lib/core/validate";
 import { rateLimit } from "@/lib/core/ratelimit";
 import * as repo from "@/lib/core/repo";
 import { validateJobEnqueue, enqueueJob } from "@/lib/core/jobs";
 import { JOB_STATUSES, JOB_LIMITS } from "@/lib/core/constants";
+import { requireProjectAccess } from "@/lib/tenant/project-access";
 
 export const dynamic = "force-dynamic";
 
@@ -13,15 +14,17 @@ export const dynamic = "force-dynamic";
 // Paginated, filtered queue listing plus status counts, admin-only and
 // project-scoped server-side.
 export const GET = withErrorHandling(async (req) => {
-  await requireAdmin(req);
-
   const params = req.nextUrl?.searchParams || new URLSearchParams();
   const projectId = clip(params.get("project_id") || "", 64);
   const status = clip(params.get("status") || "", 40);
   const taskId = clip(params.get("task_id") || "", 64);
 
-  if (projectId) assertUuid(projectId, "project_id");
-  else throw badRequest("project_id is required.");
+  if (!projectId) {
+    await requireAdmin(req);
+    throw badRequest("project_id is required.");
+  }
+  assertUuid(projectId, "project_id");
+  await requireProjectAccess(req, projectId);
   if (taskId) assertUuid(taskId, "task_id");
   if (status && !JOB_STATUSES.includes(status)) {
     throw badRequest(`status must be one of: ${JOB_STATUSES.join(", ")}`);
@@ -58,14 +61,14 @@ export const GET = withErrorHandling(async (req) => {
 // Enqueues one job. Idempotent per (project_id, idempotency_key); duplicate
 // enqueues replay the existing job with 200 instead of creating a copy.
 export const POST = withErrorHandling(async (req) => {
-  const { user } = await requireCapability(req, CAPABILITIES.MANAGE_JOBS);
-  const actor = actorFromUser(user);
-  rateLimit(`job-enqueue:${actor}`, { max: 30, windowMs: 60_000 });
-
   const body = await parseJsonBody(req);
   const projectId = clip(body.project_id, 64);
   assertUuid(projectId, "project_id");
-  const project = await repo.getProject(projectId); // existence + scope
+  const { authCtx, project } = await requireProjectAccess(req, projectId, {
+    capability: CAPABILITIES.MANAGE_JOBS,
+  });
+  const actor = actorFromUser(authCtx.user);
+  rateLimit(`job-enqueue:${actor}`, { max: 30, windowMs: 60_000 });
 
   let taskId = clip(body.task_id, 64) || null;
   if (taskId) {
