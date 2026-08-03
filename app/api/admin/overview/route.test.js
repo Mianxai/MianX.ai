@@ -26,9 +26,10 @@ describe("GET /api/admin/overview", () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
     process.env.SUPABASE_SERVICE_ROLE_KEY = "service";
+    const ORG = "22222222-2222-4222-8222-222222222222";
 
-    vi.doMock("@/lib/admin-auth", () => ({
-      requireAdmin: vi.fn(async () => ({ id: "u1", email: "a@mianx.ai" })),
+    vi.doMock("@/lib/auth", () => ({
+      getSessionUser: vi.fn(async () => ({ id: "u1", email: "a@mianx.ai" })),
     }));
     vi.doMock("@/lib/supabase", async () => {
       const actual = await vi.importActual("@/lib/supabase");
@@ -45,8 +46,11 @@ describe("GET /api/admin/overview", () => {
       };
     });
     vi.doMock("@/lib/core/repo", () => ({
+      getOrCreateDefaultOrg: async () => ({ id: ORG, slug: "mianx" }),
+      listProjects: async () => [],
       countActiveProjects: async () => 0,
       countByStatus: async () => ({}),
+      countJobsByStatus: async () => ({}),
       listRecentAudit: async () => [],
     }));
 
@@ -57,9 +61,10 @@ describe("GET /api/admin/overview", () => {
     expect(data.submissions.total).toBe(0);
     expect(data.projects.active).toBe(0);
     expect(data.config.supabase).toBe(true);
+    expect(data.scope.organizationId).toBe(ORG);
     expect(JSON.stringify(data)).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(JSON.stringify(data)).not.toMatch(/eyJ|sk-/);
-    vi.doUnmock("@/lib/admin-auth");
+    vi.doUnmock("@/lib/auth");
     vi.doUnmock("@/lib/supabase");
     vi.doUnmock("@/lib/core/repo");
   });

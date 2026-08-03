@@ -37,14 +37,15 @@ Verified complete:
 - [x] PR #89 no-credit fail-closed readiness merged (`70b9382…`)
 - [x] Production redeploy Ready on merge SHA; `apiKeyConfigured: true` (boolean)
 - [x] Live OpenAI execution remains paused (credits not_checked / not funded)
-- [ ] Phase 1 tenant/authz Draft PR reviewed and merged
+- [x] Phase 1 tenant/authz Draft PR #91 merged (`c7ee986…`); Production verified
 - [ ] Optional `admin_memberships` org/project scope migration Founder-applied
-- [ ] `listProjects` / Admin list routes enforce membership scope
-- [ ] Optional `project_id` list endpoints require scope by default
+- [ ] Phase 1 Step 3 membership-scoped data access Draft reviewed and merged
+- [ ] Remaining Admin analytics/export scoping after Step 3
 
 Primary docs:
 
 - `doc/PHASE-1-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md`
+- `doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md` (Step 3 Draft)
 - `doc/CURRENT-STATE.md`
 
 ---

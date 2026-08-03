@@ -30,17 +30,18 @@ live-tested AI agents.
 
 ## Current Production commit (latest origin/main)
 
-`70b9382b0d99e26580ec329ca114f17c7d3ab69e`
+`c7ee98616b96b73d71c00d2df3f87169c4740307`
 
-(Merge of PR #89 — OpenAI no-credit fail-closed readiness. Live-run track paused
-until Founder adds API credits. Key presence boolean true; credits not_checked.)
+(Merge of PR #91 — Phase 1 tenant isolation / Admin authorization foundation.
+Optional membership scope migration remains **unapplied**. Live-run track paused;
+OpenAI credits not_checked.)
 
 ## Deployment state
 
 | Item | Value |
 |------|-------|
 | Production URL | https://mian-x-ai.vercel.app |
-| Production alias target | Ready deployment for commit `70b9382…` |
+| Production alias target | Ready deployment for commit `c7ee986…` |
 | Authorization migration applied | **yes** (2026-08-03) |
 | Migration checksum | `82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8` |
 | Authorization store | available (table present; **0** real authorization rows) |
@@ -58,7 +59,8 @@ until Founder adds API credits. Key presence boolean true; credits not_checked.)
 | First-live-run readiness packet | **merged** (PR #88 → `715b700…`) |
 | No-credit safe readiness | **merged** (PR #89 → `70b9382…`) |
 | Master completion phases | `doc/MIANX-AI-MASTER-COMPLETION-PHASES.md` — Phase 1 in progress |
-| Phase 1 tenant/authz foundation | Draft/Preview on `cursor/phase1-tenant-authz-foundation` |
+| Phase 1 tenant/authz foundation | **merged** (PR #91 → `c7ee986…`); migration still **unapplied** |
+| Phase 1 membership-scoped data access | Draft/Preview on `cursor/phase1-membership-scoped-data-access` |
 
 Founder-observed billing balance on 2026-08-03: $0.00.  
 Not machine-verified by MianX.ai.
@@ -67,7 +69,8 @@ Not machine-verified by MianX.ai.
 
 **Single-tenant Founder platform** — global `admin_memberships`; one default org;
 project isolation is application-level when `project_id` is provided. See
-`doc/PHASE-1-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md` (Draft).
+`doc/PHASE-1-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md` and
+`doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md` (Step 3 Draft).
 
 ## Scheduler state
 
