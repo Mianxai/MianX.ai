@@ -52,7 +52,7 @@ Bring the environment up (services are NOT auto-started on boot):
    - `ANTHROPIC_API_KEY=<optional, see below>`
 4. Create the admin login (Supabase Auth has no users by default). Using
    the service_role key:
-   `curl -X POST "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/admin/users" -H "apikey: $SERVICE_ROLE" -H "Authorization: Bearer $SERVICE_ROLE" -H "Content-Type: application/json" -d '{"email":"admin@mianx.ai","password":"MianxAdmin2026!","email_confirm":true}'`
+   `curl -X POST "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/admin/users" -H "apikey: $SERVICE_ROLE" -H "Authorization: Bearer $SERVICE_ROLE" -H "Content-Type: application/json" -d '{"email":"<local-admin-email>","password":"<generate-a-random-local-password>","email_confirm":true}'`
 5. `npm run dev` → app on http://localhost:3000, admin at `/admin/login`.
 
 Gotchas:
