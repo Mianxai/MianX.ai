@@ -48,7 +48,7 @@ managedBackupReady / pitrReady: **false** / **false**
 
 ## Pre-apply guards
 
-1. PITR / backup available.
+1. Managed backup/PITR was unavailable on the Free plan; post-apply manual logical backup and restore-test evidence is available.
 2. Checksum exact match.
 3. `npx supabase db push --linked --dry-run` → exit 0, **exactly** this file pending.
 4. Production on exact approved main merge.
@@ -67,7 +67,7 @@ npx supabase db push --linked --dry-run
 npx supabase db push --linked
 ```
 
-Applied exactly once under Founder authorization after backup/PITR, checksum,
+Applied exactly once under prior Founder authorization; managed backup/PITR was unavailable. Checksum
 dry-run, Production SHA, and switch-off guards. No repair / reset / seed.
 
 | Field | Value |

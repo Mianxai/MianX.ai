@@ -39,7 +39,7 @@ See `doc/PHASE-1-POST-MIGRATION-VERIFICATION.md` for backup path (outside Git), 
 | Job mutate-by-ID UX confirmations | **B** (server already scoped) |
 | Knowledge/memory residual paths | **B** |
 | Partial denial audit writes | **B** |
-| Active high-risk cross-project Production leak | **none as Phase 1 A blocker** |
+| Active high-risk cross-project Production leak | **none as a Phase 1 blocker** |
 
 See `lib/tenant/service-role-backlog.js`.
 

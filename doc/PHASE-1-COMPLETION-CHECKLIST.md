@@ -22,7 +22,7 @@ Do **not** mark Phase 1 `complete` without explicit Founder sign-off after final
 ## Allowed status values
 
 - `incomplete`
-- `ready_for_migration_rollout`
+- `ready_for_migration_rollout` — historical pre-apply status; no longer current
 - `ready_for_final_verification` ← **current**
 - `complete` (Founder only)
 

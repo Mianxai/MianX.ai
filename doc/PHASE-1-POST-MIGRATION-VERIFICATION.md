@@ -23,7 +23,7 @@ This document does **not** self-approve Founder Phase 1 completion sign-off.
 | `organization_id` / `project_id` | uuid, nullable |
 | Constraint `admin_memberships_project_requires_org` | present |
 | Indexes (org, project, active_org) | present |
-| Membership row count | **2** |
+| Membership data verification | **passed** (exact Production row count intentionally omitted) |
 | Non-null org/project on legacy rows | **0 / 0** |
 | New RLS / broad authenticated policies from this migration | **none** |
 | Unexpected SECURITY DEFINER touching memberships | **0** |
@@ -32,7 +32,7 @@ This document does **not** self-approve Founder Phase 1 completion sign-off.
 
 | Field | Value |
 |-------|--------|
-| Directory | `/Users/imac/MianX.ai-Backups/phase1-post-scope-migration-20260803T171325Z` |
+| Storage location | Founder-controlled storage outside Git; exact local path intentionally omitted |
 | Permissions | dir `700`, files `600` |
 | Method | `npx supabase db dump --linked` via Colima Docker |
 | roles.sql | 370 B · SHA-256 `168a95a9c745af5ed4679751f90419ac9dc434240a213b03e32a06d5664c2308` |
@@ -90,7 +90,7 @@ This document does **not** self-approve Founder Phase 1 completion sign-off.
 | Job mutate-by-ID UX confirmations | **B** (server already scoped) |
 | Knowledge/memory residual paths | **B** |
 | Partial denial audit writes | **B** |
-| Active high-risk cross-project Production leak | **none as Phase 1 A blocker** |
+| Active high-risk cross-project Production leak | **none as a Phase 1 blocker** |
 
 ## Quality gates (this verification)
 
