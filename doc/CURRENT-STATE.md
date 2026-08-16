@@ -1,254 +1,1010 @@
 ---
-title: MianX.ai Current State Baseline
-document_status: review
-implementation_status: partial
-production_status: pilot
-verification_status: partially_verified
-authority_status: proposed
-as_of: 2026-08-03
-classification: Internal
+document_id: CURRENT-STATE-001
+title: MianX.ai Current State
+version: 1.0.0
+status: Active — Ready for Final Verification
+authority_type: Canonical Current Truth
+classification: Public Repository
+owner: MianX.ai Founder
+maintainer: MianX.ai Core Team
+last_verified_date: 2026-08-04
+repository: Mianxai/MianX.ai
+repository_visibility: Public
+default_branch: main
+verified_origin_main_commit: 2d9b4862e7764aae5c26f0e247bb85310bc752f8
+current_phase: Phase 1 — Platform Foundation
+phase_status: ready_for_final_verification
+founder_phase_signoff: not_approved
+phase_2_started: false
 ---
 
-# CURRENT-STATE
+# MianX.ai Current State
 
-## As-of date
+> [!IMPORTANT]
+> This document is the canonical source of truth for the currently verified
+> implementation, repository, migration, deployment, recovery, AI runtime,
+> Product, and Phase status of MianX.ai.
+>
+> Roadmaps, Vision documents, Agent catalogues, role definitions, Architecture
+> documents, capacity plans, and future-state specifications do not override
+> this file.
+>
+> A documented capability must not be described as implemented, deployed,
+> verified, Production Operational, Customer adopted, or live-tested unless
+> current evidence supports that claim.
 
-**2026-08-03**
+---
 
-## Current enterprise stage
+# 1. Verification Boundary
 
-**Stage 1 — Foundation and Core Platform**
+This snapshot is based on:
 
-Parallel controlled work: **Stage 2 one-agent pilot foundation only** (path merged; not live-executed).
+- the latest verified `origin/main`;
+- merged Pull Request records;
+- PR #95 post-migration verification records;
+- repository implementation and automated-test evidence;
+- recorded migration verification;
+- recorded manual backup and restore-test evidence;
+- reported Production health evidence.
 
-## Explicit stage statement
+This snapshot does **not** independently certify:
 
-MianX.ai is currently in Stage 1 — Foundation and Core Platform, with a
-controlled Stage 2 one-agent pilot. It is not yet a fully operational
-Enterprise AI Operating System and does not yet have 445 active or
-live-tested AI agents.
+- a complete authenticated Founder Production smoke test;
+- full Git-history secret safety;
+- managed database backup;
+- Point-in-Time Recovery;
+- complete disaster-recovery readiness;
+- live AI-provider execution;
+- active AI Agents;
+- Customer adoption;
+- Industry Operating System launch;
+- complete MianX Core maturity.
 
-## Current Production commit (latest origin/main)
+Where independent verification is incomplete, the status is explicitly recorded
+as `pending`, `reported`, `partial`, or `unverified`.
 
-`c6a273ae7859c7e3a20320526b3c2e9647d71765`
+---
 
-(Merge of PR #93 — Phase 1 membership scope migration readiness. Optional
-`admin_memberships` org/project scope migration remains **unapplied**.
-Live-run track paused; OpenAI credits not_checked.)
+# 2. Executive Current-State Summary
 
-## Deployment state
+| Item | Current status |
+|---|---|
+| Current canonical phase | **Phase 1 — Platform Foundation** |
+| Phase 1 status | **READY_FOR_FINAL_VERIFICATION** |
+| Phase 1 officially complete | **No** |
+| Founder Phase 1 sign-off | **Not approved** |
+| Phase 2 started | **No** |
+| Full MianX Core verified | **No** |
+| Enterprise AI Operating System operational | **No** |
+| Allocated AI Agents | **0** |
+| Active AI Agents | **0** |
+| Live-tested AI Agents | **0** |
+| Genuine provider generation calls | **0** |
+| RestaurantOS Production Operational | **No verified evidence** |
+| PoultryOS Production Operational | **No verified evidence** |
+| Marketplace operational | **No** |
+| Global Platform operational | **No** |
+| Authenticated Founder Production smoke | **Pending** |
+| Public repository security closeout | **Pending** |
+| Canonical documentation synchronization | **Pending** |
+| Phase 1 closeout PR | **Open Draft — PR #95** |
 
-| Item | Value |
-|------|-------|
-| Production URL | https://mian-x-ai.vercel.app |
-| Production alias target | Ready deployment for commit `c6a273a…` |
-| Authorization migration applied | **yes** (2026-08-03) |
-| Migration checksum | `82b8223a1736467d6ee66b0ddf6c36192b6ac6b5d7108d9e8165adfd19e820b8` |
-| Authorization store | available (table present; **0** real authorization rows) |
-| Environment / secrets changed by code PRs | no (Founder-only Vercel UI for key) |
-| providerName (core health) | none — execution blocked |
-| apiKeyConfigured | **true** (boolean only; no value exposed) |
-| accountAccessStatus | not_checked |
-| billingCreditStatus | not_checked |
-| billingModeStatus | unknown |
-| Models API / generation calls | 0 / 0 |
-| Switches | false |
-| allocated/active/live-tested | 0/0/0 |
-| Founder Proof | awaiting_final_review / founder_final_review |
-| Founder Final Review | not approved |
-| First-live-run readiness packet | **merged** (PR #88 → `715b700…`) |
-| No-credit safe readiness | **merged** (PR #89 → `70b9382…`) |
-| Master completion phases | `doc/MIANX-AI-MASTER-COMPLETION-PHASES.md` — Phase 1 in progress |
-| Phase 1 tenant/authz foundation | **merged** (PR #91 → `c7ee986…`); migration still **unapplied** |
-| Phase 1 membership-scoped data access | **merged** (PR #92 → `92897d6…`) |
-| Phase 1 RLS/scope migration readiness | **merged** (PR #93 → `c6a273a…`); migration still **unapplied** |
-| Phase 1 final security closure | Draft on `cursor/phase1-final-cross-tenant-security-closure` |
-| Phase 1 status | `ready_for_migration_rollout` (not complete) |
+Phase 1 is not assigned an official percentage.
 
-Founder-observed billing balance on 2026-08-03: $0.00.  
-Not machine-verified by MianX.ai.
+The remaining gates have different Security, operational, recovery, evidence,
+and authority impacts. Technical implementation progress alone cannot complete
+Phase 1.
 
-## Tenancy model (runtime truth)
+---
 
-**Single-tenant Founder platform** — global `admin_memberships` until optional
-org/project columns are Founder-applied; one default org (`mianx`); workspaces
-not implemented; JWT org-scoped RLS not complete. Project list/detail scoping is
-application-level (PR #92). See
-`doc/PHASE-1-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md`,
-`doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md`, and
-`doc/PHASE-1-RLS-SCOPE-MIGRATION-READINESS.md` (Step 4 merged),
-`doc/PHASE-1-FINAL-CROSS-TENANT-SECURITY-CLOSURE.md` (Step 5 Draft).
+# 3. Canonical Phase Definition
 
-## Scheduler state
+## Phase 1 — Platform Foundation
 
-| Item | Value |
-|------|-------|
-| primaryScheduler | supabase_cron |
-| schedulerActive | true |
-| schedulerTransitionState | supabase_primary_active |
-| schedulerHealth | healthy |
-| GitHub scheduled fallback delivery proof | pending external event (not claimed verified) |
+Phase 1 establishes the initial secure and deployable Platform foundation for
+MianX.ai.
 
-## Database migration state
+Its purpose is to provide the verified foundations required before broader
+Platform, Product, or AI expansion.
 
-| Item | Value |
-|------|-------|
-| Phase II.1 pilot migration | applied |
-| Pending database migrations (last verification) | none (auth migration applied 2026-08-03) |
-| Migrations changed by PR #80 or workforce-audit PR | no |
+Phase 1 includes:
 
-## Workforce truth
+- application foundation;
+- Authentication;
+- protected administration;
+- Organization and Tenant context;
+- Project context;
+- Membership controls;
+- Role and permission foundations;
+- Tenant-scoped access;
+- Project-scoped access;
+- database migrations;
+- automated testing;
+- CI/CD foundations;
+- deployment foundations;
+- basic audit and operational evidence;
+- manual logical backup and restore proof;
+- controlled and disabled-by-default AI execution foundations.
 
-| Metric | Value |
-|--------|-------|
-| capacitySeats / registered | 445 |
-| compiledSeats | 445 (planning capacity) |
-| persistedSeats | 445 |
-| readyToAllocateSeats | 445 |
-| allocatedSeats | 0 |
-| activeInstances / active agents | 0 |
-| liveTestedSeats / live-tested agents | 0 |
+Phase 1 does **not** complete:
 
-**445 is capacity planning, not 445 running or live-tested agents.**
+- the full MianX Platform Kernel;
+- all shared Platform services;
+- the Enterprise AI Operating System;
+- an operational AI Workforce;
+- 445 active Agents;
+- RestaurantOS;
+- PoultryOS;
+- any additional Industry Operating System;
+- the Developer ecosystem;
+- the Marketplace;
+- global or regional operations;
+- Autonomous Enterprise Creation.
 
-Admin surface ownership (audit in progress): `doc/ADMIN-WORKFORCE-RESPONSIBILITY-MAP.md`.
+---
 
-## AI provider truth
+# 4. Repository State
 
-| Item | Value |
-|------|-------|
-| OpenAI execution path | merged into main (path); activation-readiness Draft until merge |
-| Provider configured | no |
-| providerName | none |
-| Genuine provider calls | 0 |
-| liveExecutionReady | false |
-| officialCatalogStatus (gpt-5.4-mini) | verified (docs 2026-08-03) |
-| accountAccessStatus | not_checked |
-| officialPricingStatus | verified (standard $0.75/$0.075/$4.50 per 1M) |
-| billingModeStatus | unknown |
-| standard worst-case at pilot caps | $0.0084 (not authorizing) |
-| responseStorageEnabled | false |
-| zeroDataRetentionVerified | false |
-| Authenticated Models API verification | not performed |
-| Provider activation readiness PR | **merged** (PR #83 → `940c227`); Production verified after merge |
-| Dry-run evidence rehearsal PR | **merged** (PR #84 → `405171b`); Vitest-only fake provider; Production verified |
-| Live-run control-plane PR | **merged** (PR #85 → `da4e19b`); Production verified **without** migration apply at that time |
-| Live-run authorization migration readiness | **merged** (PR #86 → `5776160`); ephemeral DB CI + `search_path=''` hardening |
-| Live-run authorization migration apply | **applied** 2026-08-03 — checksum `82b8223a…`; store available; **0** auth rows; provider still none |
-| OpenAI secure-config / model-check readiness | **merged** (PR #87 → `8a2b6f5`); then Founder configured key via Vercel UI |
-| First-live-run readiness packet | **merged** (PR #88 → `715b700…`) |
-| No-credit safe readiness | Draft/Preview on `cursor/openai-no-credit-safe-readiness` |
-| apiKeyConfigured (boolean) | true after Founder Vercel Production config + redeploy |
-| billingCreditStatus | not_checked (key ≠ credits) |
+| Item | Verified state |
+|---|---|
+| Repository | `Mianxai/MianX.ai` |
+| Visibility | Public |
+| Default branch | `main` |
+| Latest verified `origin/main` | `2d9b4862e7764aae5c26f0e247bb85310bc752f8` |
+| Latest merged Phase 1 work | PR #94 |
+| Phase 1 closeout PR | PR #95 |
+| PR #95 state | Open Draft |
+| PR #95 merge status | Reported mergeable |
+| Repository branch count | Approximately 86 remote branches at last audit |
 
-## Live execution truth
+The branch count is a maintenance concern.
 
-| Item | Value |
-|------|-------|
-| LIVE_AGENT_EXECUTION_ENABLED (Production posture) | false / not activating agents |
-| LIVE_AGENT_PILOT_ENABLED | false |
-| Pilot agent allocated / activated | no |
-| Real OpenAI network proof run | not performed |
-| Authenticated Models API verification | not performed |
+It does not change the current Product or Phase status.
 
-## Founder Proof truth
+Merged-branch cleanup remains pending and must not occur until open, unmerged,
+backup, and recovery branches are classified.
 
-| Item | Value |
-|------|-------|
-| status | awaiting_final_review |
-| stage | founder_final_review |
-| Final Founder Review | not approved |
-| Auto-approval | forbidden |
+---
 
-## Documentation maturity
+# 5. Phase 1 Pull Request Sequence
 
-| Item | Value |
-|------|-------|
-| Enterprise portal draft (`doc/README.md`) | large enterprise draft; Stage 1 truth-corrected |
-| Master roadmap (`doc/complete-roadmap.md`) | planning monolith; future sections planned |
-| Canonical map / registry / baseline | Stage 1 created |
-| Large split of README/roadmap | **not done** (deferred) |
-| Workforce Admin responsibility map | created (`doc/ADMIN-WORKFORCE-RESPONSIBILITY-MAP.md`) |
+| Workstream | Repository state |
+|---|---|
+| PR #91 — Tenant and authorization foundation | Merged |
+| PR #92 — Membership-scoped data access | Merged |
+| PR #93 — RLS and scope migration readiness | Merged |
+| PR #94 — Final cross-Tenant Security closure | Merged |
+| PR #95 — Post-migration verification and completion sign-off | Open Draft |
 
-## Core platform maturity
+Recorded merged commits include:
 
-| Area | Maturity |
-|------|----------|
-| Lead capture + Admin | implemented (product surface) |
-| Durable queue / leases / tick | operational with Supabase Cron primary |
-| Workforce seats foundation | persisted capacity 445; allocated/active/live-tested 0 |
-| One-agent OpenAI path | implemented in code; disabled; zero genuine calls |
-| Memory Engine as operational product | not operational |
-| Marketplace / global expansion | planned / not started as operational products |
-| RestaurantOS / PoultryOS as current product | not current product (Powered-by later) |
+| Pull Request | Recorded commit |
+|---|---|
+| PR #91 | `c7ee986…` |
+| PR #92 | `92897d6…` |
+| PR #93 | `c6a273a…` |
+| PR #94 | `2d9b486…` |
 
-## Known verified issues
+PR #95 does not independently approve Phase 1 completion.
 
-- Shared foundation metric presentation and Runtime Agents tab clarification — **fixed; Production deployed after exact-head merge** (2026-08-03, merged PR [#82](https://github.com/Mianxai/MianX.ai/pull/82), merge commit `44baa7a99935fe37463aaae5daaf8eeb2df1cb76`). Setup + Readiness were not collapsed. Routes were not deleted or redirected. Authenticated Production UI not directly browser-verified because no safe credentials were available.
-- One-agent provider activation readiness (preflight, fail-closed verification statuses, runbook) — **Draft/Preview only** on branch `cursor/one-agent-provider-activation-readiness`. Does not configure provider, enable switches, or perform Models API / generation calls.
-- GitHub scheduled fallback external-delivery proof remains pending.
+Only the Founder may issue final Phase 1 sign-off after all required evidence
+and Production checks are reviewed.
 
-## Resolved issues
+---
 
-- **Admin workforce foundation metrics + Runtime Agents label (PR #82)** — **fixed; Production deployed after merge** (2026-08-03, merge commit `44baa7a99935fe37463aaae5daaf8eeb2df1cb76`).
-  - Shared `WorkforceMetricCard`, `normalizeWorkforceSummary` wired into Setup/Readiness/Ops, Runtime Agents tab label (id `agents` preserved), global `/admin/agents` unchanged.
-- **Admin workforce responsibility overlap (label/truth headers)** — **fixed; Production deployed after merge** (2026-08-03, merged PR [#81](https://github.com/Mianxai/MianX.ai/pull/81), merge commit `da558a094a41842884791ea8432fd13c6f8379b4`).
-  - Ownership map, terminology, nav labels (Setup / Readiness / Workforce Ops), purpose headers, coalesce-without-inventing-zeros for Unavailable.
-  - Authenticated Production UI not directly browser-verified because no safe credentials were available.
-- **Projects card Founder Proof contradiction** — **fixed; PR preview verified; Production deployed after merge** (2026-08-03, merged PR [#80](https://github.com/Mianxai/MianX.ai/pull/80), merge commit `de3972eb55ee27b201119e5bf23d1e38b72651f2`).
-  - **Root cause:** `/admin/projects` treated missing/`null` operational summary (including in-flight load and fetch failure) as “No active Founder Proof”, and labeled proof from `canonical_integration_run` alone instead of the shared `founder_proof_ui` / status classification. During load, metrics showed “…” while Founder Proof falsely claimed no active proof.
-  - **Fix:** Shared `lib/core/integration/founder-proof-status.js` classification; Projects card uses `resolveProjectsFounderProofDisplay` so `awaiting_final_review` / `founder_final_review` is **active review-pending** (not inactive/terminal); explicit Loading… / real value including `0` / Unavailable metric states; per-project ops load errors no longer map to empty proof.
-  - **Verification evidence:** executed classifier truth table + unit/component tests; CI Lint/Build, Chrome harness, Playwright on PR #80; Vercel Preview; Production health after merge deploy (`providerName: none`, workforce 445/445/445, allocated/active/liveTested 0/0/0, proof `awaiting_final_review` / `founder_final_review`).
-  - **Authenticated Production UI:** not directly browser-verified without credentials; behaviour proven by source, tests, CI, Preview, and Production health. **Founder Final Review remains not approved.**
+# 6. Application Foundation
 
-## Suspected issues requiring reproduction
+## Current Classification
 
-- Objectives loading anomaly — **client failure modes reproduced and hardened; Production deployed after merge** (2026-08-03, merged PR [#80](https://github.com/Mianxai/MianX.ai/pull/80)).
-  - **Root cause:** (1) uncaught `fetch` throw left `loading` true without `finally`; (2) unstable router-dependent effect deps could retrigger loads; (3) `DelayedLoader` misuse; (4) missing unmount abort / stale-response guards.
-  - **Fix:** try/finally, named 30s `OBJECTIVES_FETCH_TIMEOUT_MS` abort, unmount abort without misleading errors, request-id stale protection, schema/invalid-JSON handling, ErrorState + single Retry.
-  - **Evidence:** `ObjectivesClient.test.jsx` lifecycle coverage. Authenticated Production Objectives UI not directly browser-verified without credentials.
+**Implemented foundation with final authenticated Production verification pending.**
 
-## Current blockers
+The repository contains a real application foundation rather than only
+Documentation.
 
-1. Founder Final Review not approved (independent of docs).
-2. Provider not configured (`providerName: none`).
-3. Model availability and pricing verification pending (official docs / separately authorized Models API).
-4. Live switches not enabled; no Founder-authorized live pilot run.
-5. Documentation Stage 2+ refactor (README/roadmap split) not started.
-6. Remaining UI debt: further catalogue-card dedupe; Setup+Readiness collapse not authorized.
+Reported application foundations include:
 
-## Next operational milestone
+- Next.js application;
+- React application interface;
+- Supabase integration;
+- protected Admin area;
+- login and logout foundations;
+- server-side environment handling;
+- Admin Control Center;
+- API route foundations;
+- test suites;
+- CI workflows;
+- Vercel deployment configuration;
+- Analytics and performance instrumentation.
 
-Complete Stage 1 documentation canonicalization and Admin workforce truth alignment, then proceed to a
-**Founder-authorized** controlled one-agent Production proof only after provider
-configuration, both live switches, exact approval, and separate run authorization —
-without declaring Stage 2 complete before Stage 1 exit criteria.
+## Current Limitation
 
-## Evidence references
+A successful build, CI result, Preview deployment, or Vercel status does not
+replace authenticated Production verification.
 
-- Production site: https://mian-x-ai.vercel.app
-- `execution/EXECUTION-BOARD.md`
-- `execution/PHASE-II1-CONTROLLED-LIVE-AGENT-PILOT.md`
-- `execution/PHASE-II2-OPENAI-LIVE-PILOT-PATH.md`
-- `doc/DOCUMENT-STATUS-REGISTRY.md`
-- `doc/CANONICAL-DOCUMENT-MAP.md`
-- `doc/ADMIN-WORKFORCE-RESPONSIBILITY-MAP.md`
-- `doc/ONE-AGENT-PROVIDER-ACTIVATION-RUNBOOK.md`
-- `doc/ONE-AGENT-OPENAI-CONTRACT-NOTES.md`
-- Branch preservation: `backup/docs-upgrade-raw-20260803`
+The following remain pending as final Founder-controlled checks:
 
-## Explicit non-claims
+- valid Admin login;
+- invalid password denial;
+- protected-route behavior;
+- logout;
+- session refresh;
+- session expiration;
+- unauthorized-user denial;
+- Tenant-scoped access;
+- Project-scoped access;
+- protected API denial;
+- safe Admin read and update behavior;
+- audit evidence.
 
-This baseline does **not** claim:
+---
 
-- 445 active agents;
-- 445 live-tested agents;
-- an operational Memory Engine product;
-- a complete autonomous enterprise;
-- a completed marketplace;
-- a completed global platform;
-- that documentation completeness equals Production readiness of every described system;
-- that GitHub scheduled fallback delivery is verified;
-- that Founder Final Review is approved;
-- that any genuine OpenAI call has been made;
-- that authenticated Production Projects/Objectives UI was browser-verified without credentials.
+# 7. Multi-Tenant and Project Security Foundation
+
+## Reported Implemented Foundations
+
+- trusted Tenant context;
+- trusted Project context;
+- Platform Admin and Tenant Admin separation;
+- Membership-scoped Project reads;
+- Project-specific API access;
+- cross-Project access hardening;
+- RLS and scope migration preparation;
+- migration application;
+- cross-Tenant regression coverage;
+- post-migration schema verification.
+
+## Current Classification
+
+**Implemented and supported by repository evidence; authenticated Production
+smoke remains pending.**
+
+## Required Production Assertions
+
+The final Production verification must confirm:
+
+```text
+Tenant A user
+must not access
+Tenant B protected data
+```
+
+```text
+Project A member
+must not access
+Project B protected data
+```
+
+```text
+Normal user
+must not access
+Founder or Platform Admin routes
+```
+
+```text
+Logged-out or invalid-session user
+must not access
+protected routes or APIs
+```
+
+Passing automated tests is necessary but does not replace the authenticated
+Production verification gate.
+
+---
+
+# 8. Database and Migration State
+
+| Item | Current state |
+|---|---|
+| Required Phase 1 migration | Applied |
+| Migration application count | Applied exactly once according to recorded evidence |
+| Pending migrations | **0** |
+| Linked migration dry-run | Reported pass |
+| Remote migration state | Reported up to date |
+| Post-migration schema verification | Reported pass |
+| Final repository-to-Production reconciliation | Pending final closeout review |
+
+The applied migration must not be described as pending.
+
+The applied migration must not be re-applied merely because an older template
+refers to one pending migration.
+
+Correct current wording:
+
+> The latest recorded migration check reports zero pending migrations. Final
+> verification should validate the currently applied migration state and must
+> not authorize re-applying an already applied migration.
+
+Any Production schema change that is not represented by the repository
+migration history must be treated as an unresolved reconciliation issue.
+
+---
+
+# 9. Backup and Recovery State
+
+| Recovery capability | Current state |
+|---|---|
+| Post-apply manual logical backup | Reported created |
+| Backup checksum | Reported verified |
+| Disposable PostgreSQL restore test | Reported passed |
+| Restored schema and sample verification | Reported passed |
+| `manualRecoveryReady` | `true` |
+| Managed backup | Unavailable or unverified |
+| Point-in-Time Recovery | Unavailable |
+| Full enterprise disaster recovery | Not achieved |
+| Recovery ownership and schedule | Pending formalization |
+| Backup retention policy | Pending |
+| Regular restore-drill schedule | Pending |
+
+## Recovery Classification
+
+**Manual logical recovery proof exists. Enterprise recovery readiness remains
+incomplete.**
+
+The repository must not publish unnecessary:
+
+- local machine paths;
+- local backup directories;
+- internal usernames;
+- exact sensitive operational inventories;
+- unnecessary Production record counts.
+
+Detailed recovery evidence that is not appropriate for a public repository
+should be retained in a private, access-controlled evidence system.
+
+---
+
+# 10. AI Runtime Current Truth
+
+## AI Workforce Counters
+
+| Metric | Current verified or recorded value |
+|---|---:|
+| Capacity or registered seats | 445 |
+| Persisted seats | 445 |
+| Ready-to-allocate seats | 445 |
+| Allocated seats or Agents | **0** |
+| Active instances or Agents | **0** |
+| Live-tested seats or Agents | **0** |
+
+> **445 represents documented and persisted capacity planning. It does not
+> represent 445 running, allocated, active, Production, or live-tested Agents.**
+
+## AI Provider and Execution State
+
+| Item | Current state |
+|---|---|
+| Controlled AI execution code path | Implemented or partially verified |
+| Provider name reported by Core health | `none` |
+| Models API calls | `0` |
+| Generation calls | `0` |
+| Genuine provider execution | Not completed |
+| Live execution switches | Off |
+| Pilot Agent allocated | No |
+| Pilot Agent activated | No |
+| Genuine live AI run | No |
+| Production Operational AI workflows | `0` |
+| Enterprise AI Operating System | Not operational |
+
+## AI Classification
+
+AI execution foundations may exist in code and tests.
+
+They remain:
+
+- disabled by default;
+- not genuinely provider-tested;
+- not Production Operational;
+- not evidence of an active AI Workforce;
+- outside Phase 1 completion claims.
+
+AI role documents, capacity records, prompts, workflow definitions, registries,
+tests, and model abstractions must not be counted as active Agents.
+
+---
+
+# 11. Platform and Core Maturity
+
+## Current Correct Classification
+
+> **MianX Platform Foundation — Phase 1**
+
+The current repository must not be described as the completed MianX Core.
+
+Verified or reported foundations include:
+
+- Authentication;
+- Tenant and Organization context;
+- Membership scoping;
+- Project scoping;
+- roles and permissions foundations;
+- administrative access foundations;
+- migration controls;
+- automated tests;
+- CI/CD;
+- deployment foundations;
+- manual recovery proof;
+- controlled AI runtime foundations.
+
+The following complete-Core claim is not yet supported:
+
+```text
+Complete reusable MianX Platform Kernel
+
++
+
+Complete shared Platform services
+
++
+
+Complete operational controls
+
++
+
+Verified use by multiple Industry Operating Systems
+```
+
+Core reusability must eventually be proven through real Product use rather than
+Documentation volume.
+
+---
+
+# 12. Product Portfolio Current Truth
+
+| Product or capability | Current status |
+|---|---|
+| Current MianX application and Admin foundation | Implemented foundation |
+| MianX Platform Kernel | Partial or unverified |
+| Shared Platform services | Partial, mixed, or unverified |
+| MianX AI Runtime | Foundation implemented or partially verified; live execution disabled |
+| AI Workforce | Documented capacity; zero allocated, active, or live-tested Agents |
+| RestaurantOS | Planned or unverified |
+| PoultryOS | Planned or unverified |
+| HospitalOS | Future only |
+| SchoolOS | Future only |
+| Marketplace | Future only |
+| Regional and global Platform | Future only |
+| Autonomous Enterprise Creation | Long-term Vision only |
+
+No Product should be described as Customer-live, Production Operational, or
+commercially validated without current evidence.
+
+---
+
+# 13. Documentation Current State
+
+## Canonical Truth Status
+
+The following documents must report the same Phase, commit, migration, recovery,
+and AI counters:
+
+1. `doc/CURRENT-STATE.md`
+2. `doc/MIANX-AI-MASTER-COMPLETION-PHASES.md`
+3. `doc/PHASE-1-COMPLETION-CHECKLIST.md`
+4. `doc/PHASE-1-POST-MIGRATION-VERIFICATION.md`
+5. `execution/EXECUTION-BOARD.md`
+6. root `README.md`
+7. `AGENTS.md`
+8. `doc/DOCUMENT-STATUS-REGISTRY.md`
+
+Canonical synchronization is currently pending.
+
+## Documentation Structure Status
+
+The Documentation structure is not normalized.
+
+Current open concerns include:
+
+- overlapping top-level documentation domains;
+- excessive numbered top-level folders;
+- loose files in the `doc/` root;
+- stale path references;
+- duplicate-purpose documents;
+- broken links in recently added canonical documents;
+- active and historical documents mixed together;
+- long-form roadmap content being unsuitable for daily implementation context.
+
+Documentation structure must not be described as complete.
+
+## `complete-roadmap.md`
+
+`doc/complete-roadmap.md` is:
+
+- a long-term strategic reference;
+- an aspirational future-state archive;
+- not the current implementation source of truth;
+- not the Phase execution source of truth;
+- not proof of Product, AI, Platform, Marketplace, or global maturity;
+- not suitable as default Cursor or AI implementation context.
+
+The concise strategic source should become:
+
+```text
+doc/48-enterprise-roadmap/MASTER-ROADMAP-SUMMARY.md
+```
+
+after its status, links, and authority are approved.
+
+---
+
+# 14. Recently Added Canonical Documents
+
+The following files exist locally or in pending work and require final path,
+link, status, and Founder or Architecture approval:
+
+```text
+doc/01-governance/ENTERPRISE-PRINCIPLES.md
+doc/02-company/VISION-AND-MISSION.md
+doc/31-enterprise-architecture/CORE-ARCHITECTURE.md
+doc/44-enterprise-ai/AI-GOVERNANCE.md
+doc/48-enterprise-roadmap/MASTER-ROADMAP-SUMMARY.md
+```
+
+Current status:
+
+| Document | Current classification |
+|---|---|
+| Enterprise Principles | Draft — Founder approval required |
+| Vision and Mission | Draft — Founder approval required |
+| Core Architecture | Draft — Architecture approval required |
+| AI Governance | Draft — Founder approval required |
+| Master Roadmap Summary | Draft — Founder approval required |
+
+These documents do not become canonical merely because they exist.
+
+They require:
+
+- correct repository paths;
+- valid internal links;
+- registry entries;
+- authority approval;
+- conflict review;
+- current-state alignment.
+
+---
+
+# 15. Public Repository Security State
+
+## P0 Credential Concern
+
+A reusable local Admin credential was reported in the public `AGENTS.md`.
+
+Required status:
+
+| Action | Current status |
+|---|---|
+| Remove reusable credential from public Documentation | Pending verification |
+| Determine whether credential was reused | Pending |
+| Rotate credential where applicable | Pending |
+| Review Git history exposure | Pending |
+| Complete full history-aware secret scan | Pending |
+| Confirm no real credential remains public | Not yet certified |
+
+A value must be treated as potentially compromised when it has appeared in a
+public repository.
+
+Editing the current file alone does not remove it from Git history.
+
+## Secret-Scan Boundary
+
+A pattern-based scan reported potential secret-like assignments across code,
+tests, examples, workflows, and Documentation.
+
+Pattern matches do not automatically prove real-secret exposure.
+
+Each match must be classified as:
+
+- real secret;
+- placeholder;
+- test fixture;
+- environment-variable name;
+- false positive;
+- unknown requiring Human review.
+
+This repository is not yet certified secret-free across full Git history.
+
+## Public Operational Metadata
+
+Public Documentation should retain outcome-level evidence such as:
+
+- backup created;
+- checksum verified;
+- restore test passed;
+- migration state verified;
+- managed PITR unavailable.
+
+It should avoid unnecessary disclosure of:
+
+- local paths;
+- local usernames;
+- exact backup locations;
+- sensitive record counts;
+- internal operational inventories;
+- unnecessary Production implementation details.
+
+---
+
+# 16. Public Repository Governance
+
+At the latest audit, the following public-repository governance files were not
+present:
+
+| File | Current status |
+|---|---|
+| `LICENSE` | Missing — licensing decision required |
+| `SECURITY.md` | Missing |
+| `CONTRIBUTING.md` | Missing |
+| `.github/CODEOWNERS` | Missing |
+
+The Founder must decide whether the repository is:
+
+- Open Source under an approved license; or
+- publicly visible proprietary source.
+
+Public visibility does not itself grant an open-source license.
+
+`SECURITY.md` should define a private vulnerability-reporting method.
+
+---
+
+# 17. Phase 1 Remaining Blockers
+
+Phase 1 remains incomplete until all required blockers are closed or explicitly
+accepted by the correct authority.
+
+## P0 — Public Security
+
+- remove and review the exposed reusable Admin credential;
+- rotate it wherever reuse cannot be excluded;
+- classify current secret-scan findings;
+- perform a complete Git-history secret review;
+- redact unnecessary operational metadata;
+- confirm that no known reusable secret remains public.
+
+## P0 — Canonical Truth
+
+- synchronize `CURRENT-STATE.md`;
+- synchronize Phase 1 completion documents;
+- synchronize `README.md`;
+- synchronize `doc/README.md`;
+- synchronize `execution/EXECUTION-BOARD.md`;
+- synchronize `AGENTS.md`;
+- synchronize `DOCUMENT-STATUS-REGISTRY.md`;
+- remove stale Phase, commit, migration, Agent, and recovery claims.
+
+## P1 — Public Governance
+
+- record licensing decision;
+- add `SECURITY.md`;
+- add `CONTRIBUTING.md`;
+- add `.github/CODEOWNERS`;
+- add the approved licensing file.
+
+## P1 — Production Verification
+
+- complete Founder-authenticated Production login;
+- verify logout and session behavior;
+- verify unauthorized-user denial;
+- verify Tenant isolation;
+- verify Project isolation;
+- verify protected API denial;
+- verify Admin read and safe update behavior;
+- verify audit evidence;
+- reconcile repository and Production migration state;
+- review backup and restore evidence.
+
+## P1 — Recovery Decision
+
+- record managed backup availability;
+- record PITR availability;
+- assign recovery owner;
+- approve backup retention;
+- approve restore-test cadence;
+- record remaining accepted recovery risk.
+
+## P1 — Closeout
+
+- review all green CI evidence on the final closeout head;
+- complete Founder final review;
+- record explicit Phase 1 sign-off;
+- merge the approved closeout PR;
+- verify `main` after merge;
+- update this document from merged evidence;
+- unlock Phase 2 only through explicit Founder authorization.
+
+---
+
+# 18. Phase 1 Definition of Done
+
+Phase 1 may be marked `complete` only when:
+
+- [ ] No known reusable credential remains exposed.
+- [ ] Credential rotation is complete where required.
+- [ ] Git-history secret review is complete.
+- [ ] Public operational metadata is appropriately limited.
+- [ ] Canonical truth documents report the same current state.
+- [ ] Public repository governance files are present and approved.
+- [ ] Final CI checks pass on the approved closeout head.
+- [ ] Authenticated Production login passes.
+- [ ] Invalid login denial passes.
+- [ ] Logout and session behavior pass.
+- [ ] Unauthorized Admin access is denied.
+- [ ] Tenant isolation passes in Production.
+- [ ] Project isolation passes in Production.
+- [ ] Protected API denial passes.
+- [ ] Production migration state matches repository migration state.
+- [ ] Pending migrations remain zero.
+- [ ] Backup evidence is reviewed.
+- [ ] Restore-test evidence is reviewed.
+- [ ] Remaining recovery gaps are explicitly recorded.
+- [ ] Founder Phase 1 sign-off is recorded.
+- [ ] The approved closeout PR is merged into `main`.
+- [ ] `main` is verified after merge.
+- [ ] Phase 2 is explicitly authorized.
+
+Until every mandatory item is complete:
+
+```text
+Phase 1 = READY_FOR_FINAL_VERIFICATION
+Phase 1 ≠ COMPLETE
+Phase 2 = NOT STARTED
+```
+
+---
+
+# 19. Explicitly Locked Work
+
+Until Phase 1 closeout and Product re-baselining are approved, the following
+must not be represented as active authorized execution:
+
+- genuine provider AI execution;
+- live Agent activation;
+- 445-Agent activation;
+- autonomous task loops;
+- Phase 2 completion;
+- RestaurantOS full implementation;
+- PoultryOS full implementation;
+- another Industry Operating System;
+- Marketplace implementation;
+- global Platform expansion;
+- Autonomous Enterprise Creation implementation.
+
+Drafts, experiments, or existing code may remain in the repository.
+
+They must not be presented as current operational maturity.
+
+---
+
+# 20. Current Product-Direction Boundary
+
+The corrected current direction is:
+
+```text
+Public Security and Canonical Truth Closeout
+
+↓
+
+Founder Phase 1 Production Verification
+
+↓
+
+Phase 1 Sign-Off
+
+↓
+
+Product and Core Re-Baseline
+
+↓
+
+Narrow MianX Platform Kernel
+
+↓
+
+Shared Platform Services
+
+↓
+
+One Evidence-Selected Industry Product
+
+↓
+
+Three to Five Real Customer Workflows
+
+↓
+
+Controlled AI Assistance
+
+↓
+
+Second Industry Product to Prove Reuse
+```
+
+The current repository should be treated as:
+
+> **MianX Platform Foundation pending final Phase 1 verification.**
+
+It should not yet be treated as:
+
+> **A completed MianX Core, Enterprise AI OS, active AI Workforce, or
+> Autonomous Enterprise Creation Platform.**
+
+---
+
+# 21. Canonical Truth Hierarchy
+
+For current implementation claims, use this order:
+
+```text
+Founder-Approved Constitution or Legal Requirement
+within its authority
+
+↓
+
+doc/CURRENT-STATE.md
+verified current implementation and operational truth
+
+↓
+
+Approved Architecture Decision Records
+technical decisions within their scope
+
+↓
+
+doc/DOCUMENT-STATUS-REGISTRY.md
+document authority and maturity
+
+↓
+
+Approved Policies, Standards, Product Specifications, and Runbooks
+
+↓
+
+Authorized Current Execution Plan or Execution Board
+
+↓
+
+doc/48-enterprise-roadmap/MASTER-ROADMAP-SUMMARY.md
+long-term strategic direction
+
+↓
+
+doc/complete-roadmap.md
+historical and aspirational reference only
+```
+
+A lower-authority document must not silently override a higher-authority source.
+
+---
+
+# 22. Claim Rules
+
+The following terms must be used accurately:
+
+| Term | Required meaning |
+|---|---|
+| Documented | A document exists |
+| Implemented | Code or configuration exists |
+| Tested | Defined tests passed in a stated environment |
+| Deployed | A version was deployed to a stated environment |
+| Verified | Evidence was independently reviewed |
+| Production Operational | Production is running with ownership, monitoring, support, and recovery |
+| Active Agent | A runtime instance is allocated and operating |
+| Live-tested Agent | A genuine provider-backed run completed with reviewed evidence |
+| Customer Live | A real Customer is using the Product with current evidence |
+| Complete | All mandatory exit gates passed and required authority approved |
+
+These terms are not interchangeable.
+
+---
+
+# 23. Evidence References
+
+Primary Phase 1 evidence documents include:
+
+```text
+doc/PHASE-1-COMPLETION-CHECKLIST.md
+doc/PHASE-1-POST-MIGRATION-VERIFICATION.md
+doc/PHASE-1-FINAL-CROSS-TENANT-SECURITY-CLOSURE.md
+doc/PHASE-1-RLS-MIGRATION-ROLLOUT.md
+doc/PHASE-1-RLS-SCOPE-MIGRATION-READINESS.md
+doc/PHASE-1-RLS-SCOPE-MIGRATION-RUNBOOK.md
+doc/PHASE-1-MEMBERSHIP-SCOPED-DATA-ACCESS.md
+doc/PHASE-1-TENANT-ISOLATION-AND-ADMIN-AUTHORIZATION.md
+doc/MIANX-AI-MASTER-COMPLETION-PHASES.md
+```
+
+Supporting execution and repository sources include:
+
+```text
+README.md
+AGENTS.md
+execution/EXECUTION-BOARD.md
+doc/README.md
+doc/DOCUMENT-STATUS-REGISTRY.md
+.github/workflows/
+supabase/migrations/
+```
+
+Evidence documents should retain only public-safe details.
+
+---
+
+# 24. Update Rules
+
+This file must be updated when any of the following occurs:
+
+- a Phase status changes;
+- Founder sign-off is issued or withdrawn;
+- a closeout PR is merged;
+- the verified `main` commit changes materially;
+- migration state changes;
+- backup or PITR status changes;
+- authenticated Production verification completes;
+- an AI provider becomes active;
+- an Agent is allocated, activated, suspended, or live-tested;
+- a Product enters Pilot or Production;
+- a Security incident changes current risk;
+- canonical document authority changes.
+
+Every update should record:
+
+- date;
+- evidence source;
+- changed claim;
+- previous status;
+- new status;
+- approver where required.
+
+---
+
+# 25. Current Final Position
+
+As of **2026-08-04**:
+
+```text
+MianX.ai has a real and substantial Platform engineering foundation.
+
+Phase 1 security, Tenant, Project, migration, CI, test, deployment,
+and manual recovery work shows strong progress.
+
+Phase 1 remains READY_FOR_FINAL_VERIFICATION.
+
+Phase 1 is not complete.
+
+Founder sign-off is not approved.
+
+Phase 2 has not started.
+
+The full MianX Core is not verified.
+
+The Enterprise AI Operating System is not operational.
+
+Allocated AI Agents = 0.
+
+Active AI Agents = 0.
+
+Live-tested AI Agents = 0.
+
+RestaurantOS and PoultryOS are not verified as Production Operational.
+
+Public repository Security and canonical Documentation closeout remain mandatory.
+```
+
+---
+
+# 26. Next Canonical Document
+
+After this file is approved and saved, the next document to synchronize is:
+
+```text
+doc/PHASE-1-COMPLETION-CHECKLIST.md
+```
+
+That checklist must use this file as its current-state authority.
+
+---
+
+# Change Log
+
+| Version | Date | Change |
+|---|---|---|
+| 1.0.0 | 2026-08-04 | Reconciled Phase 1 status, merged PRs, migration state, recovery limits, AI zero-state, public repository blockers, and canonical truth hierarchy |
