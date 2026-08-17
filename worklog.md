@@ -90,3 +90,32 @@ Stage Summary:
 - Full CRUD: view leads, change status, delete leads
 - Real-time auto-refresh every 15s
 - Smooth view toggle between website and dashboard
+---
+Task ID: 4
+Agent: main
+Task: Power-upgrade MianX.ai with real-time, lead capture, and enhanced features
+
+Work Log:
+- Verified realtime-service already running on port 3003
+- Added socket.io-client integration to dashboard
+- Built real-time WebSocket connection with connect/disconnect handling
+- Added live lead notification toast (appears when new lead arrives via Socket.io)
+- Built Quick Lead Capture form in dashboard sidebar (name + email + submit)
+- Built full Lead Capture Form component (name, email, phone, company, message)
+- Added real-time connection status indicator (green WiFi = connected, red = reconnecting)
+- Dashboard listens for: lead:created, activity:new, lead:updated, lead:deleted events
+- Auto-refresh every 15s as polling fallback
+- Fixed capabilities section JSX rendering issue
+- Verified end-to-end:
+  - Website loads with all sections
+  - Dashboard loads 28 real leads from API
+  - Quick Lead Capture: submitted "Test User" → 29 leads, new lead at top
+  - Socket.io connection established (realtime service on port 3003)
+  - All API routes returning 200
+
+Stage Summary:
+- Real-time WebSocket integration via Socket.io (port 3003)
+- Quick Lead Capture in dashboard sidebar — tested working (28→29 leads)
+- New lead notification toast animation
+- Connection status indicator (WiFi/WifiOff icons)
+- All existing features preserved: marketplace, filters, status change, delete
