@@ -1,0 +1,280 @@
+   206→    const headers = ["Name", "Email", "Phone", "Company", "Source", "Status", "Score", "Value", "Assigned To", "Created"];
+   207→    const rows = filtered.map(l => [l.name, l.email, l.phone || "", l.company || "", l.source, l.status, l.score, l.value, l.assignedTo || "", l.createdAt]);
+   208→    const csvRows = [headers, ...rows].map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(","));
+   209→    const csv = csvRows.join("
+   210→");
+   211→    const blob = new Blob([csv], { type: "text/csv" });
+   212→    const url = URL.createObjectURL(blob);
+   213→    const a = document.createElement("a"); a.href = url; a.download = "mianx-leads-" + new Date().toISOString().slice(0, 10) + ".csv"; a.click();
+   214→    URL.revokeObjectURL(url);
+   215→  };
+   216→
+   217→  if (loading) return <div className="flex items-center justify-center h-[80vh]"><div className="flex flex-col items-center gap-4"><div className="w-10 h-10 border-2 border-[#FF4D00]/30 border-t-[#FF4D00] rounded-full animate-spin"/><p className="text-sm text-[#555566] font-mono">Loading dashboard...</p></div></div>;
+   218→
+   219→  const dashTabs: { key: DashTab; label: string; icon: any }[] = [
+   220→    { key: "leads", label: "Leads", icon: Users },
+   221→    { key: "analytics", label: "Analytics", icon: BarChart3 },
+   222→    { key: "agents", label: "AI Agents", icon: Bot },
+   223→  ];
+   224→
+   225→  const rtClass = rtConnected ? "text-[#00FF88] border-[#00FF88]/20 bg-[#00FF88]/5" : "text-[#FF4444] border-[#FF4444]/20 bg-[#FF4444]/5";
+   226→  const tabClass = (key: DashTab) => activeTab === key ? "flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all bg-[#FF4D00]/10 text-[#FF4D00] border border-[#FF4D00]/30" : "flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all text-[#555566] border border-transparent hover:text-[#888899]";
+   227→  const filterClass = (key: string) => statusFilter === key ? "px-2.5 py-1 text-[10px] font-semibold rounded-md transition-colors bg-[#FF4D00]/15 text-[#FF4D00] border border-[#FF4D00]/30" : "px-2.5 py-1 text-[10px] font-semibold rounded-md transition-colors text-[#555566] border border-transparent hover:text-[#888899]";
+   228→
+   229→  return (
+   230→    <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1440px] mx-auto w-full">
+   231→      <AnimatePresence>{newLeadNotif && (
+   232→        <motion.div initial={{opacity:0,y:-60,x:"-50%"}} animate={{opacity:1,y:0,x:"-50%"}} exit={{opacity:0,y:-60,x:"-50%"}} className="fixed top-20 left-1/2 z-[60] px-5 py-3 rounded-xl bg-[#111118] border border-[#00FF88]/30 shadow-2xl shadow-[#00FF88]/10 flex items-center gap-3">
+   233→          <Sparkles className="w-5 h-5 text-[#00FF88]"/><div><p className="text-sm font-bold">New Lead: {newLeadNotif.name}</p><p className="text-xs text-[#888899]">{newLeadNotif.email} — assigned to {newLeadNotif.assignedTo}</p></div>
+   234→        </motion.div>
+   235→      )}</AnimatePresence>
+   236→      <LeadDetailPanel lead={selectedLead} onClose={() => setSelectedLead(null)} onStatusChange={handleStatus} />
+   237→
+   238→      {/* Header */}
+   239→      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+   240→        <div><h1 className="text-2xl font-bold flex items-center gap-3"><LayoutDashboard className="w-6 h-6 text-[#FF4D00]"/>Super Admin</h1><p className="text-sm text-[#555566] mt-1">Real-time lead intelligence & AI agent command center</p></div>
+   241→        <div className="flex items-center gap-3">
+   242→          <div className={"flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border " + rtClass}>
+   243→            {rtConnected ? <Wifi className="w-3 h-3"/> : <WifiOff className="w-3 h-3"/>}{rtConnected ? "Live" : "Reconnecting"}
+   244→          </div>
+   245→          <div className="relative">
+   246→            <button onClick={() => setNotifOpen(!notifOpen)} className="relative p-2 rounded-lg border border-[#1E1E2A] bg-[#111118] text-[#888899] hover:border-[#FF4D00]/40 hover:text-[#E8E8EC] transition-colors">
+   247→              <Bell className="w-4 h-4"/><span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#FF4D00] text-black text-[9px] font-bold flex items-center justify-center">{activities.length > 0 ? Math.min(activities.length, 9) : 0}</span>
+   248→            </button>
+   249→            <AnimatePresence>{notifOpen && (
+   250→              <motion.div initial={{opacity:0,y:-8,scale:0.95}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:-8,scale:0.95}} className="absolute right-0 top-12 w-80 rounded-xl bg-[#111118] border border-[#1E1E2A] shadow-2xl z-50 overflow-hidden">
+   251→                <div className="p-4 border-b border-[#1E1E2A] flex items-center justify-between"><h3 className="text-sm font-bold">Notifications</h3><button onClick={() => setNotifOpen(false)} className="text-[10px] text-[#FF4D00] hover:underline">Mark all read</button></div>
+   252→                <div className="max-h-72 overflow-y-auto divide-y divide-[#1E1E2A]/30">
+   253→                  {activities.slice(0, 8).map(act => (
+   254→                    <div key={act.id} className="px-4 py-3 hover:bg-[#15151E] transition-colors">
+   255→                      <p className="text-xs text-[#E8E8EC] leading-relaxed">{act.action}</p>
+   256→                      <div className="flex items-center gap-2 mt-1"><span className={act.agent === "System" ? "text-[10px] font-semibold text-[#FFD93D]" : "text-[10px] font-semibold text-[#00D4FF]"}>{act.agent}</span><RelTime d={act.createdAt}/></div>
+   257→                    </div>
+   258→                  ))}
+   259→                </div>
+   260→              </motion.div>
+   261→            )}</AnimatePresence>
+   262→          </div>
+   263→          <button onClick={handleRefresh} className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg border border-[#1E1E2A] bg-[#111118] text-[#888899] hover:border-[#FF4D00]/40 hover:text-[#E8E8EC] transition-colors">
+   264→            <RefreshCw className={"w-3 h-3 " + (refreshing ? "animate-spin" : "")}/>Refresh
+   265→          </button>
+   266→        </div>
+   267→      </div>
+   268→
+   269→      {/* Dashboard Tabs */}
+   270→      <div className="flex items-center gap-2 mb-6 border-b border-[#1E1E2A] pb-4">
+   271→        {dashTabs.map(t => <button key={t.key} onClick={() => setActiveTab(t.key)} className={tabClass(t.key)}><t.icon className="w-4 h-4"/>{t.label}</button>)}
+   272→      </div>
+   273→
+   274→      {/* Stats row */}
+   275→      <motion.div variants={stagger} initial="hidden" animate="visible" className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+   276→        {stats && [
+   277→          { label: "Total Leads", value: stats.totalLeads, icon: Users, color: "#FF4D00", sub: "+" + stats.recentLeads + " this week" },
+   278→          { label: "Hot Leads", value: stats.hotLeads, icon: TrendingUp, color: "#FF4D00", sub: stats.conversions + " conversions" },
+   279→          { label: "Pipeline Value", value: "$" + (stats.totalValue / 1000).toFixed(1) + "K", icon: DollarSign, color: "#00FF88", sub: "all industries" },
+   280→          { label: "Active Agents", value: stats.activeAgents, icon: Activity, color: "#00D4FF", sub: "6 AI agents" },
+   281→        ].map((s, i) => (
+   282→          <motion.div key={s.label} variants={dashFade} custom={i} className="dash-card rounded-xl p-5 relative overflow-hidden">
+   283→            <div className="flex items-start justify-between mb-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: s.color + "15" }}><s.icon className="w-4 h-4" style={{ color: s.color }}/></div><Radio className="w-3 h-3 text-[#00FF88] rec-dot"/></div>
+   284→            <p className="text-2xl font-bold mb-0.5">{s.value}</p><p className="text-xs text-[#555566]">{s.label}</p><p className="text-[10px] text-[#888899] mt-1">{s.sub}</p>
+   285→          </motion.div>
+   286→        ))}
+   287→      </motion.div>
+   288→
+   289→      {/* TAB: Leads */}
+   290→      {activeTab === "leads" && (
+   291→        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+   292→          <div className="xl:col-span-2 dash-card rounded-xl overflow-hidden">
+   293→            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border-b border-[#1E1E2A] gap-3">
+   294→              <div><h2 className="text-base font-bold flex items-center gap-2"><Users className="w-4 h-4 text-[#FF4D00]"/>Leads</h2><p className="text-xs text-[#555566] mt-0.5">{filtered.length} lead{filtered.length !== 1 ? "s" : ""}</p></div>
+   295→              <div className="flex items-center gap-2 flex-wrap">
+   296→                <div className="relative"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#555566]"/><input type="text" placeholder="Search leads..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-7 pr-3 py-1.5 rounded-lg bg-[#08080C] border border-[#1E1E2A] text-[11px] text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50 w-36 transition-all focus:w-48"/></div>
+   297→                <Filter className="w-3.5 h-3.5 text-[#555566]"/>
+   298→                {[{ key: "all", label: "All" }, { key: "hot", label: "Hot" }, { key: "warm", label: "Warm" }, { key: "new", label: "New" }, { key: "cold", label: "Cold" }].map(f => (
+   299→                  <button key={f.key} onClick={() => setStatusFilter(f.key)} className={filterClass(f.key)}>{f.label}</button>
+   300→                ))}
+   301→                <button onClick={exportCSV} className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-md text-[#555566] border border-[#1E1E2A] hover:border-[#00FF88]/30 hover:text-[#00FF88] transition-colors" title="Export CSV"><FileDown className="w-3 h-3"/>Export</button>
+   302→              </div>
+   303→            </div>
+   304→            <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
+   305→              <table className="w-full text-left">
+   306→                <thead className="sticky top-0 bg-[#111118] z-10"><tr className="text-[10px] text-[#555566] uppercase tracking-wider border-b border-[#1E1E2A]">
+   307→                  <th className="px-5 py-3 font-medium">Lead</th><th className="px-4 py-3 font-medium">Source</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Score</th><th className="px-4 py-3 font-medium">Value</th><th className="px-4 py-3 font-medium">Agent</th><th className="px-4 py-3 font-medium">Time</th><th className="px-5 py-3 font-medium text-right">Actions</th>
+   308→                </tr></thead>
+   309→                <tbody className="divide-y divide-[#1E1E2A]/50">
+   310→                  <AnimatePresence>{filtered.map((lead, i) => (
+   311→                    <motion.tr key={lead.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ delay: i * 0.02, duration: 0.25 }} className="hover:bg-[#15151E] transition-colors group cursor-pointer" onClick={() => setSelectedLead(lead)}>
+   312→                      <td className="px-5 py-3"><p className="text-sm font-semibold truncate max-w-[150px]">{lead.name}</p><p className="text-[11px] text-[#555566] truncate max-w-[150px]">{lead.email}</p></td>
+   313→                      <td className="px-4 py-3"><span className="text-xs text-[#888899] capitalize font-mono">{lead.source}</span></td>
+   314→                      <td className="px-4 py-3"><select value={lead.status} onChange={e => handleStatus(lead.id, e.target.value)} className="text-[10px] font-semibold px-2 py-1 rounded-md border-none bg-transparent cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#FF4D00]/50" onClick={e => e.stopPropagation()}><option value="new">New</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option></select></td>
+   315→                      <td className="px-4 py-3"><ScoreBar score={lead.score}/></td>
+   316→                      <td className="px-4 py-3"><span className="text-xs font-mono text-[#E8E8EC]">{lead.value}</span></td>
+   317→                      <td className="px-4 py-3"><span className="text-[11px] text-[#00D4FF] font-medium">{lead.assignedTo || "—"}</span></td>
+   318→                      <td className="px-4 py-3"><RelTime d={lead.createdAt}/></td>
+   319→                      <td className="px-5 py-3 text-right"><div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button className="p-1.5 rounded-md hover:bg-[#1A1A24] text-[#555566] hover:text-[#00D4FF] transition-colors" title="View" onClick={e => { e.stopPropagation(); setSelectedLead(lead); }}><Eye className="w-3.5 h-3.5"/></button><button onClick={e => { e.stopPropagation(); handleDelete(lead.id); }} className="p-1.5 rounded-md hover:bg-[#FF4444]/10 text-[#555566] hover:text-[#FF4444] transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5"/></button></div></td>
+   320→                    </motion.tr>
+   321→                  ))}</AnimatePresence>
+   322→                </tbody>
+   323→              </table>
+   324→              {filtered.length === 0 && <div className="text-center py-12 text-sm text-[#555566]">No leads found</div>}
+   325→            </div>
+   326→          </div>
+   327→          <div className="space-y-6">
+   328→            <div className="dash-card rounded-xl overflow-hidden flex flex-col">
+   329→              <div className="p-5 border-b border-[#1E1E2A] flex items-center justify-between"><h2 className="text-base font-bold flex items-center gap-2"><Activity className="w-4 h-4 text-[#00D4FF]"/>Agent Activity</h2><span className="text-[10px] text-[#555566] font-mono">LIVE</span></div>
+   330→              <div className="flex-1 overflow-y-auto max-h-[280px] divide-y divide-[#1E1E2A]/30">
+   331→                {activities.slice(0, 12).map((act, i) => (
+   332→                  <motion.div key={act.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="px-5 py-3 hover:bg-[#15151E]/50 transition-colors">
+   333→                    <div className="flex items-start gap-3"><div className={"w-2 h-2 rounded-full mt-1.5 shrink-0 " + (act.status === "success" ? "bg-[#00FF88]" : act.agent === "System" ? "bg-[#FFD93D]" : "bg-[#00D4FF]")}/><div className="flex-1 min-w-0"><p className="text-xs text-[#E8E8EC] leading-relaxed">{act.action}</p><div className="flex items-center gap-2 mt-1"><span className={act.agent === "System" ? "text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#FFD93D]/10 text-[#FFD93D]" : "text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#00D4FF]/10 text-[#00D4FF]"}>{act.agent}</span><RelTime d={act.createdAt}/></div></div></div>
+   334→                  </motion.div>
+   335→                ))}
+   336→                {activities.length === 0 && <div className="text-center py-8 text-sm text-[#555566]">No activity</div>}
+   337→              </div>
+   338→            </div>
+   339→            <div className="dash-card rounded-xl overflow-hidden">
+   340→              <div className="p-5 border-b border-[#1E1E2A] flex items-center gap-2"><Sparkles className="w-4 h-4 text-[#FF4D00]"/><h2 className="text-base font-bold">Quick Lead Capture</h2></div>
+   341→              <div className="p-5"><QuickLeadForm onSubmitted={fetchData}/></div>
+   342→            </div>
+   343→          </div>
+   344→        </div>
+   345→      )}
+   346→
+   347→      {/* TAB: Analytics */}
+   348→      {activeTab === "analytics" && <DashboardCharts />}
+   349→
+   350→      {/* TAB: Agents */}
+   351→      {activeTab === "agents" && <AgentCommandCenter />}
+   352→    </div>
+   353→  );
+   354→}
+   355→
+   356→function QuickLeadForm({ onSubmitted }: { onSubmitted?: () => void }) {
+   357→  const [name, setName] = useState(""); const [email, setEmail] = useState("");
+   358→  const [loading, setLoading] = useState(false); const [done, setDone] = useState(false);
+   359→  const submit = async () => {
+   360→    if (!name || !email) return; setLoading(true);
+   361→    await fetch("/api/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, source: "dashboard_quick" }) });
+   362→    setLoading(false); setDone(true); setName(""); setEmail(""); onSubmitted?.();
+   363→    setTimeout(() => setDone(false), 3000);
+   364→  };
+   365→  return (
+   366→    <div className="space-y-3">
+   367→      {done && <p className="text-xs text-[#00FF88] flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5"/>Lead added & processing!</p>}
+   368→      <input value={name} onChange={e => setName(e.target.value)} placeholder="Full Name *" className="w-full px-3 py-2 rounded-lg bg-[#08080C] border border-[#1E1E2A] text-xs text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
+   369→      <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email *" className="w-full px-3 py-2 rounded-lg bg-[#08080C] border border-[#1E1E2A] text-xs text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
+   370→      <button onClick={submit} disabled={loading || !name || !email} className="w-full py-2 rounded-lg bg-[#FF4D00] text-black text-xs font-bold hover:bg-[#FF6A2A] transition-colors disabled:opacity-40 flex items-center justify-center gap-1.5">
+   371→        {loading ? <RefreshCw className="w-3 h-3 animate-spin"/> : <Send className="w-3 h-3"/>}Add Lead
+   372→      </button>
+   373→    </div>
+   374→  );
+   375→}
+   376→
+   377→/* ══════════════════════════ WEBSITE VIEW (UPGRADED) ══════════════════════════ */
+   378→function WebsiteView() {
+   379→  const [activeCategory, setActiveCategory] = useState<Category>("all");
+   380→  const [searchQuery, setSearchQuery] = useState("");
+   381→  const filtered = useMemo(() => {
+   382→    let items = activeCategory === "all" ? marketplaceItems : marketplaceItems.filter(i => i.category === activeCategory);
+   383→    if (searchQuery.trim()) { const q = searchQuery.toLowerCase(); items = items.filter(i => i.name.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q)); }
+   384→    return items;
+   385→  }, [activeCategory, searchQuery]);
+   386→
+   387→  return (
+   388→    <>
+   389→      <section className="relative pt-32 pb-20 md:pt-44 md:pb-28 px-6">
+   390→        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] rounded-full bg-[#FF4D00]/[0.04] blur-[120px] pointer-events-none"/>
+   391→        <div className="absolute top-20 right-1/4 w-[400px] h-[400px] rounded-full bg-[#00D4FF]/[0.03] blur-[100px] pointer-events-none"/>
+   392→        <div className="relative mx-auto max-w-5xl text-center">
+   393→          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="flex justify-center mb-8"><span className="section-marker">Enterprise Platform</span></motion.div>
+   394→          <motion.h1 variants={fadeUp} initial="hidden" animate="visible" custom={1} className="text-4xl sm:text-5xl md:text-7xl font-extrabold leading-[1.05] tracking-tight mb-6">The Enterprise Operating System <br className="hidden sm:block"/><span className="bg-gradient-to-r from-[#FF4D00] via-[#FF8C42] to-[#FFD93D] bg-clip-text text-transparent">for Modern Businesses</span></motion.h1>
+   395→          <motion.p variants={fadeUp} initial="hidden" animate="visible" custom={2} className="max-w-2xl mx-auto text-base sm:text-lg text-[#888899] leading-relaxed mb-10">One intelligent platform. Seven industry-specific operating systems. Automate operations, eliminate manual work, and scale effortlessly with AI-powered agents.</motion.p>
+   396→          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3} className="flex flex-col sm:flex-row items-center justify-center gap-4">
+   397→            <a href="#industries" className="pulse-btn px-8 py-3.5 text-sm font-bold rounded-xl bg-[#FF4D00] text-black hover:bg-[#FF6A2A] transition-colors inline-flex items-center gap-2">Explore Industries <ArrowRight className="w-4 h-4"/></a>
+   398→            <a href="#marketplace" className="px-8 py-3.5 text-sm font-semibold rounded-xl border border-[#2A2A3A] text-[#E8E8EC] hover:border-[#FF4D00]/40 hover:text-white transition-colors">Browse Marketplace</a>
+   399→          </motion.div>
+   400→          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={4} className="mt-14 flex flex-wrap items-center justify-center gap-6 text-xs text-[#555566] tracking-widest uppercase font-mono"><span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-[#00FF88] accent-dot"/>All Systems Operational</span><span className="hidden sm:inline">|</span><span>7 Industry Verticals</span><span className="hidden sm:inline">|</span><span>500+ Integrations</span></motion.div>
+   401→        </div>
+   402→      </section>
+   403→      <LogoCloudSection />
+   404→      <div className="border-y border-[#1E1E2A]/60 py-4 overflow-hidden"><div className="marquee-track">{[...industries, ...industries].map((ind, i) => <span key={i} className="mx-8 text-sm font-mono text-[#555566] tracking-widest uppercase whitespace-nowrap flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full" style={{ background: ind.color }}/>;{ind.name}</span>)}</div></div>
+   405→      <section id="industries" className="py-20 md:py-24 px-6"><div className="mx-auto max-w-7xl">
+   406→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }} custom={0} className="text-center mb-14"><span className="section-marker">Industry Solutions</span><h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">Seven OS. Every Industry Covered.</h2><p className="mt-4 max-w-xl mx-auto text-[#888899]">Purpose-built operating systems for the world&apos;s most critical industries.</p></motion.div>
+   407→        <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-60px" }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+   408→          {industries.map((ind, i) => (
+   409→            <motion.div key={ind.name} variants={fadeUp} custom={i} className="group relative rounded-2xl border border-[#1E1E2A] bg-[#111118] p-6 hover:border-transparent transition-all duration-500 cursor-pointer overflow-hidden">
+   410→              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" style={{ background: "radial-gradient(circle at 50% 0%," + ind.bg + ",transparent 70%)" }}/>
+   411→              <div className="absolute top-0 inset-x-0 h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: "linear-gradient(90deg,transparent," + ind.color + ",transparent)" }}/>
+   412→              <div className="relative"><div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-110" style={{ background: ind.bg }}><ind.icon className="w-6 h-6" style={{ color: ind.color }}/></div><h3 className="text-lg font-bold mb-2 flex items-center gap-2">{ind.name}<ChevronRight className="w-4 h-4 text-[#555566] group-hover:text-[#E8E8EC] group-hover:translate-x-1 transition-all duration-300"/></h3><p className="text-sm text-[#888899] leading-relaxed">{ind.tagline}</p></div>
+   413→            </motion.div>
+   414→          ))}
+   415→        </motion.div>
+   416→      </div></section>
+   417→      <StatsCounterSection />
+   418→      <HowItWorksSection />
+   419→      <section id="marketplace" className="py-20 md:py-24 px-6 border-t border-[#1E1E2A]/40"><div className="mx-auto max-w-7xl">
+   420→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }} custom={0} className="text-center mb-10"><span className="section-marker">Level 5</span><h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">MianX Marketplace</h2><p className="mt-4 max-w-2xl mx-auto text-[#888899]">Extend your OS with apps, plugins, themes, AI agents, reports, and integrations.</p></motion.div>
+   421→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} custom={1} className="max-w-xl mx-auto mb-8"><div className="relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555566]"/><input type="text" placeholder="Search apps, plugins, agents..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-11 pr-4 py-3 rounded-xl bg-[#111118] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#555566] focus:outline-none focus:border-[#FF4D00]/50 transition-colors"/></div></motion.div>
+   422→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} custom={2} className="flex flex-wrap items-center justify-center gap-2 mb-10">
+   423→          {categories.map(cat => { const a = activeCategory === cat.key; return (<button key={cat.key} onClick={() => setActiveCategory(cat.key)} className={"flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border " + (a ? "bg-[#FF4D00]/10 border-[#FF4D00]/40 text-[#FF4D00]" : "bg-[#111118] border-[#1E1E2A] text-[#888899] hover:border-[#2A2A3A] hover:text-[#E8E8EC]")}><cat.icon className="w-3.5 h-3.5"/>{cat.label}<span className={"text-xs px-1.5 py-0.5 rounded-md " + (a ? "bg-[#FF4D00]/20 text-[#FF4D00]" : "bg-[#1A1A24] text-[#555566]")}>{cat.count}</span></button>); })}
+   424→        </motion.div>
+   425→        <div className="flex items-center justify-between mb-6"><p className="text-xs text-[#555566] font-mono tracking-wider uppercase">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p><a href="#marketplace" className="text-xs text-[#555566] hover:text-[#FF4D00] transition-colors flex items-center gap-1">Powered by MianX.ai <Cpu className="w-3 h-3"/></a></div>
+   426→        <AnimatePresence mode="wait"><motion.div key={activeCategory + searchQuery} variants={stagger} initial="hidden" animate="visible" exit="hidden" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+   427→          {filtered.slice(0, 12).map((item, i) => (
+   428→            <motion.div key={item.name} variants={fadeUp} custom={i} className={"group relative rounded-2xl border bg-[#111118] p-5 transition-all duration-400 hover:bg-[#15151E] cursor-pointer overflow-hidden " + (item.featured ? "border-[#FF4D00]/30 hover:border-[#FF4D00]/50" : "border-[#1E1E2A] hover:border-[#2A2A3A]")}>
+   429→              {item.featured && <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-[#FF4D00] to-transparent"/>}
+   430→              <div className="flex items-start gap-4"><div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: item.color + "15" }}><item.icon className="w-5 h-5" style={{ color: item.color }}/></div><div className="flex-1 min-w-0"><div className="flex items-center gap-2 mb-1"><h3 className="text-sm font-bold truncate">{item.name}</h3>{item.badge && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md shrink-0" style={{ background: item.badgeColor, color: item.color }}>{item.badge}</span>}</div><p className="text-xs text-[#888899] leading-relaxed mb-3 line-clamp-2">{item.desc}</p><div className="flex items-center gap-3 mb-3"><div className="flex items-center gap-1.5"><Stars rating={item.rating}/><span className="text-xs text-[#888899]">{item.rating}</span><span className="text-[10px] text-[#555566]">({item.reviews.toLocaleString()})</span></div><span className="text-[10px] text-[#555566]">|</span><div className="flex items-center gap-1"><Download className="w-3 h-3 text-[#555566]"/><span className="text-xs text-[#888899]">{item.installs}</span></div></div><div className="flex items-center justify-between"><span className={"text-sm font-bold " + (item.price === "Free" ? "text-[#00FF88]" : "text-[#E8E8EC]")}>{item.price}</span><button className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#FF4D00] text-black hover:bg-[#FF6A2A] transition-colors inline-flex items-center gap-1.5" onClick={e => e.stopPropagation()}>Install<Download className="w-3 h-3"/></button></div></div></div>
+   431→            </motion.div>
+   432→          ))}
+   433→        </motion.div></AnimatePresence>
+   434→        {filtered.length > 12 && <div className="text-center mt-8"><button className="px-6 py-2.5 text-sm font-semibold rounded-xl border border-[#2A2A3A] text-[#888899] hover:border-[#FF4D00]/40 hover:text-[#E8E8EC] transition-colors">Load More ({filtered.length - 12} remaining)</button></div>}
+   435→        {filtered.length === 0 && <div className="text-center py-16"><Search className="w-10 h-10 text-[#2A2A3A] mx-auto mb-4"/><p className="text-[#888899] text-sm">No results found</p><button onClick={() => { setSearchQuery(""); setActiveCategory("all"); }} className="mt-3 text-xs text-[#FF4D00] hover:underline">Clear filters</button></div>}
+   436→      </div></section>
+   437→      <section id="capabilities" className="py-20 md:py-24 px-6 border-t border-[#1E1E2A]/40"><div className="mx-auto max-w-6xl">
+   438→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }} custom={0} className="text-center mb-14"><span className="section-marker">Platform Capabilities</span><h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">Built for Scale. Powered by AI.</h2></motion.div>
+   439→        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{capabilities.map((cap, i) => (<motion.div key={cap.title} variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} custom={i} className="notch-corner rounded-2xl border border-[#1E1E2A] bg-[#111118] p-8 hover:bg-[#15151E] transition-colors"><cap.icon className="w-8 h-8 text-[#FF4D00] mb-4"/><h3 className="text-xl font-bold mb-3">{cap.title}</h3><p className="text-sm text-[#888899] leading-relaxed">{cap.desc}</p></motion.div>))}</div>
+   440→      </div></section>
+   441→      <TestimonialsSection />
+   442→      <PricingSection />
+   443→      <section className="py-20 md:py-24 px-6 border-t border-[#1E1E2A]/40"><div className="mx-auto max-w-3xl text-center"><motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }} custom={0}><h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-5">Ready to Transform <span className="bg-gradient-to-r from-[#FF4D00] to-[#00D4FF] bg-clip-text text-transparent">Your Business?</span></h2><p className="text-[#888899] max-w-lg mx-auto mb-10">Join hundreds of enterprises already running on MianX.ai.</p><a href="#marketplace" className="pulse-btn inline-flex items-center gap-2 px-10 py-4 text-base font-bold rounded-xl bg-[#FF4D00] text-black hover:bg-[#FF6A2A] transition-colors">Start Free Trial <ArrowRight className="w-5 h-5"/></a></motion.div></section>
+   444→    </>
+   445→  );
+   446→}
+   447→
+   448→/* ══════════════════════════ MAIN PAGE ══════════════════════════ */
+   449→export default function HomePage() {
+   450→  const [view, setView] = useState<"site" | "dashboard">("site");
+   451→  const [mobileOpen, setMobileOpen] = useState(false);
+   452→  const viewLabel = view === "dashboard" ? "Back to Site" : "Dashboard";
+   453→  const viewIcon = view === "dashboard" ? <Cpu className="w-3.5 h-3.5"/> : <LayoutDashboard className="w-3.5 h-3.5"/>;
+   454→  return (
+   455→    <div className="min-h-screen flex flex-col bg-[#08080C] text-[#E8E8EC] overflow-x-hidden">
+   456→      <div className="grain"/>
+   457→      <header className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-[#08080C]/70 border-b border-[#1E1E2A]/60">
+   458→        <nav className="mx-auto max-w-7xl flex items-center justify-between px-6 h-16">
+   459→          <button onClick={() => setView("site")} className="flex items-center gap-2.5 group"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#FF4D00] to-[#FF8C42] flex items-center justify-center shadow-lg shadow-[#FF4D00]/20 group-hover:shadow-[#FF4D00]/40 transition-shadow"><Cpu className="w-4 h-4 text-black"/></div><span className="text-lg font-bold tracking-tight">Mian<span className="text-[#FF4D00]">X</span>.ai</span></button>
+   460→          <div className="hidden md:flex items-center gap-5">
+   461→            {view === "site" && <><a href="#industries" className="nav-link">Industries</a><a href="#marketplace" className="nav-link">Marketplace</a><a href="#capabilities" className="nav-link">Capabilities</a></>}
+   462→            <button onClick={() => setView(view === "dashboard" ? "site" : "dashboard")} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-colors bg-[#FF4D00] text-black hover:bg-[#FF6A2A]">{viewIcon}{viewLabel}</button>
+   463→          </div>
+   464→          <button className="md:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">{mobileOpen ? <X className="w-5 h-5"/> : <Menu className="w-5 h-5"/>}</button>
+   465→        </nav>
+   466→        {mobileOpen && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="md:hidden border-t border-[#1E1E2A]/60 bg-[#08080C]/95 backdrop-blur-xl"><div className="flex flex-col gap-4 px-6 py-5">
+   467→          {view === "site" && <><a href="#industries" className="nav-link" onClick={() => setMobileOpen(false)}>Industries</a><a href="#marketplace" className="nav-link" onClick={() => setMobileOpen(false)}>Marketplace</a><a href="#capabilities" className="nav-link" onClick={() => setMobileOpen(false)}>Capabilities</a></>}
+   468→          <button onClick={() => { setView(view === "dashboard" ? "site" : "dashboard"); setMobileOpen(false); }} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg bg-[#FF4D00] text-black justify-center">{viewIcon}{viewLabel}</button>
+   469→        </div></motion.div>}
+   470→      </header>
+   471→      <main className={"flex-1 " + (view !== "site" ? "pt-20" : "")}>
+   472→        <AnimatePresence mode="wait">
+   473→          {view === "site" && <motion.div key="site" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}><WebsiteView/></motion.div>}
+   474→          {view === "dashboard" && <motion.div key="dash" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}><DashboardView/></motion.div>}
+   475→        </AnimatePresence>
+   476→      </main>
+   477→      <footer className="border-t border-[#1E1E2A]/60 py-8 px-6"><div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
+   478→        <div className="flex items-center gap-2 text-sm text-[#555566]"><div className="w-5 h-5 rounded bg-gradient-to-br from-[#FF4D00] to-[#FF8C42] flex items-center justify-center"><Cpu className="w-2.5 h-2.5 text-black"/></div><span>MianX.ai</span></div>
+   479→        <div className="flex items-center gap-6 text-xs text-[#555566]"><span>2025 MianX.ai. All rights reserved.</span></div>
+   480→        <a href="/" className="group flex items-center gap-1.5 text-xs text-[#555566] hover:text-[#FF4D00] transition-colors">Powered by <span className="font-bold text-[#888899] group-hover:text-[#FF4D00] transition-colors">MianX.ai</span><ArrowRight className="w-3 h-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"/></a>
+   481→      </div></footer>
+   482→    </div>
+   483→  );
+   484→}
+   485→

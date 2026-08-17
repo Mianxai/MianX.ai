@@ -1,0 +1,333 @@
+   100→
+   101→  const handleSubmit = async (e: React.FormEvent) => {
+   102→    e.preventDefault();
+   103→    if (!form.name || !form.email) return;
+   104→    setSubmitting(true); setResult("");
+   105→    try {
+   106→      const res = await fetch("/api/leads", {
+   107→        method: "POST",
+   108→        headers: { "Content-Type": "application/json" },
+   109→        body: JSON.stringify({ ...form, source: "capture_form" }),
+   110→      });
+   111→      if (res.ok) { setResult("success"); setForm({ name: "", email: "", phone: "", company: "", message: "" }); onSubmitted?.(); }
+   112→      else setResult("error");
+   113→    } catch { setResult("error"); }
+   114→    setSubmitting(false);
+   115→  };
+   116→
+   117→  return (
+   118→    <div className="mx-auto max-w-lg">
+   119→      <div className="dash-card rounded-2xl p-8">
+   120→        <div className="flex items-center gap-3 mb-6">
+   121→          <div className="w-10 h-10 rounded-xl bg-[#FF4D00]/10 flex items-center justify-center"><UserPlus className="w-5 h-5 text-[#FF4D00]" /></div>
+   122→          <div><h2 className="text-lg font-bold">Submit a Lead</h2><p className="text-xs text-[#555566]">AI agents will qualify & assign automatically</p></div>
+   123→        </div>
+   124→
+   125→        {result === "success" && (
+   126→          <motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} className="flex items-center gap-2 mb-6 p-3 rounded-xl bg-[#00FF88]/10 border border-[#00FF88]/20 text-[#00FF88] text-sm"><CheckCircle2 className="w-4 h-4 shrink-0"/>Lead submitted! AI agents are processing it now.</motion.div>
+   127→        )}
+   128→        {result === "error" && (
+   129→          <motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} className="flex items-center gap-2 mb-6 p-3 rounded-xl bg-[#FF4444]/10 border border-[#FF4444]/20 text-[#FF4444] text-sm"><AlertCircle className="w-4 h-4 shrink-0"/>Failed to submit. Please try again.</motion.div>
+   130→        )}
+   131→
+   132→        <form onSubmit={handleSubmit} className="space-y-4">
+   133→          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   134→            <div><label className="text-xs text-[#888899] mb-1.5 block">Full Name *</label><div className="relative"><UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555566]"/><input required value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50 transition-colors" placeholder="John Doe"/></div></div>
+   135→            <div><label className="text-xs text-[#888899] mb-1.5 block">Email *</label><div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555566]"/><input required type="email" value={form.email} onChange={e=>setForm(p=>({...p,email:e.target.value}))} className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50 transition-colors" placeholder="john@company.com"/></div></div>
+   136→          </div>
+   137→          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   138→            <div><label className="text-xs text-[#888899] mb-1.5 block">Phone</label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555566]"/><input value={form.phone} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50 transition-colors" placeholder="+92-300-1234567"/></div></div>
+   139→            <div><label className="text-xs text-[#888899] mb-1.5 block">Company</label><div className="relative"><Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555566]"/><input value={form.company} onChange={e=>setForm(p=>({...p,company:e.target.value}))} className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50 transition-colors" placeholder="Acme Inc."/></div></div>
+   140→          </div>
+   141→          <div><label className="text-xs text-[#888899] mb-1.5 block">Message</label><div className="relative"><MessageSquare className="absolute left-3 top-3 w-4 h-4 text-[#555566]"/><textarea value={form.message} onChange={e=>setForm(p=>({...p,message:e.target.value}))} rows={3} className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50 transition-colors resize-none" placeholder="Tell us about your needs..."/></div></div>
+   142→          <button type="submit" disabled={submitting||!form.name||!form.email} className="w-full py-3 rounded-xl bg-[#FF4D00] text-black font-bold text-sm hover:bg-[#FF6A2A] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+   143→            {submitting ? <><RefreshCw className="w-4 h-4 animate-spin"/>Processing...</> : <><Send className="w-4 h-4"/>Submit Lead — AI Will Qualify It</>}
+   144→          </button>
+   145→        </form>
+   146→      </div>
+   147→    </div>
+   148→  );
+   149→}
+   150→
+   151→/* ══════════════════════════ DASHBOARD VIEW ══════════════════════════ */
+   152→function DashboardView() {
+   153→  const [stats, setStats] = useState<DashboardStats | null>(null);
+   154→  const [leads, setLeads] = useState<Lead[]>([]);
+   155→  const [activities, setActivities] = useState<AgentActivity[]>([]);
+   156→  const [loading, setLoading] = useState(true);
+   157→  const [statusFilter, setStatusFilter] = useState("all");
+   158→  const [refreshing, setRefreshing] = useState(false);
+   159→  const [rtConnected, setRtConnected] = useState(false);
+   160→  const [newLeadNotif, setNewLeadNotif] = useState<Lead | null>(null);
+   161→  const socketRef = useRef<Socket | null>(null);
+   162→
+   163→  const fetchData = useCallback(async () => {
+   164→    try {
+   165→      const [sR, lR, aR] = await Promise.all([fetch("/api/stats"), fetch("/api/leads"), fetch("/api/activity")]);
+   166→      setStats(await sR.json());
+   167→      const lD = await lR.json(); setLeads(lD.leads || []);
+   168→      setActivities(await aR.json());
+   169→    } catch (e) { console.error("Fetch error:", e); }
+   170→    finally { setLoading(false); }
+   171→  }, []);
+   172→
+   173→  // Initial fetch + polling fallback
+   174→  useEffect(() => { fetchData(); const iv = setInterval(fetchData, 15000); return () => clearInterval(iv); }, [fetchData]);
+   175→
+   176→  // Socket.io real-time connection
+   177→  useEffect(() => {
+   178→    const sock = socketIO("/?XTransformPort=3003", { transports: ["websocket"], reconnection: true, reconnectionAttempts: 10, reconnectionDelay: 2000 });
+   179→    socketRef.current = sock;
+   180→    sock.on("connect", () => { setRtConnected(true); sock.emit("join-dashboard"); });
+   181→    sock.on("disconnect", () => setRtConnected(false));
+   182→    sock.on("lead:created", (data: { lead: Lead }) => {
+   183→      setNewLeadNotif(data.lead);
+   184→      setTimeout(() => setNewLeadNotif(null), 4000);
+   185→      fetchData(); // refresh data
+   186→    });
+   187→    sock.on("activity:new", () => fetchData());
+   188→    sock.on("lead:updated", () => fetchData());
+   189→    sock.on("lead:deleted", () => fetchData());
+   190→    return () => { sock.disconnect(); };
+   191→  }, [fetchData]);
+   192→
+   193→  const handleRefresh = async () => { setRefreshing(true); await fetchData(); setRefreshing(false); };
+   194→  const handleDelete = async (id: string) => { await fetch(`/api/leads/${id}`,{method:"DELETE"}); fetchData(); };
+   195→  const handleStatus = async (id: string, status: string) => { await fetch(`/api/leads/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status})}); setLeads(p=>p.map(l=>l.id===id?{...l,status}:l)); };
+   196→
+   197→  const filtered = statusFilter==="all" ? leads : leads.filter(l=>l.status===statusFilter);
+   198→
+   199→  if (loading) return <div className="flex items-center justify-center h-[80vh]"><div className="flex flex-col items-center gap-4"><div className="w-10 h-10 border-2 border-[#FF4D00]/30 border-t-[#FF4D00] rounded-full animate-spin"/><p className="text-sm text-[#555566] font-mono">Loading dashboard...</p></div></div>;
+   200→
+   201→  return (
+   202→    <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1440px] mx-auto w-full">
+   203→      {/* New lead notification toast */}
+   204→      <AnimatePresence>{newLeadNotif && (
+   205→        <motion.div initial={{opacity:0,y:-60,x:"-50%"}} animate={{opacity:1,y:0,x:"-50%"}} exit={{opacity:0,y:-60,x:"-50%"}} className="fixed top-20 left-1/2 z-[60] px-5 py-3 rounded-xl bg-[#111118] border border-[#00FF88]/30 shadow-2xl shadow-[#00FF88]/10 flex items-center gap-3">
+   206→          <Sparkles className="w-5 h-5 text-[#00FF88]"/><div><p className="text-sm font-bold">New Lead: {newLeadNotif.name}</p><p className="text-xs text-[#888899]">{newLeadNotif.email} — assigned to {newLeadNotif.assignedTo}</p></div>
+   207→        </motion.div>
+   208→      )}</AnimatePresence>
+   209→
+   210→      {/* Header */}
+   211→      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+   212→        <div><h1 className="text-2xl font-bold flex items-center gap-3"><LayoutDashboard className="w-6 h-6 text-[#FF4D00]"/>Super Admin Dashboard</h1><p className="text-sm text-[#555566] mt-1">Real-time lead intelligence & AI agent monitoring</p></div>
+   213→        <div className="flex items-center gap-3">
+   214→          <div className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border ${rtConnected?"text-[#00FF88] border-[#00FF88]/20 bg-[#00FF88]/5":"text-[#FF4444] border-[#FF4444]/20 bg-[#FF4444]/5"}`}>
+   215→            {rtConnected ? <Wifi className="w-3 h-3"/> : <WifiOff className="w-3 h-3"/>}
+   216→            {rtConnected ? "Real-time Connected" : "Reconnecting..."}
+   217→          </div>
+   218→          <button onClick={handleRefresh} className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg border border-[#1E1E2A] bg-[#111118] text-[#888899] hover:border-[#FF4D00]/40 hover:text-[#E8E8EC] transition-colors">
+   219→            <RefreshCw className={`w-3 h-3 ${refreshing?"animate-spin":""}`}/>Refresh
+   220→          </button>
+   221→        </div>
+   222→      </div>
+   223→
+   224→      {/* Stats */}
+   225→      <motion.div variants={stagger} initial="hidden" animate="visible" className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+   226→        {stats && [
+   227→          { label: "Total Leads", value: stats.totalLeads, icon: Users, color: "#FF4D00", sub: `+${stats.recentLeads} this week` },
+   228→          { label: "Hot Leads", value: stats.hotLeads, icon: TrendingUp, color: "#FF4D00", sub: `${stats.conversions} conversions` },
+   229→          { label: "Pipeline Value", value: `$${(stats.totalValue/1000).toFixed(1)}K`, icon: DollarSign, color: "#00FF88", sub: "all industries" },
+   230→          { label: "Active Agents", value: stats.activeAgents, icon: Activity, color: "#00D4FF", sub: "3 AI agents" },
+   231→        ].map((s,i)=>(
+   232→          <motion.div key={s.label} variants={dashFade} custom={i} className="dash-card rounded-xl p-5 relative overflow-hidden">
+   233→            <div className="flex items-start justify-between mb-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{background:`${s.color}15`}}><s.icon className="w-4 h-4" style={{color:s.color}}/></div><Radio className="w-3 h-3 text-[#00FF88] rec-dot"/></div>
+   234→            <p className="text-2xl font-bold mb-0.5">{s.value}</p><p className="text-xs text-[#555566]">{s.label}</p><p className="text-[10px] text-[#888899] mt-1">{s.sub}</p>
+   235→          </motion.div>
+   236→        ))}
+   237→      </motion.div>
+   238→
+   239→      {/* Main grid */}
+   240→      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+   241→        {/* Leads Table */}
+   242→        <div className="xl:col-span-2 dash-card rounded-xl overflow-hidden">
+   243→          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border-b border-[#1E1E2A] gap-3">
+   244→            <div><h2 className="text-base font-bold flex items-center gap-2"><Users className="w-4 h-4 text-[#FF4D00]"/>Leads</h2><p className="text-xs text-[#555566] mt-0.5">{filtered.length} lead{filtered.length!==1?"s":""}</p></div>
+   245→            <div className="flex items-center gap-2"><Filter className="w-3.5 h-3.5 text-[#555566]"/>
+   246→              {[{key:"all",label:"All"},{key:"hot",label:"Hot"},{key:"warm",label:"Warm"},{key:"new",label:"New"},{key:"cold",label:"Cold"}].map(f=>(
+   247→                <button key={f.key} onClick={()=>setStatusFilter(f.key)} className={`px-2.5 py-1 text-[10px] font-semibold rounded-md transition-colors ${statusFilter===f.key?"bg-[#FF4D00]/15 text-[#FF4D00] border border-[#FF4D00]/30":"text-[#555566] border border-transparent hover:text-[#888899]"}`}>{f.label}</button>
+   248→              ))}
+   249→            </div>
+   250→          </div>
+   251→          <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
+   252→            <table className="w-full text-left">
+   253→              <thead className="sticky top-0 bg-[#111118] z-10"><tr className="text-[10px] text-[#555566] uppercase tracking-wider border-b border-[#1E1E2A]">
+   254→                <th className="px-5 py-3 font-medium">Lead</th><th className="px-4 py-3 font-medium">Source</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Score</th><th className="px-4 py-3 font-medium">Value</th><th className="px-4 py-3 font-medium">Agent</th><th className="px-4 py-3 font-medium">Time</th><th className="px-5 py-3 font-medium text-right">Actions</th>
+   255→              </tr></thead>
+   256→              <tbody className="divide-y divide-[#1E1E2A]/50">
+   257→                <AnimatePresence>{filtered.map((lead,i)=>(
+   258→                  <motion.tr key={lead.id} initial={{opacity:0,x:-10}} animate={{opacity:1,x:0}} exit={{opacity:0,x:10}} transition={{delay:i*0.02,duration:0.25}} className="hover:bg-[#15151E] transition-colors group">
+   259→                    <td className="px-5 py-3"><p className="text-sm font-semibold truncate max-w-[150px]">{lead.name}</p><p className="text-[11px] text-[#555566] truncate max-w-[150px]">{lead.email}</p></td>
+   260→                    <td className="px-4 py-3"><span className="text-xs text-[#888899] capitalize font-mono">{lead.source}</span></td>
+   261→                    <td className="px-4 py-3"><select value={lead.status} onChange={e=>handleStatus(lead.id,e.target.value)} className="text-[10px] font-semibold px-2 py-1 rounded-md border-none bg-transparent cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#FF4D00]/50" onClick={e=>e.stopPropagation()}><option value="new">New</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option></select></td>
+   262→                    <td className="px-4 py-3"><ScoreBar score={lead.score}/></td>
+   263→                    <td className="px-4 py-3"><span className="text-xs font-mono text-[#E8E8EC]">{lead.value}</span></td>
+   264→                    <td className="px-4 py-3"><span className="text-[11px] text-[#00D4FF] font-medium">{lead.assignedTo||"—"}</span></td>
+   265→                    <td className="px-4 py-3"><RelTime d={lead.createdAt}/></td>
+   266→                    <td className="px-5 py-3 text-right"><div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button className="p-1.5 rounded-md hover:bg-[#1A1A24] text-[#555566] hover:text-[#00D4FF] transition-colors" title="View"><Eye className="w-3.5 h-3.5"/></button><button onClick={e=>{e.stopPropagation();handleDelete(lead.id);}} className="p-1.5 rounded-md hover:bg-[#FF4444]/10 text-[#555566] hover:text-[#FF4444] transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5"/></button></div></td>
+   267→                  </motion.tr>
+   268→                ))}</AnimatePresence>
+   269→              </tbody>
+   270→            </table>
+   271→            {filtered.length===0 && <div className="text-center py-12 text-sm text-[#555566]">No leads found</div>}
+   272→          </div>
+   273→        </div>
+   274→
+   275→        {/* Sidebar: Activity + Lead Capture */}
+   276→        <div className="space-y-6">
+   277→          {/* Activity Feed */}
+   278→          <div className="dash-card rounded-xl overflow-hidden flex flex-col">
+   279→            <div className="p-5 border-b border-[#1E1E2A] flex items-center justify-between"><h2 className="text-base font-bold flex items-center gap-2"><Activity className="w-4 h-4 text-[#00D4FF]"/>Agent Activity</h2><span className="text-[10px] text-[#555566] font-mono">LIVE</span></div>
+   280→            <div className="flex-1 overflow-y-auto max-h-[280px] divide-y divide-[#1E1E2A]/30">
+   281→              {activities.slice(0,12).map((act,i)=>(
+   282→                <motion.div key={act.id} initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} transition={{delay:i*0.03}} className="px-5 py-3 hover:bg-[#15151E]/50 transition-colors">
+   283→                  <div className="flex items-start gap-3"><div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${act.status==="success"?"bg-[#00FF88]":act.agent==="System"?"bg-[#FFD93D]":"bg-[#00D4FF]"}`}/><div className="flex-1 min-w-0"><p className="text-xs text-[#E8E8EC] leading-relaxed">{act.action}</p><div className="flex items-center gap-2 mt-1"><span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${act.agent==="System"?"bg-[#FFD93D]/10 text-[#FFD93D]":"bg-[#00D4FF]/10 text-[#00D4FF]"}`}>{act.agent}</span><RelTime d={act.createdAt}/></div></div></div>
+   284→                </motion.div>
+   285→              ))}
+   286→              {activities.length===0 && <div className="text-center py-8 text-sm text-[#555566]">No activity</div>}
+   287→            </div>
+   288→          </div>
+   289→
+   290→          {/* Quick Lead Capture */}
+   291→          <div className="dash-card rounded-xl overflow-hidden">
+   292→            <div className="p-5 border-b border-[#1E1E2A] flex items-center gap-2"><Sparkles className="w-4 h-4 text-[#FF4D00]"/><h2 className="text-base font-bold">Quick Lead Capture</h2></div>
+   293→            <div className="p-5">
+   294→              <QuickLeadForm onSubmitted={fetchData}/>
+   295→            </div>
+   296→          </div>
+   297→        </div>
+   298→      </div>
+   299→    </div>
+   300→  );
+   301→}
+   302→
+   303→/* Quick inline lead form for dashboard sidebar */
+   304→function QuickLeadForm({ onSubmitted }: { onSubmitted?: () => void }) {
+   305→  const [name, setName] = useState("");
+   306→  const [email, setEmail] = useState("");
+   307→  const [loading, setLoading] = useState(false);
+   308→  const [done, setDone] = useState(false);
+   309→  const submit = async () => {
+   310→    if (!name || !email) return;
+   311→    setLoading(true);
+   312→    await fetch("/api/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, source: "dashboard_quick" }) });
+   313→    setLoading(false); setDone(true); setName(""); setEmail(""); onSubmitted?.();
+   314→    setTimeout(() => setDone(false), 3000);
+   315→  };
+   316→  return (
+   317→    <div className="space-y-3">
+   318→      {done && <p className="text-xs text-[#00FF88] flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5"/>Lead added & processing!</p>}
+   319→      <input value={name} onChange={e=>setName(e.target.value)} placeholder="Full Name *" className="w-full px-3 py-2 rounded-lg bg-[#08080C] border border-[#1E1E2A] text-xs text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
+   320→      <input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="Email *" className="w-full px-3 py-2 rounded-lg bg-[#08080C] border border-[#1E1E2A] text-xs text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
+   321→      <button onClick={submit} disabled={loading||!name||!email} className="w-full py-2 rounded-lg bg-[#FF4D00] text-black text-xs font-bold hover:bg-[#FF6A2A] transition-colors disabled:opacity-40 flex items-center justify-center gap-1.5">
+   322→        {loading ? <RefreshCw className="w-3 h-3 animate-spin"/> : <Send className="w-3 h-3"/>}Add Lead
+   323→      </button>
+   324→    </div>
+   325→  );
+   326→}
+   327→
+   328→/* ══════════════════════════ WEBSITE VIEW ══════════════════════════ */
+   329→function WebsiteView() {
+   330→  const [activeCategory, setActiveCategory] = useState<Category>("all");
+   331→  const [searchQuery, setSearchQuery] = useState("");
+   332→  const filtered = useMemo(() => {
+   333→    let items = activeCategory === "all" ? marketplaceItems : marketplaceItems.filter(i => i.category === activeCategory);
+   334→    if (searchQuery.trim()) { const q = searchQuery.toLowerCase(); items = items.filter(i => i.name.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q)); }
+   335→    return items;
+   336→  }, [activeCategory, searchQuery]);
+   337→
+   338→  return (
+   339→    <>
+   340→      <section className="relative pt-32 pb-20 md:pt-44 md:pb-28 px-6">
+   341→        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] rounded-full bg-[#FF4D00]/[0.04] blur-[120px] pointer-events-none"/>
+   342→        <div className="absolute top-20 right-1/4 w-[400px] h-[400px] rounded-full bg-[#00D4FF]/[0.03] blur-[100px] pointer-events-none"/>
+   343→        <div className="relative mx-auto max-w-5xl text-center">
+   344→          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="flex justify-center mb-8"><span className="section-marker">Enterprise Platform</span></motion.div>
+   345→          <motion.h1 variants={fadeUp} initial="hidden" animate="visible" custom={1} className="text-4xl sm:text-5xl md:text-7xl font-extrabold leading-[1.05] tracking-tight mb-6">The Enterprise Operating System <br className="hidden sm:block"/><span className="bg-gradient-to-r from-[#FF4D00] via-[#FF8C42] to-[#FFD93D] bg-clip-text text-transparent">for Modern Businesses</span></motion.h1>
+   346→          <motion.p variants={fadeUp} initial="hidden" animate="visible" custom={2} className="max-w-2xl mx-auto text-base sm:text-lg text-[#888899] leading-relaxed mb-10">One intelligent platform. Seven industry-specific operating systems. Automate operations, eliminate manual work, and scale effortlessly with AI-powered agents.</motion.p>
+   347→          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3} className="flex flex-col sm:flex-row items-center justify-center gap-4">
+   348→            <a href="#industries" className="pulse-btn px-8 py-3.5 text-sm font-bold rounded-xl bg-[#FF4D00] text-black hover:bg-[#FF6A2A] transition-colors inline-flex items-center gap-2">Explore Industries <ArrowRight className="w-4 h-4"/></a>
+   349→            <a href="#marketplace" className="px-8 py-3.5 text-sm font-semibold rounded-xl border border-[#2A2A3A] text-[#E8E8EC] hover:border-[#FF4D00]/40 hover:text-white transition-colors">Browse Marketplace</a>
+   350→          </motion.div>
+   351→          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={4} className="mt-14 flex flex-wrap items-center justify-center gap-6 text-xs text-[#555566] tracking-widest uppercase font-mono"><span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-[#00FF88] accent-dot"/>All Systems Operational</span><span className="hidden sm:inline">|</span><span>7 Industry Verticals</span><span className="hidden sm:inline">|</span><span>500+ Integrations</span></motion.div>
+   352→        </div>
+   353→      </section>
+   354→      <div className="border-y border-[#1E1E2A]/60 py-4 overflow-hidden"><div className="marquee-track">{[...industries,...industries].map((ind,i)=><span key={i} className="mx-8 text-sm font-mono text-[#555566] tracking-widest uppercase whitespace-nowrap flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full" style={{background:ind.color}}/>{ind.name}</span>)}</div></div>
+   355→      <section id="industries" className="py-20 md:py-24 px-6"><div className="mx-auto max-w-7xl">
+   356→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{once:true,margin:"-80px"}} custom={0} className="text-center mb-14"><span className="section-marker">Industry Solutions</span><h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">Seven OS. Every Industry Covered.</h2><p className="mt-4 max-w-xl mx-auto text-[#888899]">Purpose-built operating systems for the world's most critical industries.</p></motion.div>
+   357→        <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{once:true,margin:"-60px"}} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+   358→          {industries.map((ind,i)=>(
+   359→            <motion.div key={ind.name} variants={fadeUp} custom={i} className="group relative rounded-2xl border border-[#1E1E2A] bg-[#111118] p-6 hover:border-transparent transition-all duration-500 cursor-pointer overflow-hidden" style={{"--card-accent":ind.color} as React.CSSProperties}>
+   360→              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" style={{background:`radial-gradient(circle at 50% 0%,${ind.bg},transparent 70%)`}}/>
+   361→              <div className="absolute top-0 inset-x-0 h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{background:`linear-gradient(90deg,transparent,${ind.color},transparent)`}}/>
+   362→              <div className="relative"><div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-110" style={{background:ind.bg}}><ind.icon className="w-6 h-6" style={{color:ind.color}}/></div><h3 className="text-lg font-bold mb-2 flex items-center gap-2">{ind.name}<ChevronRight className="w-4 h-4 text-[#555566] group-hover:text-[#E8E8EC] group-hover:translate-x-1 transition-all duration-300"/></h3><p className="text-sm text-[#888899] leading-relaxed">{ind.tagline}</p></div>
+   363→            </motion.div>
+   364→          ))}
+   365→        </motion.div>
+   366→      </div></section>
+   367→      <section id="marketplace" className="py-20 md:py-24 px-6 border-t border-[#1E1E2A]/40"><div className="mx-auto max-w-7xl">
+   368→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{once:true,margin:"-80px"}} custom={0} className="text-center mb-10"><span className="section-marker">Level 5</span><h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">MianX Marketplace</h2><p className="mt-4 max-w-2xl mx-auto text-[#888899]">Extend your OS with apps, plugins, themes, AI agents, reports, and integrations.</p></motion.div>
+   369→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{once:true,margin:"-40px"}} custom={1} className="max-w-xl mx-auto mb-8"><div className="relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555566]"/><input type="text" placeholder="Search apps, plugins, agents..." value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="w-full pl-11 pr-4 py-3 rounded-xl bg-[#111118] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#555566] focus:outline-none focus:border-[#FF4D00]/50 transition-colors"/></div></motion.div>
+   370→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{once:true,margin:"-40px"}} custom={2} className="flex flex-wrap items-center justify-center gap-2 mb-10">
+   371→          {categories.map(cat=>{const a=activeCategory===cat.key;return(<button key={cat.key} onClick={()=>setActiveCategory(cat.key)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border ${a?"bg-[#FF4D00]/10 border-[#FF4D00]/40 text-[#FF4D00]":"bg-[#111118] border-[#1E1E2A] text-[#888899] hover:border-[#2A2A3A] hover:text-[#E8E8EC]"}`}><cat.icon className="w-3.5 h-3.5"/>{cat.label}<span className={`text-xs px-1.5 py-0.5 rounded-md ${a?"bg-[#FF4D00]/20 text-[#FF4D00]":"bg-[#1A1A24] text-[#555566]"}`}>{cat.count}</span></button>)})}
+   372→        </motion.div>
+   373→        <div className="flex items-center justify-between mb-6"><p className="text-xs text-[#555566] font-mono tracking-wider uppercase">{filtered.length} result{filtered.length!==1?"s":""}</p><a href="#marketplace" className="text-xs text-[#555566] hover:text-[#FF4D00] transition-colors flex items-center gap-1">Powered by MianX.ai <Cpu className="w-3 h-3"/></a></div>
+   374→        <AnimatePresence mode="wait"><motion.div key={activeCategory+searchQuery} variants={stagger} initial="hidden" animate="visible" exit="hidden" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+   375→          {filtered.map((item,i)=>(
+   376→            <motion.div key={item.name} variants={fadeUp} custom={i} className={`group relative rounded-2xl border bg-[#111118] p-5 transition-all duration-400 hover:bg-[#15151E] cursor-pointer overflow-hidden ${item.featured?"border-[#FF4D00]/30 hover:border-[#FF4D00]/50":"border-[#1E1E2A] hover:border-[#2A2A3A]"}`}>
+   377→              {item.featured&&<div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-[#FF4D00] to-transparent"/>}
+   378→              <div className="flex items-start gap-4"><div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{background:`${item.color}15`}}><item.icon className="w-5 h-5" style={{color:item.color}}/></div><div className="flex-1 min-w-0"><div className="flex items-center gap-2 mb-1"><h3 className="text-sm font-bold truncate">{item.name}</h3>{item.badge&&<span className="text-[10px] font-semibold px-2 py-0.5 rounded-md shrink-0" style={{background:item.badgeColor,color:item.color}}>{item.badge}</span>}</div><p className="text-xs text-[#888899] leading-relaxed mb-3 line-clamp-2">{item.desc}</p><div className="flex items-center gap-3 mb-3"><div className="flex items-center gap-1.5"><Stars rating={item.rating}/><span className="text-xs text-[#888899]">{item.rating}</span><span className="text-[10px] text-[#555566]">({item.reviews.toLocaleString()})</span></div><span className="text-[10px] text-[#555566]">|</span><div className="flex items-center gap-1"><Download className="w-3 h-3 text-[#555566]"/><span className="text-xs text-[#888899]">{item.installs}</span></div></div><div className="flex items-center justify-between"><span className={`text-sm font-bold ${item.price==="Free"?"text-[#00FF88]":"text-[#E8E8EC]"}`}>{item.price}</span><button className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#FF4D00] text-black hover:bg-[#FF6A2A] transition-colors inline-flex items-center gap-1.5" onClick={e=>e.stopPropagation()}>Install<Download className="w-3 h-3"/></button></div></div></div>
+   379→            </motion.div>
+   380→          ))}
+   381→        </motion.div></AnimatePresence>
+   382→        {filtered.length===0&&<div className="text-center py-16"><Search className="w-10 h-10 text-[#2A2A3A] mx-auto mb-4"/><p className="text-[#888899] text-sm">No results found</p><button onClick={()=>{setSearchQuery("");setActiveCategory("all");}} className="mt-3 text-xs text-[#FF4D00] hover:underline">Clear filters</button></div>}
+   383→      </div></section>
+   384→      <section id="capabilities" className="py-20 md:py-24 px-6 border-t border-[#1E1E2A]/40"><div className="mx-auto max-w-6xl">
+   385→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{once:true,margin:"-80px"}} custom={0} className="text-center mb-14"><span className="section-marker">Platform Capabilities</span><h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">Built for Scale. Powered by AI.</h2></motion.div>
+   386→        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{capabilities.map((cap,i)=>(<motion.div key={cap.title} variants={fadeUp} initial="hidden" whileInView="visible" viewport={{once:true,margin:"-40px"}} custom={i} className="notch-corner rounded-2xl border border-[#1E1E2A] bg-[#111118] p-8 hover:bg-[#15151E] transition-colors"><cap.icon className="w-8 h-8 text-[#FF4D00] mb-4"/><h3 className="text-xl font-bold mb-3">{cap.title}</h3><p className="text-sm text-[#888899] leading-relaxed">{cap.desc}</p></motion.div>))}</div>
+   387→      </div></section>
+   388→      <section className="py-20 md:py-24 px-6 border-t border-[#1E1E2A]/40"><div className="mx-auto max-w-3xl text-center"><motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{once:true,margin:"-80px"}} custom={0}><h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-5">Ready to Transform <span className="bg-gradient-to-r from-[#FF4D00] to-[#00D4FF] bg-clip-text text-transparent">Your Business?</span></h2><p className="text-[#888899] max-w-lg mx-auto mb-10">Join hundreds of enterprises already running on MianX.ai.</p><a href="#marketplace" className="pulse-btn inline-flex items-center gap-2 px-10 py-4 text-base font-bold rounded-xl bg-[#FF4D00] text-black hover:bg-[#FF6A2A] transition-colors">Start Free Trial <ArrowRight className="w-5 h-5"/></a></motion.div></div></section>
+   389→    </>
+   390→  );
+   391→}
+   392→
+   393→/* ══════════════════════════ MAIN PAGE ══════════════════════════ */
+   394→export default function HomePage() {
+   395→  const [view, setView] = useState<"site"|"dashboard"|"capture">("site");
+   396→  const [mobileOpen, setMobileOpen] = useState(false);
+   397→
+   398→  const viewLabel = view === "dashboard" ? "Back to Site" : "Dashboard";
+   399→  const viewIcon = view === "dashboard" ? <Cpu className="w-3.5 h-3.5"/> : <LayoutDashboard className="w-3.5 h-3.5"/>;
+   400→
+   401→  return (
+   402→    <div className="min-h-screen flex flex-col bg-[#08080C] text-[#E8E8EC] overflow-x-hidden">
+   403→      <div className="grain"/>
+   404→      <header className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-[#08080C]/70 border-b border-[#1E1E2A]/60">
+   405→        <nav className="mx-auto max-w-7xl flex items-center justify-between px-6 h-16">
+   406→          <button onClick={()=>setView("site")} className="flex items-center gap-2.5 group"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#FF4D00] to-[#FF8C42] flex items-center justify-center shadow-lg shadow-[#FF4D00]/20 group-hover:shadow-[#FF4D00]/40 transition-shadow"><Cpu className="w-4 h-4 text-black"/></div><span className="text-lg font-bold tracking-tight">Mian<span className="text-[#FF4D00]">X</span>.ai</span></button>
+   407→          <div className="hidden md:flex items-center gap-5">
+   408→            {view==="site"&&<><a href="#industries" className="nav-link">Industries</a><a href="#marketplace" className="nav-link">Marketplace</a><a href="#capabilities" className="nav-link">Capabilities</a></>}
+   409→            <button onClick={()=>setView(view==="dashboard"?"site":"dashboard")} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-colors bg-[#FF4D00] text-black hover:bg-[#FF6A2A]">{viewIcon}{viewLabel}</button>
+   410→          </div>
+   411→          <button className="md:hidden p-2" onClick={()=>setMobileOpen(!mobileOpen)} aria-label="Toggle menu">{mobileOpen?<X className="w-5 h-5"/>:<Menu className="w-5 h-5"/>}</button>
+   412→        </nav>
+   413→        {mobileOpen&&<motion.div initial={{opacity:0,height:0}} animate={{opacity:1,height:"auto"}} className="md:hidden border-t border-[#1E1E2A]/60 bg-[#08080C]/95 backdrop-blur-xl"><div className="flex flex-col gap-4 px-6 py-5">
+   414→          {view==="site"&&<><a href="#industries" className="nav-link" onClick={()=>setMobileOpen(false)}>Industries</a><a href="#marketplace" className="nav-link" onClick={()=>setMobileOpen(false)}>Marketplace</a><a href="#capabilities" className="nav-link" onClick={()=>setMobileOpen(false)}>Capabilities</a></>}
+   415→          <button onClick={()=>{setView(view==="dashboard"?"site":"dashboard");setMobileOpen(false);}} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg bg-[#FF4D00] text-black justify-center">{viewIcon}{viewLabel}</button>
+   416→        </div></motion.div>}
+   417→      </header>
+   418→      <main className={`flex-1 ${view!=="site"?"pt-20":""}`}>
+   419→        <AnimatePresence mode="wait">
+   420→          {view==="site"&&<motion.div key="site" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:0.25}}><WebsiteView/></motion.div>}
+   421→          {view==="dashboard"&&<motion.div key="dash" initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0}} transition={{duration:0.25}}><DashboardView/></motion.div>}
+   422→          {view==="capture"&&<motion.div key="cap" initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0}} transition={{duration:0.25}} className="pt-28 px-6 pb-20"><LeadCaptureForm onSubmitted={()=>{}}/></motion.div>}
+   423→        </AnimatePresence>
+   424→      </main>
+   425→      <footer className="border-t border-[#1E1E2A]/60 py-8 px-6"><div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
+   426→        <div className="flex items-center gap-2 text-sm text-[#555566]"><div className="w-5 h-5 rounded bg-gradient-to-br from-[#FF4D00] to-[#FF8C42] flex items-center justify-center"><Cpu className="w-2.5 h-2.5 text-black"/></div><span>MianX.ai</span></div>
+   427→        <div className="flex items-center gap-6 text-xs text-[#555566]"><span>2025 MianX.ai. All rights reserved.</span></div>
+   428→        <a href="/" className="group flex items-center gap-1.5 text-xs text-[#555566] hover:text-[#FF4D00] transition-colors">Powered by <span className="font-bold text-[#888899] group-hover:text-[#FF4D00] transition-colors">MianX.ai</span><ArrowRight className="w-3 h-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"/></a>
+   429→      </div></footer>
+   430→    </div>
+   431→  );
+   432→}
