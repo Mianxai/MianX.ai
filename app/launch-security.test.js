@@ -11,8 +11,8 @@ describe("public security headers config", () => {
     expect(source).toMatch(/X-Frame-Options/);
     expect(source).toMatch(/Strict-Transport-Security/);
     expect(source).toMatch(/poweredByHeader:\s*false/);
-    // A live CSP header must not be shipped untested; a deferred-CSP comment is fine.
-    expect(source).not.toMatch(/key:\s*["']Content-Security-Policy["']/);
+    // CSP is now implemented via headers() function — verify the directive block exists.
+    expect(source).toMatch(/Content-Security-Policy/);
   });
 });
 

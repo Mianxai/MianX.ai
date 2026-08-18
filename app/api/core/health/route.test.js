@@ -32,6 +32,10 @@ vi.mock("@/lib/core/memory", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/admin-auth", () => ({
+  requireAdmin: vi.fn().mockRejectedValue(new Error("Not admin")),
+}));
+
 const KEYS = [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
@@ -43,6 +47,10 @@ const KEYS = [
   "RUNTIME_SCHEDULER_PLATFORM",
 ];
 
+function mockRequest(url = "http://localhost/api/core/health") {
+  return { url };
+}
+
 describe("GET /api/core/health", () => {
   const original = { ...process.env };
   beforeEach(() => {
@@ -53,22 +61,51 @@ describe("GET /api/core/health", () => {
     process.env = { ...original };
   });
 
-  it("responds healthy with only non-secret booleans", async () => {
+  it("public liveness returns lightweight response without DB queries", async () => {
     const { GET } = await import("./route.js");
-    const res = await GET();
+    const res = await GET(mockRequest("http://localhost/api/core/health"));
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.ok).toBe(true);
-    expect(data.service).toBe("mianx-core");
+    expect(data.service).toBe("mianx");
+    expect(data.time).toBeTruthy();
+    // Public response must not contain internal details
+    expect(data.config).toBeUndefined();
+    expect(data.agents).toBeUndefined();
+    expect(data.lastTick).toBeUndefined();
+  });
+
+  it("non-admin diagnostics falls back to public response", async () => {
+    const { GET } = await import("./route.js");
+    const res = await GET(mockRequest("http://localhost/api/core/health?action=diagnostics"));
+    // requireAdmin is mocked to reject, so non-admin gets public response
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(data.service).toBe("mianx");
+  });
+
+  it("admin diagnostics returns full health with only non-secret booleans", async () => {
+    // Override the mock to resolve (admin authenticated)
+    const { requireAdmin } = await import("@/lib/admin-auth");
+    requireAdmin.mockResolvedValueOnce(undefined);
+    vi.resetModules();
+    // Re-mock requireAdmin to resolve for this test
+    const adminAuth = await import("@/lib/admin-auth");
+    adminAuth.requireAdmin.mockResolvedValueOnce(undefined);
+
+    const { GET } = await import("./route.js");
+    const res = await GET(mockRequest("http://localhost/api/core/health?action=diagnostics"));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
     expect(data.config.supabase).toBe(false);
     expect(data.config.providers.anthropic).toBe(false);
     expect(data.config.providerStatus).toBe("unconfigured");
     expect(data.agents).toBeGreaterThan(0);
     expect(data.agentsCatalogTotal).toBeGreaterThan(data.agents);
-    // Secrets missing → unconfigured (manual reserved for explicit operator choice).
     expect(data.config.scheduler.mode).toBe("unconfigured");
     expect(data.config.scheduler.automaticProcessing).toBe(false);
-    // vercel.json daily cron is declared in-repo (not yet ACTIVE).
     expect(data.config.scheduler.platformCronConfigured).toBe(true);
     expect(data.config.rateLimit.durable).toBe(false);
     expect(data.lastTick).toBeNull();
@@ -83,12 +120,13 @@ describe("GET /api/core/health", () => {
     expect(serialized).not.toMatch(/eyJ|https?:\/\//i);
   });
 
-  it("reflects configured providers without exposing the key", async () => {
+  it("reflects configured providers without exposing the key (admin diagnostics)", async () => {
     process.env.ANTHROPIC_API_KEY = "super-secret";
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://x.supabase.co";
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
+
     const { GET } = await import("./route.js");
-    const res = await GET();
+    const res = await GET(mockRequest("http://localhost/api/core/health?action=diagnostics"));
     const data = await res.json();
     expect(data.config.supabase).toBe(true);
     expect(data.config.providers.anthropic).toBe(true);
