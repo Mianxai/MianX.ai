@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling } from "@/lib/core/errors";
 import { requireAdmin } from "@/lib/core/auth";
+import { actorFromUser } from "@/lib/admin-auth";
 import {
   ENGINE_VERSION,
   getWorkforceDashboard,
@@ -99,7 +100,9 @@ export const GET = withErrorHandling(async (req) => {
 });
 
 export const POST = withErrorHandling(async (req) => {
-  await requireAdmin(req);
+  // SECURITY: derive actor from authenticated session, never trust client-supplied body.actor
+  const user = await requireAdmin(req);
+  const actor = actorFromUser(user);
   const body = await req.json().catch(() => ({}));
   const action = body.action || "bootstrap";
   const projectId = body.project_id || null;
@@ -117,21 +120,21 @@ export const POST = withErrorHandling(async (req) => {
     });
   }
   if (action === "pause") {
-    return NextResponse.json(pauseWorkforce({ actor: body.actor || "founder", project_id: projectId, reason: body.reason }));
+    return NextResponse.json(pauseWorkforce({ actor: actor, project_id: projectId, reason: body.reason }));
   }
   if (action === "resume") {
-    return NextResponse.json(resumeWorkforce({ actor: body.actor || "founder", project_id: projectId }));
+    return NextResponse.json(resumeWorkforce({ actor: actor, project_id: projectId }));
   }
   if (action === "stop_agent") {
     return NextResponse.json({
       ok: true,
-      state: stopAgent(body.agent_slug || body.slug, { project_id: projectId, actor: body.actor || "founder" }),
+      state: stopAgent(body.agent_slug || body.slug, { project_id: projectId, actor: actor }),
     });
   }
   if (action === "retry_agent") {
     return NextResponse.json({
       ok: true,
-      state: retryAgent(body.agent_slug || body.slug, { project_id: projectId, actor: body.actor || "founder" }),
+      state: retryAgent(body.agent_slug || body.slug, { project_id: projectId, actor: actor }),
     });
   }
   if (action === "reassign") {
@@ -142,7 +145,7 @@ export const POST = withErrorHandling(async (req) => {
         to_agent: body.to_agent,
         task_id: body.task_id,
         project_id: projectId,
-        actor: body.actor || "founder",
+        actor: actor,
       }),
     });
   }
@@ -153,7 +156,7 @@ export const POST = withErrorHandling(async (req) => {
         agent_slug: body.agent_slug,
         decision: body.decision,
         project_id: projectId,
-        actor: body.actor || "founder",
+        actor: actor,
       })
     );
   }
@@ -163,7 +166,7 @@ export const POST = withErrorHandling(async (req) => {
         name: body.name,
         objective: body.objective,
         project_id: projectId || "sim-project",
-        actor: body.actor || "founder",
+        actor: actor,
         auto_founder_approve: false,
       })
     );
@@ -171,7 +174,7 @@ export const POST = withErrorHandling(async (req) => {
   if (action === "approve_simulation") {
     return NextResponse.json(
       approveSimulation(body.simulation_id || body.id, {
-        actor: body.actor || "founder",
+        actor: actor,
         decision: body.decision || "approve",
       })
     );

@@ -210,8 +210,14 @@ function AdminShellInner({
   }, [pathname, advancedOpsOpen]);
 
   async function logout() {
-    const supabase = getSupabase();
-    if (supabase) await supabase.auth.signOut();
+    // SECURITY: signOut wrapped in try-catch to prevent unhandled rejection
+    // blocking the session-clear fetch and redirect.
+    try {
+      const supabase = getSupabase();
+      if (supabase) await supabase.auth.signOut();
+    } catch {
+      /* best-effort: proceed with server-side session clear regardless */
+    }
     try {
       await fetch("/api/admin/session", { method: "DELETE" });
     } catch {

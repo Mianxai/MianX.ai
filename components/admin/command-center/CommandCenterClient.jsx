@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -23,6 +23,7 @@ import FounderActionBanner from "@/components/admin/FounderActionBanner";
 import FounderQuickStart from "@/components/admin/FounderQuickStart";
 import ProofRecoveryPanel from "@/components/admin/integration/ProofRecoveryPanel";
 import ProductionReadinessCentre from "@/components/admin/ProductionReadinessCentre";
+import OpsCommandCenterClient from "@/components/admin/command-center/OpsCommandCenterClient";
 import { resolveProjectDisplayName } from "@/lib/admin/resolve-project-label";
 import { currentAdminLoginHref } from "@/lib/admin-return-to";
 import { adminFetch } from "@/lib/admin-fetch";
@@ -68,6 +69,7 @@ async function fetchJson(path, router, loginFallback) {
 export default function CommandCenterClient({
   title = "Founder Home",
   basePath: basePathProp = null,
+  embedded = false,
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -77,7 +79,7 @@ export default function CommandCenterClient({
   const agentsPage = title === "Agents";
   const basePath =
     basePathProp ||
-    (agentsPage ? "/admin/agents" : title === "Command Center" ? "/admin/command-center" : "/admin");
+    (embedded ? "/admin/workforce?tab=agents" : agentsPage ? "/admin/agents" : title === "Command Center" ? "/admin/command-center" : "/admin");
   const loginFallback = basePath;
 
   const [data, setData] = useState(null);
@@ -330,14 +332,8 @@ export default function CommandCenterClient({
     </div>
   );
 
-  return (
-    <AdminShell
-      title={title}
-      actions={actions}
-      helpProjectName={selectedProjectName}
-      helpProofState={founderProofUi}
-    >
-      <div className="cc-page founder-home-page">
+  const inner = (
+    <div className="cc-page founder-home-page">
         {loading && !data ? (
           <DelayedLoader delayMs={200}>
             <MianxLoader variant="section" label="Loading Founder Home…" />
@@ -823,6 +819,15 @@ export default function CommandCenterClient({
               </div>
             )}
 
+            {!agentsPage ? (
+              <details className="cc-card" data-testid="ops-command-center-section">
+                <summary>Operational Command Center</summary>
+                <Suspense fallback={<MianxLoader variant="section" label="Loading ops overview…" />}>
+                  <OpsCommandCenterClient embedded />
+                </Suspense>
+              </details>
+            ) : null}
+
             <AgentDetailDrawer
               open={Boolean(agentSlug)}
               detail={data.selectedDetail}
@@ -831,6 +836,18 @@ export default function CommandCenterClient({
           </>
         ) : null}
       </div>
+  );
+
+  if (embedded) return inner;
+
+  return (
+    <AdminShell
+      title={title}
+      actions={actions}
+      helpProjectName={selectedProjectName}
+      helpProofState={founderProofUi}
+    >
+      {inner}
     </AdminShell>
   );
 }

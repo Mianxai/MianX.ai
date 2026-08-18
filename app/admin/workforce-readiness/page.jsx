@@ -1,15 +1,8 @@
-import { Suspense } from "react";
-import WorkforceReadinessClient from "@/components/admin/workforce-readiness/WorkforceReadinessClient";
-import MianxLoader from "@/components/shared/MianxLoader";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Workforce Readiness · Admin · MianX.ai",
-};
+export const dynamic = "force-dynamic";
 
-export default function AdminWorkforceReadinessPage() {
-  return (
-    <Suspense fallback={<MianxLoader variant="section" label="Loading workforce readiness…" />}>
-      <WorkforceReadinessClient />
-    </Suspense>
-  );
+/** Redirect legacy /admin/workforce-readiness → /admin/workforce?tab=readiness */
+export default function LegacyWorkforceReadinessPage() {
+  redirect("/admin/workforce?tab=readiness");
 }

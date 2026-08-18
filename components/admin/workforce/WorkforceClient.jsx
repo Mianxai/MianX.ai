@@ -40,7 +40,7 @@ async function getJson(path, router) {
   return { ok: res.ok, data };
 }
 
-export default function WorkforceClient() {
+export default function WorkforceClient({ embedded = false } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { projectId, setProjectId, suggestStoredProjectId } = useAdminProject();
@@ -256,29 +256,26 @@ export default function WorkforceClient() {
     },
   ];
 
-  return (
-    <AdminShell
-      title="Workforce Ops"
-      breadcrumbs={[
-        { href: "/admin", label: "Admin" },
-        { label: "Workforce Ops" },
-      ]}
-      actions={
-        <ProjectPicker
-          value={projectId}
-          onChange={(id) => setProjectId(id)}
-          projects={projects}
-          allowAll
-        />
-      }
-    >
-      <PageHeader
-        description="Runtime operational status and simulation controls for the selected project scope. Capacity seats shown here are inventory truth — not proof that agents are active or live-tested."
-        howThisWorks="Owns: runtime health, queued/running work, simulation evidence. Does not own: static enterprise seat bootstrap. Provider remains none until configured; liveExecutionReady stays false without gated live activation. Allocated/active/live-tested must not be implied from the 445 capacity figure."
-      />
-      <FounderActionBanner summary={opsSummary} projectId={projectId} />
+  const projectPicker = (
+    <ProjectPicker
+      value={projectId}
+      onChange={(id) => setProjectId(id)}
+      projects={projects}
+      allowAll
+    />
+  );
 
-      <div className="admin-tabs" role="tablist" aria-label="Workforce views">
+  const inner = (
+    <>
+      {!embedded && (
+        <PageHeader
+          description="Runtime operational status and simulation controls for the selected project scope. Capacity seats shown here are inventory truth — not proof that agents are active or live-tested."
+          howThisWorks="Owns: runtime health, queued/running work, simulation evidence. Does not own: static enterprise seat bootstrap. Provider remains none until configured; liveExecutionReady stays false without gated live activation. Allocated/active/live-tested must not be implied from the 445 capacity figure."
+        />
+      )}
+      {!embedded && <FounderActionBanner summary={opsSummary} projectId={projectId} />}
+
+      <div className="admin-tabs" role="tablist" aria-label="Workforce Operations views">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -593,6 +590,21 @@ export default function WorkforceClient() {
           </div>
         </div>
       ) : null}
+    </>
+  );
+
+  if (embedded) return inner;
+
+  return (
+    <AdminShell
+      title="Workforce Ops"
+      breadcrumbs={[
+        { href: "/admin", label: "Admin" },
+        { label: "Workforce Ops" },
+      ]}
+      actions={projectPicker}
+    >
+      {inner}
     </AdminShell>
   );
 }

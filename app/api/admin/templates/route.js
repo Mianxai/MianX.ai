@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling } from "@/lib/core/errors";
 import { requireAdmin } from "@/lib/core/auth";
+import { actorFromUser } from "@/lib/admin-auth";
 import {
   ENGINE_VERSION,
   overviewCounts,
@@ -123,7 +124,9 @@ export const GET = withErrorHandling(async (req) => {
  * body.action: match | plan | learn_assess | memory_candidates
  */
 export const POST = withErrorHandling(async (req) => {
-  await requireAdmin(req);
+  // SECURITY: derive actor from authenticated session
+  const user = await requireAdmin(req);
+  const actor = actorFromUser(user);
   ensureSeed();
   const body = await req.json().catch(() => ({}));
   const action = body.action || "plan";
@@ -133,7 +136,7 @@ export const POST = withErrorHandling(async (req) => {
   }
   if (action === "plan") {
     const plan = runTemplateIntelligencePlan(body.input || body, {
-      actor: body.actor || "admin",
+      actor:       actor,
     });
     return NextResponse.json({ ok: true, plan });
   }

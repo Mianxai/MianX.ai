@@ -11,7 +11,7 @@ import {
 import { normalizeWorkforceSummary } from "@/lib/core/workforce-i2/summary-normalize.js";
 import WorkforceMetricCard from "@/components/admin/workforce/WorkforceMetricCard";
 
-export default function WorkforceReadinessClient() {
+export default function WorkforceReadinessClient({ embedded = false } = {}) {
   const [data, setData] = useState(null);
   const [real, setReal] = useState(null);
   const [error, setError] = useState(null);
@@ -94,20 +94,20 @@ export default function WorkforceReadinessClient() {
   );
   const foundationReady = Boolean(foundation.foundationReady);
 
-  const shell = (body) => (
-    <AdminShell
-      title="Workforce Readiness"
-      breadcrumbs={[
-        { href: "/admin", label: "Admin" },
-        { href: "/admin/workforce-activation", label: "Workforce Setup" },
-        { label: "Readiness" },
-      ]}
-    >
-      <div className="admin-page wa-page" data-testid="workforce-readiness">
-        {body}
-      </div>
-    </AdminShell>
-  );
+  const shell = (body) => {
+    const inner = <div className="admin-page wa-page" data-testid="workforce-readiness">{body}</div>;
+    if (embedded) return inner;
+    return (
+      <AdminShell
+        title="Workforce Readiness"
+        breadcrumbs={[
+          { href: "/admin", label: "Admin" },
+        ]}
+      >
+        {inner}
+      </AdminShell>
+    );
+  };
 
   if (error) {
     return shell(
@@ -380,7 +380,7 @@ export default function WorkforceReadinessClient() {
           >
             Refresh Foundation Readiness
           </button>
-          <Link href="/admin/workforce-activation" className="header-btn-ghost">
+          <Link href={embedded ? "/admin/workforce?tab=setup" : "/admin/workforce-activation"} className="header-btn-ghost">
             Workforce Setup
           </Link>
           <Link href="/admin/integration" className="header-btn-ghost">

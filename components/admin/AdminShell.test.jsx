@@ -75,10 +75,14 @@ describe("AdminShell", () => {
       "href",
       "/admin/inbox"
     );
-    expect(screen.getByRole("link", { name: /^Agents$/i })).toHaveAttribute(
+    // Workforce group consolidated to single /admin/workforce entry
+    expect(screen.queryByRole("link", { name: /^Workforce$/i })).toHaveAttribute(
       "href",
-      "/admin/agents"
+      "/admin/workforce"
     );
+    expect(screen.queryByRole("link", { name: /^Agents$/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Workforce Setup/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Readiness$/i })).toBeNull();
     expect(screen.getByRole("link", { name: /Founder Proof/i })).toHaveAttribute(
       "href",
       "/admin/integration"

@@ -30,7 +30,7 @@ async function fetchJson(path, router) {
  * Operational Command Center — distinct from Founder Home (/admin).
  * Truthful zeros / unconfigured states only; no fabricated metrics.
  */
-export default function OpsCommandCenterClient() {
+export default function OpsCommandCenterClient({ embedded = false } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams?.get("project_id") || "";
@@ -96,29 +96,8 @@ export default function OpsCommandCenterClient() {
     ];
   }, [foundation]);
 
-  return (
-    <AdminShell
-      title="Command Center"
-      actions={
-        <label className="cc-project-select">
-          <span className="sr-only">Project</span>
-          <select
-            value={projectId}
-            onChange={(e) => onProject(e.target.value)}
-            aria-label="Select project"
-            data-testid="cc-ops-project-select"
-          >
-            <option value="">All projects</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name || p.id}
-              </option>
-            ))}
-          </select>
-        </label>
-      }
-    >
-      <div className="cc-page" data-testid="ops-command-center">
+  const inner = (
+    <div className="cc-page" data-testid="ops-command-center">
         <p className="cc-muted">
           Operational overview for {projectName}. Founder Home stays at{" "}
           <Link href={withProjectQuery("/admin", projectId)}>Home</Link>. No fabricated
@@ -213,7 +192,7 @@ export default function OpsCommandCenterClient() {
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
             {[
               ["/admin", "Founder Home"],
-              ["/admin/workforce-readiness", "Workforce Readiness"],
+              ["/admin/workforce?tab=readiness", "Workforce Readiness"],
               ["/admin/schedule", "Schedule"],
               ["/admin/execution", "Execution"],
               ["/admin/runtime", "Runtime"],
@@ -231,6 +210,33 @@ export default function OpsCommandCenterClient() {
           </div>
         </section>
       </div>
+  );
+
+  if (embedded) return inner;
+
+  return (
+    <AdminShell
+      title="Command Center"
+      actions={
+        <label className="cc-project-select">
+          <span className="sr-only">Project</span>
+          <select
+            value={projectId}
+            onChange={(e) => onProject(e.target.value)}
+            aria-label="Select project"
+            data-testid="cc-ops-project-select"
+          >
+            <option value="">All projects</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name || p.id}
+              </option>
+            ))}
+          </select>
+        </label>
+      }
+    >
+      {inner}
     </AdminShell>
   );
 }

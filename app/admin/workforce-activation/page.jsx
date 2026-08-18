@@ -1,15 +1,9 @@
-import { Suspense } from "react";
-import WorkforceActivationClient from "@/components/admin/workforce-activation/WorkforceActivationClient";
-import MianxLoader from "@/components/shared/MianxLoader";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Workforce Setup · Admin · MianX.ai",
-};
+export const dynamic = "force-dynamic";
 
-export default function AdminWorkforceActivationPage() {
-  return (
-    <Suspense fallback={<MianxLoader variant="section" label="Loading workforce setup…" />}>
-      <WorkforceActivationClient />
-    </Suspense>
-  );
+/** Redirect legacy /admin/workforce-activation → /admin/workforce?tab=setup */
+export default function LegacyWorkforceActivationPage() {
+  const { searchParams } = new URL("http://unused");
+  redirect("/admin/workforce?tab=setup");
 }

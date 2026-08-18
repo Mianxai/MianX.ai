@@ -36,20 +36,7 @@ export const ADMIN_NAV_GROUPS = [
     id: "workforce",
     label: "Workforce",
     items: [
-      {
-        href: "/admin/workforce-activation",
-        label: "Workforce Setup",
-        match: "prefix",
-        icon: "network",
-      },
-      {
-        href: "/admin/workforce-readiness",
-        label: "Readiness",
-        match: "prefix",
-        icon: "network",
-      },
-      { href: "/admin/agents", label: "Agents", match: "prefix", icon: "network" },
-      { href: "/admin/workforce", label: "Workforce Ops", match: "prefix", icon: "runtime" },
+      { href: "/admin/workforce", label: "Workforce", match: "prefix", icon: "network" },
       { href: "/admin/departments", label: "Departments", match: "prefix", icon: "departments" },
       { href: "/admin/workflows", label: "Workflows", match: "prefix", icon: "workflows" },
       { href: "/admin/schedule", label: "Schedule", match: "prefix", icon: "schedule" },
@@ -73,13 +60,6 @@ export const ADMIN_NAV_GROUPS = [
     label: "Advanced Operations",
     collapsedByDefault: true,
     items: [
-      {
-        href: "/admin/command-center",
-        label: "Command Center",
-        match: "prefix",
-        icon: "command",
-        badge: "Advanced",
-      },
       {
         href: "/admin/runtime",
         label: "Runtime Overview",
@@ -198,13 +178,16 @@ export function isNavItemCurrent(pathname, item) {
       pathname.startsWith("/admin/lead-pipeline/")
     );
   }
-  if (item.href === "/admin/agents") {
-    return (
-      pathname === "/admin/agents" ||
-      pathname.startsWith("/admin/agents/") ||
-      pathname === "/admin/agent-network" ||
-      pathname.startsWith("/admin/agent-network/")
-    );
+  if (item.href === "/admin/workforce") {
+    // Consolidated workforce page handles legacy agent and activation routes
+    if (pathname === "/admin/workforce") return true;
+    if (pathname.startsWith("/admin/workforce/")) return true;
+    // Legacy redirected routes should highlight Workforce nav
+    if (pathname === "/admin/agents" || pathname.startsWith("/admin/agents/")) return true;
+    if (pathname === "/admin/agent-network" || pathname.startsWith("/admin/agent-network/")) return true;
+    if (pathname === "/admin/workforce-activation" || pathname.startsWith("/admin/workforce-activation/")) return true;
+    if (pathname === "/admin/workforce-readiness" || pathname.startsWith("/admin/workforce-readiness/")) return true;
+    return false;
   }
   return isNavActive(pathname, item);
 }

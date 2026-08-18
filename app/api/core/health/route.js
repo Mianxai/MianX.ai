@@ -19,8 +19,40 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** PUBLIC health — never returns secrets. Never treats compiled seats as persisted. */
-export async function GET() {
+/**
+ * PUBLIC liveness check — lightweight, no secrets, no internal details.
+ * Returns 200 if the server process is running, regardless of config.
+ * Used by load balancers, uptime monitors, and Vercel health checks.
+ */
+export async function GET(req) {
+  // Public liveness: if the function executes, the service is alive.
+  // Authenticated admins get full diagnostics via ?action=diagnostics.
+  const url = new URL(req.url);
+  const action = url.searchParams.get("action");
+
+  if (action !== "diagnostics") {
+    // Lightweight public response — no DB queries, no internal details.
+    return NextResponse.json({ ok: true, service: "mianx", time: new Date().toISOString() });
+  }
+
+  // --- ADMIN-ONLY DIAGNOSTICS ---
+  // Require admin auth for detailed health information.
+  let isAdmin = false;
+  try {
+    const { requireAdmin } = await import("@/lib/admin-auth");
+    await requireAdmin(req);
+    isAdmin = true;
+  } catch {
+    // Not admin — return public-only response even for ?action=diagnostics
+    return NextResponse.json(
+      { ok: true, service: "mianx", time: new Date().toISOString() },
+      { status: 200 }
+    );
+  }
+
+  if (!isAdmin) {
+    return NextResponse.json({ ok: true, service: "mianx", time: new Date().toISOString() });
+  }
   let lastTick = null;
   try {
     lastTick = await repo.getLastRuntimeTick();

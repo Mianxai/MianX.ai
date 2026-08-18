@@ -40,7 +40,7 @@ function ResultCard({ title, children, testId }) {
   );
 }
 
-export default function WorkforceActivationClient() {
+export default function WorkforceActivationClient({ embedded = false } = {}) {
   const [data, setData] = useState(null);
   const [preflight, setPreflight] = useState(null);
   const [bootPreflight, setBootPreflight] = useState(null);
@@ -311,19 +311,21 @@ export default function WorkforceActivationClient() {
     },
   ];
 
-  const shell = (body) => (
-    <AdminShell
-      title="Workforce Setup"
-      breadcrumbs={[
-        { href: "/admin", label: "Admin" },
-        { label: "Workforce Setup" },
-      ]}
-    >
-      <div className="admin-page wa-page" data-testid="workforce-activation">
-        {body}
-      </div>
-    </AdminShell>
-  );
+  const shell = (body) => {
+    const inner = <div className="admin-page wa-page" data-testid="workforce-activation">{body}</div>;
+    if (embedded) return inner;
+    return (
+      <AdminShell
+        title="Workforce Setup"
+        breadcrumbs={[
+          { href: "/admin", label: "Admin" },
+          { label: "Workforce Setup" },
+        ]}
+      >
+        {inner}
+      </AdminShell>
+    );
+  };
 
   if (error && !data) {
     return shell(<p role="alert">{error}</p>);
@@ -441,7 +443,7 @@ export default function WorkforceActivationClient() {
           >
             Refresh Production Truth
           </button>
-          <Link href="/admin/workforce-readiness" className="header-btn-ghost">
+          <Link href={embedded ? "/admin/workforce?tab=readiness" : "/admin/workforce-readiness"} className="header-btn-ghost">
             Readiness Detail
           </Link>
         </div>

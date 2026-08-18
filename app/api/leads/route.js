@@ -19,9 +19,22 @@ const MAX_BODY_BYTES = 32_768;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 5;
 const submissionLog = new Map();
+let lastCleanup = Date.now();
+const CLEANUP_INTERVAL_MS = 120_000; // Purge stale entries every 2 min
 
 function isRateLimited(key) {
   const now = Date.now();
+
+  // Periodic cleanup to prevent memory leak on long-running server instances.
+  if (now - lastCleanup > CLEANUP_INTERVAL_MS) {
+    for (const [k, ts] of submissionLog) {
+      if (ts.length === 0 || (now - ts[ts.length - 1]) > RATE_LIMIT_WINDOW_MS) {
+        submissionLog.delete(k);
+      }
+    }
+    lastCleanup = now;
+  }
+
   const timestamps = (submissionLog.get(key) || []).filter(
     (t) => now - t < RATE_LIMIT_WINDOW_MS
   );

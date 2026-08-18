@@ -44,17 +44,17 @@ describe("admin navigation uniqueness", () => {
     expect(primaryNavHrefs().filter((h) => h === "/admin/planning")).toHaveLength(1);
   });
 
-  it("includes Workforce Ops under Workforce without duplicates", () => {
+  it("includes single Workforce entry under Workforce group", () => {
     const wf = ADMIN_NAV_GROUPS.find((g) => g.id === "workforce");
     const labels = wf.items.map((i) => i.label);
-    expect(labels).toContain("Workforce Setup");
-    expect(labels).toContain("Readiness");
-    expect(labels).toContain("Workforce Ops");
-    expect(labels.filter((l) => l === "Workforce Ops")).toHaveLength(1);
+    expect(labels).toContain("Workforce");
+    expect(labels.filter((l) => l === "Workforce")).toHaveLength(1);
     expect(primaryNavHrefs().filter((h) => h === "/admin/workforce")).toHaveLength(1);
     expect(labels).not.toContain("Live Workforce");
-    // Setup label must not collide with group-only "Workforce"
-    expect(labels.filter((l) => l === "Workforce")).toHaveLength(0);
+    expect(labels).not.toContain("Workforce Ops");
+    expect(labels).not.toContain("Workforce Setup");
+    expect(labels).not.toContain("Readiness");
+    expect(labels).not.toContain("Agents");
   });
 
   it("uses Founder Mode IA with Home primary and Advanced Operations collapsed", () => {
@@ -76,7 +76,6 @@ describe("admin navigation uniqueness", () => {
     expect(ops.collapsedByDefault).toBe(true);
     expect(ops.items.map((i) => i.label)).toEqual(
       expect.arrayContaining([
-        "Command Center",
         "Runtime Overview",
         "Runtime Approvals",
         "Full Audit",
@@ -86,14 +85,12 @@ describe("admin navigation uniqueness", () => {
         "Company Builder",
       ])
     );
+    // Command Center removed from nav; its content merged into Home.
+    expect(ops.items.some((i) => i.href === "/admin/command-center")).toBe(false);
     const home = founder.items.find((i) => i.label === "Home");
     expect(home.match).toBe("exact");
     expect(isNavItemCurrent("/admin", home)).toBe(true);
     expect(isNavItemCurrent("/admin/projects", home)).toBe(false);
-    const cc = ops.items.find((i) => i.href === "/admin/command-center");
-    expect(cc.label).toBe("Command Center");
-    expect(isNavItemCurrent("/admin/command-center", cc)).toBe(true);
-    expect(isNavItemCurrent("/admin", cc)).toBe(false);
     const runtime = ops.items.find((i) => i.href === "/admin/runtime");
     expect(runtime.badge).toBe("Advanced");
     const exec = ops.items.find((i) => i.href === "/admin/execution");

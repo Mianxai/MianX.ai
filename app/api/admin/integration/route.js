@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { withErrorHandling, badRequest } from "@/lib/core/errors";
 import { requireAdmin } from "@/lib/core/auth";
+import { actorFromUser } from "@/lib/admin-auth";
 import {
   ENGINE_VERSION,
   getIntegrationDashboard,
@@ -244,11 +245,12 @@ export const GET = withErrorHandling(async (req) => {
 });
 
 export const POST = withErrorHandling(async (req) => {
-  await requireAdmin(req);
+  // SECURITY: derive actor from authenticated session, never trust client-supplied body.actor
+  const user = await requireAdmin(req);
+  const actor = actorFromUser(user);
   await assertDurableOrAllowTest();
   const body = await req.json().catch(() => ({}));
   const action = body.action || "create";
-  const actor = body.actor || "founder";
 
   async function finish(runOrResult) {
     const run = runOrResult?.run || runOrResult;

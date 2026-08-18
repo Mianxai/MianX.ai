@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withErrorHandling } from "@/lib/core/errors";
 import { requireAdmin } from "@/lib/core/auth";
+import { actorFromUser } from "@/lib/admin-auth";
 import {
   ENGINE_VERSION,
   runPlanningIntelligence,
@@ -258,7 +259,9 @@ export const GET = withErrorHandling(async (req) => {
  * Mutating decisions are Founder-gated; never executes work.
  */
 export const POST = withErrorHandling(async (req) => {
-  await requireAdmin(req);
+  // SECURITY: derive actor from authenticated session, never trust client-supplied body.actor
+  const user = await requireAdmin(req);
+  const actor = actorFromUser(user);
   const body = await req.json().catch(() => ({}));
   const action = body.action || "create_plan";
 
@@ -272,7 +275,7 @@ export const POST = withErrorHandling(async (req) => {
       organization_id: body.organization_id || null,
       company_name: body.company_name || null,
       compliance_sensitivity: body.compliance_sensitivity || null,
-      actor: body.actor || "founder",
+      actor: actor,
       persist: true,
     });
     return NextResponse.json({
@@ -285,7 +288,7 @@ export const POST = withErrorHandling(async (req) => {
 
   if (action === "request_approval") {
     const plan = requestPlanApproval(body.plan_id || body.id, {
-      actor: body.actor || "founder",
+      actor: actor,
     });
     return NextResponse.json({ ok: true, plan, executes: false });
   }
@@ -305,7 +308,7 @@ export const POST = withErrorHandling(async (req) => {
       );
     }
     const plan = decidePlanApproval(body.plan_id || body.id, decision, {
-      actor: body.actor || "founder",
+      actor: actor,
       reason: body.reason || "",
     });
     return NextResponse.json({
