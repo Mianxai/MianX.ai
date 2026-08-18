@@ -1,0 +1,484 @@
+     1→"use client";
+     2→
+     3→import { motion, AnimatePresence } from "framer-motion";
+     4→import {
+     5→  UtensilsCrossed, HeartPulse, GraduationCap, HardHat, ShoppingBag, Truck, Factory,
+     6→  ArrowRight, Zap, Shield, Globe, Cpu, ChevronRight, Menu, X,
+     7→  Package, Puzzle, Palette, Bot, BarChart3, Link2, Star, Download, TrendingUp, Users, Crown, Search,
+     8→  LayoutDashboard, DollarSign, Activity, Radio, Filter, Trash2, Eye, RefreshCw,
+     9→  Send, CheckCircle2, AlertCircle, UserPlus, Mail, Phone, Building2, MessageSquare, Sparkles, Wifi, WifiOff,
+    10→  FileDown, Bell, Target, Brain, Clock, Command,
+    11→} from "lucide-react";
+    12→import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+    13→import DashboardCharts from "@/components/dashboard/charts";
+    14→import AgentCommandCenter from "@/components/dashboard/agent-panel";
+    15→import LeadDetailPanel from "@/components/dashboard/lead-detail";
+    16→import { TestimonialsSection, LogoCloudSection, PricingSection, StatsCounterSection, HowItWorksSection } from "@/components/website/sections";
+    17→
+    18→/* ══════════════════════════ WEBSITE DATA ══════════════════════════ */
+    19→
+    20→const industries = [
+    21→  { name: "Restaurant OS", icon: UtensilsCrossed, tagline: "Orders, menus, inventory & analytics — one unified platform.", color: "#FF6B35", bg: "rgba(255,107,53,0.08)" },
+    22→  { name: "Hospital OS", icon: HeartPulse, tagline: "Patient records, scheduling, billing & compliance automation.", color: "#00D4FF", bg: "rgba(0,212,255,0.08)" },
+    23→  { name: "School OS", icon: GraduationCap, tagline: "Admissions, attendance, grading & parent communication hub.", color: "#00FF88", bg: "rgba(0,255,136,0.08)" },
+    24→  { name: "Construction OS", icon: HardHat, tagline: "Project timelines, resource planning, safety & cost tracking.", color: "#FFD93D", bg: "rgba(255,217,61,0.08)" },
+    25→  { name: "Retail OS", icon: ShoppingBag, tagline: "POS, stock management, customer loyalty & multi-channel sales.", color: "#FF4D00", bg: "rgba(255,77,0,0.08)" },
+    26→  { name: "Logistics OS", icon: Truck, tagline: "Fleet tracking, route optimization, warehousing & delivery ops.", color: "#A78BFA", bg: "rgba(167,139,250,0.08)" },
+    27→  { name: "Manufacturing OS", icon: Factory, tagline: "Production lines, quality control, supply chain & IoT integration.", color: "#F472B6", bg: "rgba(244,114,182,0.08)" },
+    28→];
+    29→
+    30→const capabilities = [
+    31→  { icon: Zap, title: "AI-Native Intelligence", desc: "Every module is powered by autonomous AI agents that learn, adapt, and execute tasks without manual intervention." },
+    32→  { icon: Shield, title: "Enterprise Security", desc: "Bank-grade encryption, role-based access control, SOC 2 compliance, and real-time threat monitoring built in." },
+    33→  { icon: Globe, title: "Multi-Location Ready", desc: "Operate across cities, countries, and time zones with centralized control and localized execution." },
+    34→  { icon: Cpu, title: "Infinite Integrations", desc: "Connect with 500+ tools, payment gateways, CRMs, ERPs, and custom APIs through our universal connector." },
+    35→];
+    36→
+    37→type Category = "all" | "apps" | "plugins" | "themes" | "agents" | "reports" | "integrations";
+    38→const categories: { key: Category; label: string; icon: typeof Package; count: number }[] = [
+    39→  { key: "all", label: "All", icon: Package, count: 42 }, { key: "apps", label: "Apps", icon: Package, count: 12 },
+    40→  { key: "plugins", label: "Plugins", icon: Puzzle, count: 8 }, { key: "themes", label: "Themes", icon: Palette, count: 6 },
+    41→  { key: "agents", label: "AI Agents", icon: Bot, count: 7 }, { key: "reports", label: "Reports", icon: BarChart3, count: 5 },
+    42→  { key: "integrations", label: "Integrations", icon: Link2, count: 4 },
+    43→];
+    44→
+    45→interface MarketplaceItem { name: string; desc: string; category: Category; icon: typeof Package; color: string; rating: number; reviews: number; installs: string; price: string; badge?: string; badgeColor?: string; featured?: boolean; }
+    46→
+    47→const marketplaceItems: MarketplaceItem[] = [
+    48→  { name: "Smart Billing Pro", desc: "Automated invoicing, recurring payments, and tax compliance across 40+ countries.", category: "apps", icon: Crown, color: "#FF4D00", rating: 4.9, reviews: 1247, installs: "24.5K", price: "Free", badge: "Popular", badgeColor: "rgba(255,77,0,0.15)" },
+    49→  { name: "Staff Scheduler", desc: "AI shift planning, time-off management, and labor cost optimization.", category: "apps", icon: Users, color: "#00D4FF", rating: 4.8, reviews: 892, installs: "18.2K", price: "$29/mo" },
+    50→  { name: "Inventory Pulse", desc: "Real-time stock tracking, auto-reorder alerts, and supplier management.", category: "apps", icon: TrendingUp, color: "#00FF88", rating: 4.7, reviews: 634, installs: "12.8K", price: "$19/mo" },
+    51→  { name: "Customer CRM", desc: "360-degree customer profiles, interaction history, and loyalty engine.", category: "apps", icon: Users, color: "#A78BFA", rating: 4.8, reviews: 1056, installs: "21.3K", price: "$39/mo" },
+    52→  { name: "Order Tracker", desc: "End-to-end order lifecycle management with real-time status updates.", category: "apps", icon: Package, color: "#FF6B6B", rating: 4.6, reviews: 543, installs: "9.8K", price: "$15/mo" },
+    53→  { name: "Loyalty Engine", desc: "Points, tiers, rewards, and gamification to maximize customer retention.", category: "apps", icon: Crown, color: "#FFD93D", rating: 4.7, reviews: 789, installs: "14.1K", price: "$24/mo" },
+    54→  { name: "Feedback Hub", desc: "Collect, analyze, and act on customer feedback with sentiment analysis.", category: "apps", icon: MessageSquare, color: "#00FF88", rating: 4.5, reviews: 412, installs: "7.2K", price: "Free" },
+    55→  { name: "Appointment Pro", desc: "Smart scheduling with calendar sync, reminders, and no-show prediction.", category: "apps", icon: Clock, color: "#00D4FF", rating: 4.8, reviews: 923, installs: "16.5K", price: "$29/mo" },
+    56→  { name: "Menu Builder", desc: "Drag-and-drop menu creator with nutritional info and photo management.", category: "apps", icon: LayoutDashboard, color: "#FF4D00", rating: 4.6, reviews: 345, installs: "6.1K", price: "$19/mo" },
+    57→  { name: "Delivery Tracker", desc: "Real-time delivery tracking with driver app and customer notifications.", category: "apps", icon: Truck, color: "#A78BFA", rating: 4.7, reviews: 567, installs: "10.3K", price: "$34/mo" },
+    58→  { name: "Invoice Ninja", desc: "Create, send, and track professional invoices with automated follow-ups.", category: "apps", icon: FileDown, color: "#F472B6", rating: 4.8, reviews: 876, installs: "15.7K", price: "Free" },
+    59→  { name: "Compliance Guard", desc: "Automated compliance monitoring for HIPAA, GDPR, PCI-DSS, and more.", category: "apps", icon: Shield, color: "#FFD93D", rating: 4.9, reviews: 432, installs: "8.4K", price: "$49/mo", badge: "Essential", badgeColor: "rgba(255,217,61,0.12)" },
+    60→  { name: "WhatsApp Connector", desc: "Two-way WhatsApp messaging for orders, updates, and support tickets.", category: "plugins", icon: Link2, color: "#25D366", rating: 4.9, reviews: 2103, installs: "45.1K", price: "Free", badge: "Top Rated", badgeColor: "rgba(0,255,136,0.12)" },
+    61→  { name: "Payment Gateway", desc: "Stripe, PayPal, JazzCash, EasyPaisa — unified checkout experience.", category: "plugins", icon: Crown, color: "#FFD93D", rating: 4.8, reviews: 1567, installs: "38.7K", price: "$49/mo" },
+    62→  { name: "Email Automator", desc: "Drip campaigns, transactional emails, and AI-written subject lines.", category: "plugins", icon: Mail, color: "#FF4D00", rating: 4.7, reviews: 1234, installs: "28.9K", price: "$19/mo" },
+    63→  { name: "SMS Gateway", desc: "Bulk SMS, OTP verification, and appointment reminders via Twilio.", category: "plugins", icon: Phone, color: "#00D4FF", rating: 4.6, reviews: 876, installs: "19.3K", price: "$15/mo" },
+    64→  { name: "Review Manager", desc: "Auto-collect Google & Facebook reviews with AI response suggestions.", category: "plugins", icon: Star, color: "#FFD93D", rating: 4.8, reviews: 1567, installs: "32.1K", price: "$29/mo" },
+    65→  { name: "Social Feed", desc: "Aggregate and auto-post to Instagram, Facebook, Twitter, and TikTok.", category: "plugins", icon: Globe, color: "#E01E5A", rating: 4.5, reviews: 678, installs: "12.4K", price: "$24/mo" },
+    66→  { name: "Barcode Scanner", desc: "Scan barcodes/QR codes for inventory, tickets, and asset tracking.", category: "plugins", icon: Search, color: "#00FF88", rating: 4.4, reviews: 345, installs: "5.8K", price: "Free" },
+    67→  { name: "Tax Calculator", desc: "Auto-calculate taxes by region with real-time rate updates and filing.", category: "plugins", icon: DollarSign, color: "#A78BFA", rating: 4.7, reviews: 567, installs: "11.2K", price: "$19/mo" },
+    68→  { name: "DarkOps Pro", desc: "Ultra-modern dark theme with glassmorphism, gradients, and micro-animations.", category: "themes", icon: Palette, color: "#FF4D00", rating: 4.9, reviews: 3241, installs: "52.3K", price: "$59", badge: "Best Seller", badgeColor: "rgba(255,77,0,0.15)" },
+    69→  { name: "Neon Grid", desc: "Cyberpunk-inspired theme with neon accents and dynamic grid layouts.", category: "themes", icon: Palette, color: "#00D4FF", rating: 4.6, reviews: 756, installs: "11.2K", price: "$49" },
+    70→  { name: "Minimal White", desc: "Clean, professional light theme optimized for readability and focus.", category: "themes", icon: Palette, color: "#E8E8EC", rating: 4.5, reviews: 543, installs: "9.1K", price: "$39" },
+    71→  { name: "Corporate Blue", desc: "Enterprise-grade blue theme with formal layouts and data density.", category: "themes", icon: Palette, color: "#4285F4", rating: 4.7, reviews: 876, installs: "14.6K", price: "$49" },
+    72→  { name: "Gradient Wave", desc: "Vibrant gradient theme with wave animations and bold typography.", category: "themes", icon: Palette, color: "#F472B6", rating: 4.4, reviews: 432, installs: "6.7K", price: "$39" },
+    73→  { name: "Retro Terminal", desc: "80s hacker aesthetic with monospace fonts, scan lines, and green phosphor.", category: "themes", icon: Command, color: "#00FF88", rating: 4.8, reviews: 1234, installs: "18.9K", price: "$49", badge: "Nerd Pick", badgeColor: "rgba(0,255,136,0.12)" },
+    74→  { name: "Lead Qualifier AI", desc: "Automatically scores and qualifies incoming leads using behavioral signals.", category: "agents", icon: Bot, color: "#FF4D00", rating: 4.9, reviews: 1876, installs: "31.4K", price: "$79/mo", badge: "Featured", badgeColor: "rgba(0,212,255,0.12)", featured: true },
+    75→  { name: "Support Copilot", desc: "AI chatbot that resolves 70% of support tickets autonomously.", category: "agents", icon: Bot, color: "#00D4FF", rating: 4.8, reviews: 1432, installs: "26.8K", price: "$59/mo" },
+    76→  { name: "Content Writer AI", desc: "Generates product descriptions, emails, and social posts in your brand voice.", category: "agents", icon: Bot, color: "#00FF88", rating: 4.7, reviews: 987, installs: "15.9K", price: "$49/mo" },
+    77→  { name: "Sales Outreach AI", desc: "Personalized cold emails, LinkedIn messages, and follow-up sequences.", category: "agents", icon: Target, color: "#FFD93D", rating: 4.8, reviews: 765, installs: "12.3K", price: "$69/mo" },
+    78→  { name: "Data Analyst AI", desc: "Natural language queries over your data. Ask questions, get charts.", category: "agents", icon: Brain, color: "#A78BFA", rating: 4.9, reviews: 654, installs: "10.1K", price: "$89/mo", badge: "New", badgeColor: "rgba(167,139,250,0.12)" },
+    79→  { name: "Onboarding Bot", desc: "Guides new users through setup with interactive walkthroughs and tips.", category: "agents", icon: Bot, color: "#F472B6", rating: 4.6, reviews: 432, installs: "7.8K", price: "$39/mo" },
+    80→  { name: "Survey Intelligence", desc: "AI-powered survey creation, distribution, and sentiment analysis.", category: "agents", icon: MessageSquare, color: "#FF6B6B", rating: 4.5, reviews: 321, installs: "5.4K", price: "$29/mo" },
+    81→  { name: "Revenue Dashboard", desc: "Real-time revenue tracking, MRR/ARR, churn rate, and forecast models.", category: "reports", icon: BarChart3, color: "#FF4D00", rating: 4.8, reviews: 1123, installs: "22.1K", price: "Free", badge: "Essential", badgeColor: "rgba(255,217,61,0.12)" },
+    82→  { name: "Customer Analytics", desc: "Cohort analysis, LTV prediction, and segment-based behavior insights.", category: "reports", icon: TrendingUp, color: "#A78BFA", rating: 4.7, reviews: 678, installs: "13.5K", price: "$29/mo" },
+    83→  { name: "Inventory Report", desc: "Stock levels, turnover rates, dead stock alerts, and reorder suggestions.", category: "reports", icon: Package, color: "#00FF88", rating: 4.6, reviews: 432, installs: "8.9K", price: "Free" },
+    84→  { name: "HR Dashboard", desc: "Employee performance, attendance, payroll summaries, and retention metrics.", category: "reports", icon: Users, color: "#00D4FF", rating: 4.7, reviews: 567, installs: "11.2K", price: "$24/mo" },
+    85→  { name: "Marketing ROI", desc: "Campaign performance, cost per acquisition, and channel attribution.", category: "reports", icon: Target, color: "#FFD93D", rating: 4.8, reviews: 789, installs: "14.6K", price: "$34/mo" },
+    86→  { name: "Google Workspace", desc: "Sync contacts, calendars, and drive files directly into your OS.", category: "integrations", icon: Link2, color: "#4285F4", rating: 4.8, reviews: 2340, installs: "41.2K", price: "Free" },
+    87→  { name: "Slack Bridge", desc: "Post alerts, lead updates, and AI summaries to your Slack channels.", category: "integrations", icon: Link2, color: "#E01E5A", rating: 4.7, reviews: 1567, installs: "29.8K", price: "Free" },
+    88→  { name: "Zapier Connect", desc: "Connect 5000+ apps through Zapier with zero-code workflow automation.", category: "integrations", icon: Zap, color: "#FF4D00", rating: 4.9, reviews: 3456, installs: "56.7K", price: "Free", badge: "Top Rated", badgeColor: "rgba(0,255,136,0.12)" },
+    89→  { name: "HubSpot Sync", desc: "Bi-directional sync of contacts, deals, and companies with HubSpot CRM.", category: "integrations", icon: Link2, color: "#FF7A59", rating: 4.6, reviews: 876, installs: "15.3K", price: "$29/mo" },
+    90→];
+    91→
+    92→/* ══════════════════════════ ANIMS ══════════════════════════ */
+    93→const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.06, duration: 0.5, ease: [0.22, 1, 0.36, 1] } }) };
+    94→const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
+    95→const dashFade = { hidden: { opacity: 0, y: 12 }, visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.04, duration: 0.35 } }) };
+    96→
+    97→/* ══════════════════════════ DASHBOARD TYPES ══════════════════════════ */
+    98→interface Lead { id: string; name: string; email: string; phone: string | null; company: string | null; source: string; status: string; score: number; value: string; message: string | null; assignedTo: string | null; createdAt: string; updatedAt: string; }
+    99→interface AgentActivity { id: string; agent: string; action: string; status: string; createdAt: string; }
+   100→interface DashboardStats { totalLeads: number; hotLeads: number; warmLeads: number; newLeads: number; totalValue: number; activeAgents: number; conversions: number; recentLeads: number; }
+   101→
+   102→/* ══════════════════════════ TINY COMPONENTS ══════════════════════════ */
+   103→function Stars({ rating }: { rating: number }) {
+   104→  return <div className="flex items-center gap-0.5">{[1,2,3,4,5].map(s=><Star key={s} className={s<=Math.round(rating)?"fill-[#FFD93D] text-[#FFD93D]":"text-[#2A2A3A]"} />)}</div>;
+   105→}
+   106→function ScoreBar({ score }: { score: number }) {
+   107→  const c = score>=80?"bg-[#FF4D00]":score>=50?"bg-[#FFD93D]":"bg-[#6B6B80]";
+   108→  const w = score + "%";
+   109→  return <div className="flex items-center gap-2"><div className="w-16 h-1.5 rounded-full bg-[#1A1A24] overflow-hidden"><div className={"h-full rounded-full " + c + " transition-all duration-500"} style={{width:w}}/></div><span className="text-xs text-[#888899] w-6 text-right">{score}</span></div>;
+   110→}
+   111→function RelTime({ d }: { d: string }) {
+   112→  const diff=Date.now()-new Date(d).getTime(), mins=Math.floor(diff/60000);
+   113→  if(mins<1) return <span className="text-[#555566]">just now</span>;
+   114→  if(mins<60) return <span className="text-[#555566]">{mins}m ago</span>;
+   115→  const h=Math.floor(mins/60); if(h<24) return <span className="text-[#555566]">{h}h ago</span>;
+   116→  return <span className="text-[#555566]">{Math.floor(h/24)}d ago</span>;
+   117→}
+   118→
+   119→/* ══════════════════════════ LEAD CAPTURE FORM ══════════════════════════ */
+   120→function LeadCaptureForm({ onSubmitted }: { onSubmitted?: () => void }) {
+   121→  const [form, setForm] = useState({ name: "", email: "", phone: "", company: "", message: "" });
+   122→  const [submitting, setSubmitting] = useState(false);
+   123→  const [result, setResult] = useState<"" | "success" | "error">("");
+   124→  const update = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+   125→  const handleSubmit = async (e: React.FormEvent) => {
+   126→    e.preventDefault(); if (!form.name || !form.email) return;
+   127→    setSubmitting(true); setResult("");
+   128→    try {
+   129→      const res = await fetch("/api/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, source: "capture_form" }) });
+   130→      if (res.ok) { setResult("success"); setForm({ name: "", email: "", phone: "", company: "", message: "" }); onSubmitted?.(); }
+   131→      else setResult("error");
+   132→    } catch { setResult("error"); }
+   133→    setSubmitting(false);
+   134→  };
+   135→  return (
+   136→    <div className="mx-auto max-w-lg">
+   137→      <div className="dash-card rounded-2xl p-8">
+   138→        <div className="flex items-center gap-3 mb-6"><div className="w-10 h-10 rounded-xl bg-[#FF4D00]/10 flex items-center justify-center"><UserPlus className="w-5 h-5 text-[#FF4D00]" /></div><div><h2 className="text-lg font-bold">Submit a Lead</h2><p className="text-xs text-[#555566]">AI agents will qualify and assign automatically</p></div></div>
+   139→        {result === "success" && (<motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} className="flex items-center gap-2 mb-6 p-3 rounded-xl bg-[#00FF88]/10 border border-[#00FF88]/20 text-[#00FF88] text-sm"><CheckCircle2 className="w-4 h-4 shrink-0"/>Lead submitted! AI agents are processing it now.</motion.div>)}
+   140→        {result === "error" && (<motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} className="flex items-center gap-2 mb-6 p-3 rounded-xl bg-[#FF4444]/10 border border-[#FF4444]/20 text-[#FF4444] text-sm"><AlertCircle className="w-4 h-4 shrink-0"/>Failed to submit. Please try again.</motion.div>)}
+   141→        <form onSubmit={handleSubmit} className="space-y-3">
+   142→          <input value={form.name} onChange={e=>update("name",e.target.value)} placeholder="Full Name *" className="w-full px-4 py-3 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
+   143→          <input value={form.email} onChange={e=>update("email",e.target.value)} type="email" placeholder="Email *" className="w-full px-4 py-3 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
+   144→          <input value={form.phone} onChange={e=>update("phone",e.target.value)} placeholder="Phone" className="w-full px-4 py-3 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
+   145→          <input value={form.company} onChange={e=>update("company",e.target.value)} placeholder="Company" className="w-full px-4 py-3 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
+   146→          <textarea value={form.message} onChange={e=>update("message",e.target.value)} placeholder="Message" rows={3} className="w-full px-4 py-3 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50 resize-none"/>
+   147→          <button type="submit" disabled={submitting} className="w-full py-3 rounded-xl bg-[#FF4D00] text-black text-sm font-bold hover:bg-[#FF6A2A] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">{submitting?<RefreshCw className="w-4 h-4 animate-spin"/>:<Send className="w-4 h-4"/>}Submit Lead</button>
+   148→        </form>
+   149→      </div>
+   150→    </div>
+   151→  );
+   152→}
+   153→
+   154→/* ══════════════════════════ DASHBOARD VIEW (UPGRADED) ══════════════════════════ */
+   155→type DashTab = "leads" | "analytics" | "agents";
+   156→
+   157→function DashboardView() {
+   158→  const [stats, setStats] = useState<DashboardStats | null>(null);
+   159→  const [leads, setLeads] = useState<Lead[]>([]);
+   160→  const [activities, setActivities] = useState<AgentActivity[]>([]);
+   161→  const [loading, setLoading] = useState(true);
+   162→  const [refreshing, setRefreshing] = useState(false);
+   163→  const [statusFilter, setStatusFilter] = useState("all");
+   164→  const [searchQuery, setSearchQuery] = useState("");
+   165→  const [rtConnected, setRtConnected] = useState(false);
+   166→  const [newLeadNotif, setNewLeadNotif] = useState<Lead | null>(null);
+   167→  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+   168→  const [activeTab, setActiveTab] = useState<DashTab>("leads");
+   169→  const [notifOpen, setNotifOpen] = useState(false);
+   170→  const socketRef = useRef<Socket | null>(null);
+   171→
+   172→  const fetchData = useCallback(async () => {
+   173→    try {
+   174→      const [sR, lR, aR] = await Promise.all([fetch("/api/stats"), fetch("/api/leads"), fetch("/api/activity")]);
+   175→      setStats(await sR.json()); const lD = await lR.json(); setLeads(lD.leads || []); setActivities(await aR.json());
+   176→    } catch (e) { console.error("Fetch error:", e); } finally { setLoading(false); }
+   177→  }, []);
+   178→
+   179→  useEffect(() => { fetchData(); const iv = setInterval(fetchData, 15000); return () => clearInterval(iv); }, [fetchData]);
+   180→
+   181→  useEffect(() => {
+   182→    try {
+   183→      const sock = socketIO("/?XTransformPort=3003", { transports: ["websocket"], reconnection: true, reconnectionAttempts: 10, reconnectionDelay: 2000 });
+   184→      socketRef.current = sock;
+   185→      sock.on("connect", () => { setRtConnected(true); sock.emit("join-dashboard"); });
+   186→      sock.on("disconnect", () => setRtConnected(false));
+   187→      sock.on("lead:created", (data: { lead: Lead }) => { setNewLeadNotif(data.lead); setTimeout(() => setNewLeadNotif(null), 4000); fetchData(); });
+   188→      sock.on("activity:new", () => fetchData());
+   189→      sock.on("lead:updated", () => fetchData());
+   190→      sock.on("lead:deleted", () => fetchData());
+   191→      return () => { sock.disconnect(); };
+   192→    } catch { /* socket not available */ }
+   193→  }, [fetchData]);
+   194→
+   195→  const handleRefresh = async () => { setRefreshing(true); await fetchData(); setRefreshing(false); };
+   196→  const handleDelete = async (id: string) => { await fetch("/api/leads/" + id, { method: "DELETE" }); fetchData(); };
+   197→  const handleStatus = async (id: string, status: string) => { await fetch("/api/leads/" + id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) }); setLeads(p => p.map(l => l.id === id ? { ...l, status } : l)); };
+   198→
+   199→  const filtered = useMemo(() => {
+   200→    let items = statusFilter === "all" ? leads : leads.filter(l => l.status === statusFilter);
+   201→    if (searchQuery.trim()) { const q = searchQuery.toLowerCase(); items = items.filter(l => l.name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q) || (l.company || "").toLowerCase().includes(q)); }
+   202→    return items;
+   203→  }, [leads, statusFilter, searchQuery]);
+   204→
+   205→  const exportCSV = () => {
+   206→    const headers = ["Name", "Email", "Phone", "Company", "Source", "Status", "Score", "Value", "Assigned To", "Created"];
+   207→    const rows = filtered.map(l => [l.name, l.email, l.phone || "", l.company || "", l.source, l.status, l.score, l.value, l.assignedTo || "", l.createdAt]);
+   208→    const csvRows = [headers, ...rows].map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(","));
+   209→    const csv = csvRows.join("\n");
+   210→    const blob = new Blob([csv], { type: "text/csv" });
+   211→    const url = URL.createObjectURL(blob);
+   212→    const a = document.createElement("a"); a.href = url; a.download = "mianx-leads-" + new Date().toISOString().slice(0, 10) + ".csv"; a.click();
+   213→    URL.revokeObjectURL(url);
+   214→  };
+   215→
+   216→  if (loading) return <div className="flex items-center justify-center h-[80vh]"><div className="flex flex-col items-center gap-4"><div className="w-10 h-10 border-2 border-[#FF4D00]/30 border-t-[#FF4D00] rounded-full animate-spin"/><p className="text-sm text-[#555566] font-mono">Loading dashboard...</p></div></div>;
+   217→
+   218→  const dashTabs: { key: DashTab; label: string; icon: any }[] = [
+   219→    { key: "leads", label: "Leads", icon: Users },
+   220→    { key: "analytics", label: "Analytics", icon: BarChart3 },
+   221→    { key: "agents", label: "AI Agents", icon: Bot },
+   222→  ];
+   223→
+   224→  const rtClass = rtConnected ? "text-[#00FF88] border-[#00FF88]/20 bg-[#00FF88]/5" : "text-[#FF4444] border-[#FF4444]/20 bg-[#FF4444]/5";
+   225→  const tabClass = (key: DashTab) => activeTab === key ? "flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all bg-[#FF4D00]/10 text-[#FF4D00] border border-[#FF4D00]/30" : "flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all text-[#555566] border border-transparent hover:text-[#888899]";
+   226→  const filterClass = (key: string) => statusFilter === key ? "px-2.5 py-1 text-[10px] font-semibold rounded-md transition-colors bg-[#FF4D00]/15 text-[#FF4D00] border border-[#FF4D00]/30" : "px-2.5 py-1 text-[10px] font-semibold rounded-md transition-colors text-[#555566] border border-transparent hover:text-[#888899]";
+   227→
+   228→  return (
+   229→    <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-[1440px] mx-auto w-full">
+   230→      <AnimatePresence>{newLeadNotif && (
+   231→        <motion.div initial={{opacity:0,y:-60,x:"-50%"}} animate={{opacity:1,y:0,x:"-50%"}} exit={{opacity:0,y:-60,x:"-50%"}} className="fixed top-20 left-1/2 z-[60] px-5 py-3 rounded-xl bg-[#111118] border border-[#00FF88]/30 shadow-2xl shadow-[#00FF88]/10 flex items-center gap-3">
+   232→          <Sparkles className="w-5 h-5 text-[#00FF88]"/><div><p className="text-sm font-bold">New Lead: {newLeadNotif.name}</p><p className="text-xs text-[#888899]">{newLeadNotif.email} — assigned to {newLeadNotif.assignedTo}</p></div>
+   233→        </motion.div>
+   234→      )}</AnimatePresence>
+   235→      <LeadDetailPanel lead={selectedLead} onClose={() => setSelectedLead(null)} onStatusChange={handleStatus} />
+   236→
+   237→      {/* Header */}
+   238→      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+   239→        <div><h1 className="text-2xl font-bold flex items-center gap-3"><LayoutDashboard className="w-6 h-6 text-[#FF4D00]"/>Super Admin</h1><p className="text-sm text-[#555566] mt-1">Real-time lead intelligence & AI agent command center</p></div>
+   240→        <div className="flex items-center gap-3">
+   241→          <div className={"flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border " + rtClass}>
+   242→            {rtConnected ? <Wifi className="w-3 h-3"/> : <WifiOff className="w-3 h-3"/>}{rtConnected ? "Live" : "Reconnecting"}
+   243→          </div>
+   244→          <div className="relative">
+   245→            <button onClick={() => setNotifOpen(!notifOpen)} className="relative p-2 rounded-lg border border-[#1E1E2A] bg-[#111118] text-[#888899] hover:border-[#FF4D00]/40 hover:text-[#E8E8EC] transition-colors">
+   246→              <Bell className="w-4 h-4"/><span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#FF4D00] text-black text-[9px] font-bold flex items-center justify-center">{activities.length > 0 ? Math.min(activities.length, 9) : 0}</span>
+   247→            </button>
+   248→            <AnimatePresence>{notifOpen && (
+   249→              <motion.div initial={{opacity:0,y:-8,scale:0.95}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:-8,scale:0.95}} className="absolute right-0 top-12 w-80 rounded-xl bg-[#111118] border border-[#1E1E2A] shadow-2xl z-50 overflow-hidden">
+   250→                <div className="p-4 border-b border-[#1E1E2A] flex items-center justify-between"><h3 className="text-sm font-bold">Notifications</h3><button onClick={() => setNotifOpen(false)} className="text-[10px] text-[#FF4D00] hover:underline">Mark all read</button></div>
+   251→                <div className="max-h-72 overflow-y-auto divide-y divide-[#1E1E2A]/30">
+   252→                  {activities.slice(0, 8).map(act => (
+   253→                    <div key={act.id} className="px-4 py-3 hover:bg-[#15151E] transition-colors">
+   254→                      <p className="text-xs text-[#E8E8EC] leading-relaxed">{act.action}</p>
+   255→                      <div className="flex items-center gap-2 mt-1"><span className={act.agent === "System" ? "text-[10px] font-semibold text-[#FFD93D]" : "text-[10px] font-semibold text-[#00D4FF]"}>{act.agent}</span><RelTime d={act.createdAt}/></div>
+   256→                    </div>
+   257→                  ))}
+   258→                </div>
+   259→              </motion.div>
+   260→            )}</AnimatePresence>
+   261→          </div>
+   262→          <button onClick={handleRefresh} className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg border border-[#1E1E2A] bg-[#111118] text-[#888899] hover:border-[#FF4D00]/40 hover:text-[#E8E8EC] transition-colors">
+   263→            <RefreshCw className={"w-3 h-3 " + (refreshing ? "animate-spin" : "")}/>Refresh
+   264→          </button>
+   265→        </div>
+   266→      </div>
+   267→
+   268→      {/* Dashboard Tabs */}
+   269→      <div className="flex items-center gap-2 mb-6 border-b border-[#1E1E2A] pb-4">
+   270→        {dashTabs.map(t => <button key={t.key} onClick={() => setActiveTab(t.key)} className={tabClass(t.key)}><t.icon className="w-4 h-4"/>{t.label}</button>)}
+   271→      </div>
+   272→
+   273→      {/* Stats row */}
+   274→      <motion.div variants={stagger} initial="hidden" animate="visible" className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+   275→        {stats && [
+   276→          { label: "Total Leads", value: stats.totalLeads, icon: Users, color: "#FF4D00", sub: "+" + stats.recentLeads + " this week" },
+   277→          { label: "Hot Leads", value: stats.hotLeads, icon: TrendingUp, color: "#FF4D00", sub: stats.conversions + " conversions" },
+   278→          { label: "Pipeline Value", value: "$" + (stats.totalValue / 1000).toFixed(1) + "K", icon: DollarSign, color: "#00FF88", sub: "all industries" },
+   279→          { label: "Active Agents", value: stats.activeAgents, icon: Activity, color: "#00D4FF", sub: "6 AI agents" },
+   280→        ].map((s, i) => (
+   281→          <motion.div key={s.label} variants={dashFade} custom={i} className="dash-card rounded-xl p-5 relative overflow-hidden">
+   282→            <div className="flex items-start justify-between mb-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: s.color + "15" }}><s.icon className="w-4 h-4" style={{ color: s.color }}/></div><Radio className="w-3 h-3 text-[#00FF88] rec-dot"/></div>
+   283→            <p className="text-2xl font-bold mb-0.5">{s.value}</p><p className="text-xs text-[#555566]">{s.label}</p><p className="text-[10px] text-[#888899] mt-1">{s.sub}</p>
+   284→          </motion.div>
+   285→        ))}
+   286→      </motion.div>
+   287→
+   288→      {/* TAB: Leads */}
+   289→      {activeTab === "leads" && (
+   290→        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+   291→          <div className="xl:col-span-2 dash-card rounded-xl overflow-hidden">
+   292→            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border-b border-[#1E1E2A] gap-3">
+   293→              <div><h2 className="text-base font-bold flex items-center gap-2"><Users className="w-4 h-4 text-[#FF4D00]"/>Leads</h2><p className="text-xs text-[#555566] mt-0.5">{filtered.length} lead{filtered.length !== 1 ? "s" : ""}</p></div>
+   294→              <div className="flex items-center gap-2 flex-wrap">
+   295→                <div className="relative"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#555566]"/><input type="text" placeholder="Search leads..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-7 pr-3 py-1.5 rounded-lg bg-[#08080C] border border-[#1E1E2A] text-[11px] text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50 w-36 transition-all focus:w-48"/></div>
+   296→                <Filter className="w-3.5 h-3.5 text-[#555566]"/>
+   297→                {[{ key: "all", label: "All" }, { key: "hot", label: "Hot" }, { key: "warm", label: "Warm" }, { key: "new", label: "New" }, { key: "cold", label: "Cold" }].map(f => (
+   298→                  <button key={f.key} onClick={() => setStatusFilter(f.key)} className={filterClass(f.key)}>{f.label}</button>
+   299→                ))}
+   300→                <button onClick={exportCSV} className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-md text-[#555566] border border-[#1E1E2A] hover:border-[#00FF88]/30 hover:text-[#00FF88] transition-colors" title="Export CSV"><FileDown className="w-3 h-3"/>Export</button>
+   301→              </div>
+   302→            </div>
+   303→            <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
+   304→              <table className="w-full text-left">
+   305→                <thead className="sticky top-0 bg-[#111118] z-10"><tr className="text-[10px] text-[#555566] uppercase tracking-wider border-b border-[#1E1E2A]">
+   306→                  <th className="px-5 py-3 font-medium">Lead</th><th className="px-4 py-3 font-medium">Source</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Score</th><th className="px-4 py-3 font-medium">Value</th><th className="px-4 py-3 font-medium">Agent</th><th className="px-4 py-3 font-medium">Time</th><th className="px-5 py-3 font-medium text-right">Actions</th>
+   307→                </tr></thead>
+   308→                <tbody className="divide-y divide-[#1E1E2A]/50">
+   309→                  <AnimatePresence>{filtered.map((lead, i) => (
+   310→                    <motion.tr key={lead.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ delay: i * 0.02, duration: 0.25 }} className="hover:bg-[#15151E] transition-colors group cursor-pointer" onClick={() => setSelectedLead(lead)}>
+   311→                      <td className="px-5 py-3"><p className="text-sm font-semibold truncate max-w-[150px]">{lead.name}</p><p className="text-[11px] text-[#555566] truncate max-w-[150px]">{lead.email}</p></td>
+   312→                      <td className="px-4 py-3"><span className="text-xs text-[#888899] capitalize font-mono">{lead.source}</span></td>
+   313→                      <td className="px-4 py-3"><select value={lead.status} onChange={e => handleStatus(lead.id, e.target.value)} className="text-[10px] font-semibold px-2 py-1 rounded-md border-none bg-transparent cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#FF4D00]/50" onClick={e => e.stopPropagation()}><option value="new">New</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option></select></td>
+   314→                      <td className="px-4 py-3"><ScoreBar score={lead.score}/></td>
+   315→                      <td className="px-4 py-3"><span className="text-xs font-mono text-[#E8E8EC]">{lead.value}</span></td>
+   316→                      <td className="px-4 py-3"><span className="text-[11px] text-[#00D4FF] font-medium">{lead.assignedTo || "—"}</span></td>
+   317→                      <td className="px-4 py-3"><RelTime d={lead.createdAt}/></td>
+   318→                      <td className="px-5 py-3 text-right"><div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button className="p-1.5 rounded-md hover:bg-[#1A1A24] text-[#555566] hover:text-[#00D4FF] transition-colors" title="View" onClick={e => { e.stopPropagation(); setSelectedLead(lead); }}><Eye className="w-3.5 h-3.5"/></button><button onClick={e => { e.stopPropagation(); handleDelete(lead.id); }} className="p-1.5 rounded-md hover:bg-[#FF4444]/10 text-[#555566] hover:text-[#FF4444] transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5"/></button></div></td>
+   319→                    </motion.tr>
+   320→                  ))}</AnimatePresence>
+   321→                </tbody>
+   322→              </table>
+   323→              {filtered.length === 0 && <div className="text-center py-12 text-sm text-[#555566]">No leads found</div>}
+   324→            </div>
+   325→          </div>
+   326→          <div className="space-y-6">
+   327→            <div className="dash-card rounded-xl overflow-hidden flex flex-col">
+   328→              <div className="p-5 border-b border-[#1E1E2A] flex items-center justify-between"><h2 className="text-base font-bold flex items-center gap-2"><Activity className="w-4 h-4 text-[#00D4FF]"/>Agent Activity</h2><span className="text-[10px] text-[#555566] font-mono">LIVE</span></div>
+   329→              <div className="flex-1 overflow-y-auto max-h-[280px] divide-y divide-[#1E1E2A]/30">
+   330→                {activities.slice(0, 12).map((act, i) => (
+   331→                  <motion.div key={act.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="px-5 py-3 hover:bg-[#15151E]/50 transition-colors">
+   332→                    <div className="flex items-start gap-3"><div className={"w-2 h-2 rounded-full mt-1.5 shrink-0 " + (act.status === "success" ? "bg-[#00FF88]" : act.agent === "System" ? "bg-[#FFD93D]" : "bg-[#00D4FF]")}/><div className="flex-1 min-w-0"><p className="text-xs text-[#E8E8EC] leading-relaxed">{act.action}</p><div className="flex items-center gap-2 mt-1"><span className={act.agent === "System" ? "text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#FFD93D]/10 text-[#FFD93D]" : "text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#00D4FF]/10 text-[#00D4FF]"}>{act.agent}</span><RelTime d={act.createdAt}/></div></div></div>
+   333→                  </motion.div>
+   334→                ))}
+   335→                {activities.length === 0 && <div className="text-center py-8 text-sm text-[#555566]">No activity</div>}
+   336→              </div>
+   337→            </div>
+   338→            <div className="dash-card rounded-xl overflow-hidden">
+   339→              <div className="p-5 border-b border-[#1E1E2A] flex items-center gap-2"><Sparkles className="w-4 h-4 text-[#FF4D00]"/><h2 className="text-base font-bold">Quick Lead Capture</h2></div>
+   340→              <div className="p-5"><QuickLeadForm onSubmitted={fetchData}/></div>
+   341→            </div>
+   342→          </div>
+   343→        </div>
+   344→      )}
+   345→
+   346→      {/* TAB: Analytics */}
+   347→      {activeTab === "analytics" && <DashboardCharts />}
+   348→
+   349→      {/* TAB: Agents */}
+   350→      {activeTab === "agents" && <AgentCommandCenter />}
+   351→    </div>
+   352→  );
+   353→}
+   354→
+   355→function QuickLeadForm({ onSubmitted }: { onSubmitted?: () => void }) {
+   356→  const [name, setName] = useState(""); const [email, setEmail] = useState("");
+   357→  const [loading, setLoading] = useState(false); const [done, setDone] = useState(false);
+   358→  const submit = async () => {
+   359→    if (!name || !email) return; setLoading(true);
+   360→    await fetch("/api/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, source: "dashboard_quick" }) });
+   361→    setLoading(false); setDone(true); setName(""); setEmail(""); onSubmitted?.();
+   362→    setTimeout(() => setDone(false), 3000);
+   363→  };
+   364→  return (
+   365→    <div className="space-y-3">
+   366→      {done && <p className="text-xs text-[#00FF88] flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5"/>Lead added & processing!</p>}
+   367→      <input value={name} onChange={e => setName(e.target.value)} placeholder="Full Name *" className="w-full px-3 py-2 rounded-lg bg-[#08080C] border border-[#1E1E2A] text-xs text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
+   368→      <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email *" className="w-full px-3 py-2 rounded-lg bg-[#08080C] border border-[#1E1E2A] text-xs text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
+   369→      <button onClick={submit} disabled={loading || !name || !email} className="w-full py-2 rounded-lg bg-[#FF4D00] text-black text-xs font-bold hover:bg-[#FF6A2A] transition-colors disabled:opacity-40 flex items-center justify-center gap-1.5">
+   370→        {loading ? <RefreshCw className="w-3 h-3 animate-spin"/> : <Send className="w-3 h-3"/>}Add Lead
+   371→      </button>
+   372→    </div>
+   373→  );
+   374→}
+   375→
+   376→/* ══════════════════════════ WEBSITE VIEW (UPGRADED) ══════════════════════════ */
+   377→function WebsiteView() {
+   378→  const [activeCategory, setActiveCategory] = useState<Category>("all");
+   379→  const [searchQuery, setSearchQuery] = useState("");
+   380→  const filtered = useMemo(() => {
+   381→    let items = activeCategory === "all" ? marketplaceItems : marketplaceItems.filter(i => i.category === activeCategory);
+   382→    if (searchQuery.trim()) { const q = searchQuery.toLowerCase(); items = items.filter(i => i.name.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q)); }
+   383→    return items;
+   384→  }, [activeCategory, searchQuery]);
+   385→
+   386→  return (
+   387→    <>
+   388→      <section className="relative pt-32 pb-20 md:pt-44 md:pb-28 px-6">
+   389→        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] rounded-full bg-[#FF4D00]/[0.04] blur-[120px] pointer-events-none"/>
+   390→        <div className="absolute top-20 right-1/4 w-[400px] h-[400px] rounded-full bg-[#00D4FF]/[0.03] blur-[100px] pointer-events-none"/>
+   391→        <div className="relative mx-auto max-w-5xl text-center">
+   392→          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0} className="flex justify-center mb-8"><span className="section-marker">Enterprise Platform</span></motion.div>
+   393→          <motion.h1 variants={fadeUp} initial="hidden" animate="visible" custom={1} className="text-4xl sm:text-5xl md:text-7xl font-extrabold leading-[1.05] tracking-tight mb-6">The Enterprise Operating System <br className="hidden sm:block"/><span className="bg-gradient-to-r from-[#FF4D00] via-[#FF8C42] to-[#FFD93D] bg-clip-text text-transparent">for Modern Businesses</span></motion.h1>
+   394→          <motion.p variants={fadeUp} initial="hidden" animate="visible" custom={2} className="max-w-2xl mx-auto text-base sm:text-lg text-[#888899] leading-relaxed mb-10">One intelligent platform. Seven industry-specific operating systems. Automate operations, eliminate manual work, and scale effortlessly with AI-powered agents.</motion.p>
+   395→          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3} className="flex flex-col sm:flex-row items-center justify-center gap-4">
+   396→            <a href="#industries" className="pulse-btn px-8 py-3.5 text-sm font-bold rounded-xl bg-[#FF4D00] text-black hover:bg-[#FF6A2A] transition-colors inline-flex items-center gap-2">Explore Industries <ArrowRight className="w-4 h-4"/></a>
+   397→            <a href="#marketplace" className="px-8 py-3.5 text-sm font-semibold rounded-xl border border-[#2A2A3A] text-[#E8E8EC] hover:border-[#FF4D00]/40 hover:text-white transition-colors">Browse Marketplace</a>
+   398→          </motion.div>
+   399→          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={4} className="mt-14 flex flex-wrap items-center justify-center gap-6 text-xs text-[#555566] tracking-widest uppercase font-mono"><span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-[#00FF88] accent-dot"/>All Systems Operational</span><span className="hidden sm:inline">|</span><span>7 Industry Verticals</span><span className="hidden sm:inline">|</span><span>500+ Integrations</span></motion.div>
+   400→        </div>
+   401→      </section>
+   402→      <LogoCloudSection />
+   403→      <div className="border-y border-[#1E1E2A]/60 py-4 overflow-hidden"><div className="marquee-track">{[...industries, ...industries].map((ind, i) => <span key={i} className="mx-8 text-sm font-mono text-[#555566] tracking-widest uppercase whitespace-nowrap flex items-center gap-3"><span className="w-1.5 h-1.5 rounded-full" style={{ background: ind.color }}/>;{ind.name}</span>)}</div></div>
+   404→      <section id="industries" className="py-20 md:py-24 px-6"><div className="mx-auto max-w-7xl">
+   405→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }} custom={0} className="text-center mb-14"><span className="section-marker">Industry Solutions</span><h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">Seven OS. Every Industry Covered.</h2><p className="mt-4 max-w-xl mx-auto text-[#888899]">Purpose-built operating systems for the world&apos;s most critical industries.</p></motion.div>
+   406→        <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-60px" }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+   407→          {industries.map((ind, i) => (
+   408→            <motion.div key={ind.name} variants={fadeUp} custom={i} className="group relative rounded-2xl border border-[#1E1E2A] bg-[#111118] p-6 hover:border-transparent transition-all duration-500 cursor-pointer overflow-hidden">
+   409→              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" style={{ background: "radial-gradient(circle at 50% 0%," + ind.bg + ",transparent 70%)" }}/>
+   410→              <div className="absolute top-0 inset-x-0 h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: "linear-gradient(90deg,transparent," + ind.color + ",transparent)" }}/>
+   411→              <div className="relative"><div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-110" style={{ background: ind.bg }}><ind.icon className="w-6 h-6" style={{ color: ind.color }}/></div><h3 className="text-lg font-bold mb-2 flex items-center gap-2">{ind.name}<ChevronRight className="w-4 h-4 text-[#555566] group-hover:text-[#E8E8EC] group-hover:translate-x-1 transition-all duration-300"/></h3><p className="text-sm text-[#888899] leading-relaxed">{ind.tagline}</p></div>
+   412→            </motion.div>
+   413→          ))}
+   414→        </motion.div>
+   415→      </div></section>
+   416→      <StatsCounterSection />
+   417→      <HowItWorksSection />
+   418→      <section id="marketplace" className="py-20 md:py-24 px-6 border-t border-[#1E1E2A]/40"><div className="mx-auto max-w-7xl">
+   419→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }} custom={0} className="text-center mb-10"><span className="section-marker">Level 5</span><h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">MianX Marketplace</h2><p className="mt-4 max-w-2xl mx-auto text-[#888899]">Extend your OS with apps, plugins, themes, AI agents, reports, and integrations.</p></motion.div>
+   420→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} custom={1} className="max-w-xl mx-auto mb-8"><div className="relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555566]"/><input type="text" placeholder="Search apps, plugins, agents..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-11 pr-4 py-3 rounded-xl bg-[#111118] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#555566] focus:outline-none focus:border-[#FF4D00]/50 transition-colors"/></div></motion.div>
+   421→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} custom={2} className="flex flex-wrap items-center justify-center gap-2 mb-10">
+   422→          {categories.map(cat => { const a = activeCategory === cat.key; return (<button key={cat.key} onClick={() => setActiveCategory(cat.key)} className={"flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 border " + (a ? "bg-[#FF4D00]/10 border-[#FF4D00]/40 text-[#FF4D00]" : "bg-[#111118] border-[#1E1E2A] text-[#888899] hover:border-[#2A2A3A] hover:text-[#E8E8EC]")}><cat.icon className="w-3.5 h-3.5"/>{cat.label}<span className={"text-xs px-1.5 py-0.5 rounded-md " + (a ? "bg-[#FF4D00]/20 text-[#FF4D00]" : "bg-[#1A1A24] text-[#555566]")}>{cat.count}</span></button>); })}
+   423→        </motion.div>
+   424→        <div className="flex items-center justify-between mb-6"><p className="text-xs text-[#555566] font-mono tracking-wider uppercase">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p><a href="#marketplace" className="text-xs text-[#555566] hover:text-[#FF4D00] transition-colors flex items-center gap-1">Powered by MianX.ai <Cpu className="w-3 h-3"/></a></div>
+   425→        <AnimatePresence mode="wait"><motion.div key={activeCategory + searchQuery} variants={stagger} initial="hidden" animate="visible" exit="hidden" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+   426→          {filtered.slice(0, 12).map((item, i) => (
+   427→            <motion.div key={item.name} variants={fadeUp} custom={i} className={"group relative rounded-2xl border bg-[#111118] p-5 transition-all duration-400 hover:bg-[#15151E] cursor-pointer overflow-hidden " + (item.featured ? "border-[#FF4D00]/30 hover:border-[#FF4D00]/50" : "border-[#1E1E2A] hover:border-[#2A2A3A]")}>
+   428→              {item.featured && <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-[#FF4D00] to-transparent"/>}
+   429→              <div className="flex items-start gap-4"><div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110" style={{ background: item.color + "15" }}><item.icon className="w-5 h-5" style={{ color: item.color }}/></div><div className="flex-1 min-w-0"><div className="flex items-center gap-2 mb-1"><h3 className="text-sm font-bold truncate">{item.name}</h3>{item.badge && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md shrink-0" style={{ background: item.badgeColor, color: item.color }}>{item.badge}</span>}</div><p className="text-xs text-[#888899] leading-relaxed mb-3 line-clamp-2">{item.desc}</p><div className="flex items-center gap-3 mb-3"><div className="flex items-center gap-1.5"><Stars rating={item.rating}/><span className="text-xs text-[#888899]">{item.rating}</span><span className="text-[10px] text-[#555566]">({item.reviews.toLocaleString()})</span></div><span className="text-[10px] text-[#555566]">|</span><div className="flex items-center gap-1"><Download className="w-3 h-3 text-[#555566]"/><span className="text-xs text-[#888899]">{item.installs}</span></div></div><div className="flex items-center justify-between"><span className={"text-sm font-bold " + (item.price === "Free" ? "text-[#00FF88]" : "text-[#E8E8EC]")}>{item.price}</span><button className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#FF4D00] text-black hover:bg-[#FF6A2A] transition-colors inline-flex items-center gap-1.5" onClick={e => e.stopPropagation()}>Install<Download className="w-3 h-3"/></button></div></div></div>
+   430→            </motion.div>
+   431→          ))}
+   432→        </motion.div></AnimatePresence>
+   433→        {filtered.length > 12 && <div className="text-center mt-8"><button className="px-6 py-2.5 text-sm font-semibold rounded-xl border border-[#2A2A3A] text-[#888899] hover:border-[#FF4D00]/40 hover:text-[#E8E8EC] transition-colors">Load More ({filtered.length - 12} remaining)</button></div>}
+   434→        {filtered.length === 0 && <div className="text-center py-16"><Search className="w-10 h-10 text-[#2A2A3A] mx-auto mb-4"/><p className="text-[#888899] text-sm">No results found</p><button onClick={() => { setSearchQuery(""); setActiveCategory("all"); }} className="mt-3 text-xs text-[#FF4D00] hover:underline">Clear filters</button></div>}
+   435→      </div></section>
+   436→      <section id="capabilities" className="py-20 md:py-24 px-6 border-t border-[#1E1E2A]/40"><div className="mx-auto max-w-6xl">
+   437→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }} custom={0} className="text-center mb-14"><span className="section-marker">Platform Capabilities</span><h2 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">Built for Scale. Powered by AI.</h2></motion.div>
+   438→        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{capabilities.map((cap, i) => (<motion.div key={cap.title} variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} custom={i} className="notch-corner rounded-2xl border border-[#1E1E2A] bg-[#111118] p-8 hover:bg-[#15151E] transition-colors"><cap.icon className="w-8 h-8 text-[#FF4D00] mb-4"/><h3 className="text-xl font-bold mb-3">{cap.title}</h3><p className="text-sm text-[#888899] leading-relaxed">{cap.desc}</p></motion.div>))}</div>
+   439→      </div></section>
+   440→      <TestimonialsSection />
+   441→      <PricingSection />
+   442→      <section className="py-20 md:py-24 px-6 border-t border-[#1E1E2A]/40"><div className="mx-auto max-w-3xl text-center"><motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }} custom={0}><h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-5">Ready to Transform <span className="bg-gradient-to-r from-[#FF4D00] to-[#00D4FF] bg-clip-text text-transparent">Your Business?</span></h2><p className="text-[#888899] max-w-lg mx-auto mb-10">Join hundreds of enterprises already running on MianX.ai.</p><a href="#marketplace" className="pulse-btn inline-flex items-center gap-2 px-10 py-4 text-base font-bold rounded-xl bg-[#FF4D00] text-black hover:bg-[#FF6A2A] transition-colors">Start Free Trial <ArrowRight className="w-5 h-5"/></a></motion.div></div></section>
+   443→    </>
+   444→  );
+   445→}
+   446→
+   447→/* ══════════════════════════ MAIN PAGE ══════════════════════════ */
+   448→export default function HomePage() {
+   449→  const [view, setView] = useState<"site" | "dashboard">("site");
+   450→  const [mobileOpen, setMobileOpen] = useState(false);
+   451→  const viewLabel = view === "dashboard" ? "Back to Site" : "Dashboard";
+   452→  const viewIcon = view === "dashboard" ? <Cpu className="w-3.5 h-3.5"/> : <LayoutDashboard className="w-3.5 h-3.5"/>;
+   453→  return (
+   454→    <div className="min-h-screen flex flex-col bg-[#08080C] text-[#E8E8EC] overflow-x-hidden">
+   455→      <div className="grain"/>
+   456→      <header className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-[#08080C]/70 border-b border-[#1E1E2A]/60">
+   457→        <nav className="mx-auto max-w-7xl flex items-center justify-between px-6 h-16">
+   458→          <button onClick={() => setView("site")} className="flex items-center gap-2.5 group"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#FF4D00] to-[#FF8C42] flex items-center justify-center shadow-lg shadow-[#FF4D00]/20 group-hover:shadow-[#FF4D00]/40 transition-shadow"><Cpu className="w-4 h-4 text-black"/></div><span className="text-lg font-bold tracking-tight">Mian<span className="text-[#FF4D00]">X</span>.ai</span></button>
+   459→          <div className="hidden md:flex items-center gap-5">
+   460→            {view === "site" && <><a href="#industries" className="nav-link">Industries</a><a href="#marketplace" className="nav-link">Marketplace</a><a href="#capabilities" className="nav-link">Capabilities</a></>}
+   461→            <button onClick={() => setView(view === "dashboard" ? "site" : "dashboard")} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-colors bg-[#FF4D00] text-black hover:bg-[#FF6A2A]">{viewIcon}{viewLabel}</button>
+   462→          </div>
+   463→          <button className="md:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">{mobileOpen ? <X className="w-5 h-5"/> : <Menu className="w-5 h-5"/>}</button>
+   464→        </nav>
+   465→        {mobileOpen && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="md:hidden border-t border-[#1E1E2A]/60 bg-[#08080C]/95 backdrop-blur-xl"><div className="flex flex-col gap-4 px-6 py-5">
+   466→          {view === "site" && <><a href="#industries" className="nav-link" onClick={() => setMobileOpen(false)}>Industries</a><a href="#marketplace" className="nav-link" onClick={() => setMobileOpen(false)}>Marketplace</a><a href="#capabilities" className="nav-link" onClick={() => setMobileOpen(false)}>Capabilities</a></>}
+   467→          <button onClick={() => { setView(view === "dashboard" ? "site" : "dashboard"); setMobileOpen(false); }} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg bg-[#FF4D00] text-black justify-center">{viewIcon}{viewLabel}</button>
+   468→        </div></motion.div>}
+   469→      </header>
+   470→      <main className={"flex-1 " + (view !== "site" ? "pt-20" : "")}>
+   471→        <AnimatePresence mode="wait">
+   472→          {view === "site" && <motion.div key="site" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}><WebsiteView/></motion.div>}
+   473→          {view === "dashboard" && <motion.div key="dash" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}><DashboardView/></motion.div>}
+   474→        </AnimatePresence>
+   475→      </main>
+   476→      <footer className="border-t border-[#1E1E2A]/60 py-8 px-6"><div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
+   477→        <div className="flex items-center gap-2 text-sm text-[#555566]"><div className="w-5 h-5 rounded bg-gradient-to-br from-[#FF4D00] to-[#FF8C42] flex items-center justify-center"><Cpu className="w-2.5 h-2.5 text-black"/></div><span>MianX.ai</span></div>
+   478→        <div className="flex items-center gap-6 text-xs text-[#555566]"><span>2025 MianX.ai. All rights reserved.</span></div>
+   479→        <a href="/" className="group flex items-center gap-1.5 text-xs text-[#555566] hover:text-[#FF4D00] transition-colors">Powered by <span className="font-bold text-[#888899] group-hover:text-[#FF4D00] transition-colors">MianX.ai</span><ArrowRight className="w-3 h-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all"/></a>
+   480→      </div></footer>
+   481→    </div>
+   482→  );
+   483→}
+   484→
