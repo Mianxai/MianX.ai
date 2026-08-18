@@ -40,7 +40,7 @@ export async function POST() {
       );
 
       DO $$ BEGIN
-n        CREATE UNIQUE INDEX IF NOT EXISTS "DashboardStat_metric_key" ON "DashboardStat"("metric");
+        CREATE UNIQUE INDEX IF NOT EXISTS "DashboardStat_metric_key" ON "DashboardStat"("metric");
       EXCEPTION WHEN duplicate_object THEN null;
       END $$;
     `)
