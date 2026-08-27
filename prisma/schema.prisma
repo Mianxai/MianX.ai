@@ -7,30 +7,220 @@ datasource db {
   url      = env("POSTGRES_URL_NON_POOLING")
 }
 
-model Lead {
-  id          String   @id @default(cuid())
-  name        String
-  email       String
-  phone       String?
-  company     String?
-  source      String   @default("website")
-  status      String   @default("new")
-  score       Int      @default(50)
-  value       String   @default("$0")
-  message     String?
-  assignedTo  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+/* ════════════════════════════════════════════════════════════════
+   PHASE 2: Enterprise Database Schema
+   Based on MianX.ai GitHub docs: Auth, Org, Role, User management
+   ════════════════════════════════════════════════════════════════ */
+
+// ────────────────────── ORGANIZATION ──────────────────────
+
+model Organization {
+  id           String   @id @default(cuid())
+  code         String   @unique              // unique org slug/shortcode
+  legalName    String                        // registered legal name
+  displayName  String                        // friendly display name
+  description  String?
+  website      String?
+  industry     String   @default("general") // restaurant, hospital, school, etc.
+  companySize  String   @default("1-10")     // 1-10, 11-50, 51-200, 201-1000, 1000+
+  status       String   @default("active")   // active, suspended, archived
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  settings    OrgSettings?
+  members     Member[]
+  workspaces  Workspace[]
+  leads       Lead[]
+  activities  AgentActivity[]
 }
 
-model AgentActivity {
-  id        String   @id @default(cuid())
-  agent     String
-  action    String
-  leadId    String?
-  status    String   @default("info")
-  createdAt DateTime @default(now())
+// ────────────────────── ORGANIZATION SETTINGS ──────────────────────
+
+model OrgSettings {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  timezone       String   @default("UTC")
+  language       String   @default("en")
+  currency       String   @default("USD")
+  dateFormat     String   @default("MM/DD/YYYY")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }
+
+// ────────────────────── WORKSPACE ──────────────────────
+
+model Workspace {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  status         String   @default("active")
+  isDefault      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// ────────────────────── USER (Auth) ──────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String                        // bcrypt hash
+  firstName     String   @default("")
+  lastName      String   @default("")
+  displayName   String   @default("")
+  phone         String?
+  avatarUrl     String?
+  status        String   @default("active")   // active, suspended, deleted
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  credential    Credential?
+  sessions      Session[]
+  memberships   Member[]
+  auditEvents   UserAudit[]
+}
+
+// ────────────────────── CREDENTIAL ──────────────────────
+
+model Credential {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  passwordHash    String
+  failedAttempts  Int       @default(0)
+  lockedUntil     DateTime?
+  passwordChangedAt DateTime @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ────────────────────── SESSION ──────────────────────
+
+model Session {
+  id            String    @id @default(cuid())
+  userId        String
+  token         String    @unique              // session token (hashed in production)
+  ipAddress     String?
+  userAgent     String?
+  expiresAt     DateTime
+  lastActivityAt DateTime @default(now())
+  createdAt     DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+// ────────────────────── ROLE ──────────────────────
+
+model Role {
+  id             String   @id @default(cuid())
+  name           String   @unique              // owner, admin, manager, agent, viewer
+  description    String?
+  permissions    String   @default("[]")       // JSON array of permission strings
+  isSystem       Boolean  @default(false)      // system roles cannot be deleted
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  members Member[]
+}
+
+// ────────────────────── MEMBER (Org Membership) ──────────────────────
+
+model Member {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  roleId         String
+  status         String   @default("active")   // active, invited, suspended
+  joinedAt       DateTime @default(now())
+  lastActiveAt   DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id])
+
+  @@unique([organizationId, userId])            // one membership per org per user
+  @@index([organizationId])
+  @@index([userId])
+}
+
+// ────────────────────── USER AUDIT ──────────────────────
+
+model UserAudit {
+  id        String   @id @default(cuid())
+  userId    String
+  actorId   String?                          // who performed the action
+  eventType String                           // login_success, login_failure, profile_updated, etc.
+  metadata  String?                          // JSON string for extra context
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventType])
+}
+
+// ────────────────────── LEAD (Enhanced) ──────────────────────
+
+model Lead {
+  id             String   @id @default(cuid())
+  organizationId String?
+  name           String
+  email          String
+  phone          String?
+  company        String?
+  source         String   @default("website")
+  status         String   @default("new")     // new, hot, warm, cold, converted, lost
+  score          Int      @default(50)
+  value          String   @default("$0")
+  message        String?
+  assignedTo     String?
+  notes          String?                          // internal notes
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ────────────────────── AGENT ACTIVITY (Enhanced) ──────────────────────
+
+model AgentActivity {
+  id             String   @id @default(cuid())
+  organizationId String?
+  agent          String
+  action         String
+  leadId         String?
+  status         String   @default("info")    // success, error, info, warning
+  metadata       String?                          // JSON for extra context
+  createdAt      DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([createdAt])
+}
+
+// ────────────────────── DASHBOARD STAT ──────────────────────
 
 model DashboardStat {
   id        String   @id @default(cuid())

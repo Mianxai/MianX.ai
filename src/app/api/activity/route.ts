@@ -1,19 +1,17 @@
-import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { NextRequest } from 'next/server';
+import { db } from '@/lib/db';
+import { withAuth, ok } from '@/lib/api-guard';
 
-export async function GET() {
-  try {
-    const activities = await db.agentActivity.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    })
+export const GET = withAuth(async (req, { orgId }) => {
+  const limit = Math.min(50, parseInt(req.nextUrl.searchParams.get('limit') || '20'));
 
-    return NextResponse.json(activities)
-  } catch (error) {
-    console.error('Error fetching activities:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch activities' },
-      { status: 500 }
-    )
-  }
-}
+  const where: Record<string, unknown> = { organizationId: orgId };
+
+  const activities = await db.agentActivity.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
+
+  return ok(activities);
+}, 'leads:read');

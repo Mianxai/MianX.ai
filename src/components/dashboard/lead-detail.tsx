@@ -33,6 +33,8 @@ const STATUS_OPTIONS = [
   { key: "hot", label: "Hot", color: "#FF4D00", bg: "rgba(255,77,0,0.1)" },
   { key: "warm", label: "Warm", color: "#FFD93D", bg: "rgba(255,217,61,0.1)" },
   { key: "cold", label: "Cold", color: "#6B6B80", bg: "rgba(107,107,128,0.1)" },
+  { key: "converted", label: "Converted", color: "#00FF88", bg: "rgba(0,255,136,0.1)" },
+  { key: "lost", label: "Lost", color: "#FF4444", bg: "rgba(255,68,68,0.1)" },
 ];
 
 export default function LeadDetailPanel({ lead, onClose, onStatusChange }: LeadDetailProps) {
