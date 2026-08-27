@@ -18,7 +18,14 @@ function createPrismaClient() {
     throw new Error('DATABASE_URL or POSTGRES_URL_NON_POOLING environment variable is not set')
   }
 
-  const poolConfig: PoolConfig = { connectionString: databaseUrl }
+  const poolConfig: PoolConfig = {
+    connectionString: databaseUrl,
+    // Configurable pool settings with production-safe defaults
+    max: parseInt(process.env.DB_POOL_MAX || '10', 10),
+    idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT_MS || '30000', 10),
+    connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT_MS || '10000', 10),
+  }
+
   const adapter = new PrismaNeon(poolConfig)
 
   return new PrismaClient({

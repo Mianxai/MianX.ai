@@ -5,6 +5,16 @@ import { z } from 'zod/v4';
 
 const VALID_STATUSES = ['new', 'hot', 'warm', 'cold', 'converted', 'lost'] as const;
 
+// Status transition validation — same rules as individual lead updates
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  new: ['hot', 'warm', 'cold', 'lost'],
+  hot: ['warm', 'converted', 'lost'],
+  warm: ['hot', 'converted', 'lost'],
+  cold: ['warm', 'hot', 'lost'],
+  converted: [],
+  lost: ['new'],
+};
+
 const bulkUpdateSchema = z.object({
   ids: z.array(z.string().min(1)).min(1, 'At least one lead ID is required').max(500, 'Maximum 500 leads per batch'),
   status: z.enum(VALID_STATUSES),
@@ -24,11 +34,34 @@ export async function PATCH(request: NextRequest) {
 
     const { ids, status } = parsed.data;
 
-    // Build where clause: only update leads that belong to the user's org and are in the ids list
-    const where: Record<string, unknown> = { id: { in: ids }, organizationId: orgId };
+    // Validate transitions: fetch current statuses and check each one
+    const existingLeads = await db.lead.findMany({
+      where: { id: { in: ids }, organizationId: orgId },
+      select: { id: true, status: true },
+    });
+
+    const invalidTransitions: string[] = [];
+    const validIds: string[] = [];
+
+    for (const lead of existingLeads) {
+      const allowed = VALID_TRANSITIONS[lead.status] || [];
+      if (!allowed.includes(status)) {
+        invalidTransitions.push(`${lead.id}: ${lead.status} → ${status}`);
+      } else {
+        validIds.push(lead.id);
+      }
+    }
+
+    if (invalidTransitions.length > 0) {
+      return err(`Invalid status transitions: ${invalidTransitions.slice(0, 5).join('; ')}${invalidTransitions.length > 5 ? ` (+${invalidTransitions.length - 5} more)` : ''}`, 400);
+    }
+
+    if (validIds.length === 0) {
+      return ok({ success: true, updated: 0 });
+    }
 
     const result = await db.lead.updateMany({
-      where,
+      where: { id: { in: validIds }, organizationId: orgId },
       data: { status },
     });
 
