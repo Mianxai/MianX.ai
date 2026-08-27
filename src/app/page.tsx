@@ -5,15 +5,50 @@ import {
   UtensilsCrossed, HeartPulse, GraduationCap, HardHat, ShoppingBag, Truck, Factory,
   ArrowRight, Zap, Shield, Globe, Cpu, ChevronRight, Menu, X,
   Package, Puzzle, Palette, Bot, BarChart3, Link2, Star, Download, TrendingUp, Users, Crown, Search,
-  LayoutDashboard, DollarSign, Activity, Radio, Filter, Trash2, Eye, RefreshCw,
+  LayoutDashboard, DollarSign, Activity, Filter, Trash2, Eye, RefreshCw,
   Send, CheckCircle2, AlertCircle, UserPlus, Mail, Phone, Building2, MessageSquare, Sparkles, Wifi, WifiOff,
-  FileDown, Bell, Target, Brain, Clock, Command,
+  FileDown, Bell, Target, Brain, Clock, Command, LogOut, User,
 } from "lucide-react";
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import DashboardCharts from "@/components/dashboard/charts";
 import AgentCommandCenter from "@/components/dashboard/agent-panel";
 import LeadDetailPanel from "@/components/dashboard/lead-detail";
-import { TestimonialsSection, LogoCloudSection, PricingSection, StatsCounterSection, HowItWorksSection } from "@/components/website/sections";
+import { TestimonialsSection, LogoCloudSection, PricingSection, StatsCounterSection, HowItWorksSection, CTASection } from "@/components/website/sections";
+import { useRealtime, type RealtimeLead, type RealtimeActivity } from "@/hooks/use-realtime";
+
+/* ══════════════════════════ AUTH STATE ══════════════════════════ */
+interface AuthUser { id: string; email: string; displayName: string; firstName: string; lastName: string; avatarUrl: string | null; }
+
+function useAuth() {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const check = useCallback(async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+        setRole(data.role?.name || null);
+      } else {
+        setUser(null);
+        setRole(null);
+      }
+    } catch { setUser(null); setRole(null); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { check(); }, [check]);
+
+  const logout = async () => {
+    await fetch('/api/auth', { method: 'DELETE' });
+    setUser(null);
+    setRole(null);
+  };
+
+  return { user, role, loading, logout, refresh: check };
+}
 
 /* ══════════════════════════ WEBSITE DATA ══════════════════════════ */
 
@@ -90,14 +125,14 @@ const marketplaceItems: MarketplaceItem[] = [
 ];
 
 /* ══════════════════════════ ANIMS ══════════════════════════ */
-const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.06, duration: 0.5, ease: [0.22, 1, 0.36, 1] } }) };
+const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.06, duration: 0.5, ease: [0.22, 1, 0.36, 1] as const } }) };
 const stagger = { visible: { transition: { staggerChildren: 0.06 } } };
 const dashFade = { hidden: { opacity: 0, y: 12 }, visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.04, duration: 0.35 } }) };
 
 /* ══════════════════════════ DASHBOARD TYPES ══════════════════════════ */
 interface Lead { id: string; name: string; email: string; phone: string | null; company: string | null; source: string; status: string; score: number; value: string; message: string | null; assignedTo: string | null; createdAt: string; updatedAt: string; }
 interface AgentActivity { id: string; agent: string; action: string; status: string; createdAt: string; }
-interface DashboardStats { totalLeads: number; hotLeads: number; warmLeads: number; newLeads: number; totalValue: number; activeAgents: number; conversions: number; recentLeads: number; }
+interface DashboardStats { totalLeads: number; hotLeads: number; warmLeads: number; newLeads: number; coldLeads: number; convertedLeads: number; lostLeads: number; totalValue: number; avgScore: number; conversionRate: number; activeAgents: number; conversions: number; recentLeads: number; weeklyGrowth: number; uniqueSources: number; avgValue: number; }
 
 /* ══════════════════════════ TINY COMPONENTS ══════════════════════════ */
 function Stars({ rating }: { rating: number }) {
@@ -116,35 +151,159 @@ function RelTime({ d }: { d: string }) {
   return <span className="text-[#555566]">{Math.floor(h/24)}d ago</span>;
 }
 
-/* ══════════════════════════ LEAD CAPTURE FORM ══════════════════════════ */
+/* ══════════════════════════ LEAD CAPTURE FORM (Enhanced) ══════════════════════════ */
+const INDUSTRY_OPTIONS = [
+  { value: "", label: "Select Industry..." },
+  { value: "restaurant", label: "Restaurant / Food" },
+  { value: "hospital", label: "Hospital / Healthcare" },
+  { value: "school", label: "School / Education" },
+  { value: "construction", label: "Construction" },
+  { value: "retail", label: "Retail / E-Commerce" },
+  { value: "logistics", label: "Logistics / Transport" },
+  { value: "manufacturing", label: "Manufacturing" },
+  { value: "saas", label: "SaaS / Tech" },
+  { value: "agency", label: "Agency / Consulting" },
+  { value: "other", label: "Other" },
+];
+
+
+/* ══════════════════════════ LEAD CAPTURE FORM (MULTI-STEP UPGRADED) ══════════════════════════ */
+
+const BUDGET_OPTIONS = [
+  { value: "", label: "Select Budget Range..." },
+  { value: "under-5k", label: "Under $5,000" },
+  { value: "5k-25k", label: "$5,000 - $25,000" },
+  { value: "25k-100k", label: "$25,000 - $100,000" },
+  { value: "100k-500k", label: "$100,000 - $500,000" },
+  { value: "500k-plus", label: "$500,000+" },
+];
+
+const TIMELINE_OPTIONS = [
+  { value: "", label: "Select Timeline..." },
+  { value: "asap", label: "Immediately (ASAP)" },
+  { value: "1-3-months", label: "1-3 Months" },
+  { value: "3-6-months", label: "3-6 Months" },
+  { value: "6-12-months", label: "6-12 Months" },
+  { value: "just-exploring", label: "Just Exploring" },
+];
+
+const FORM_STEPS = ["Contact", "Business", "Details"];
+
+function estimateScore(form: { name: string; email: string; phone: string; company: string; message: string; industry: string; budget: string; timeline: string }): number {
+  let score = 20;
+  if (form.name.trim().length > 3) score += 5;
+  if (form.company.trim().length > 2) score += 10;
+  if (form.phone.trim().length > 8) score += 5;
+  if (form.industry && form.industry !== "") score += 8;
+  if (form.budget && form.budget !== "") score += 15;
+  if (form.timeline && form.timeline !== "") score += 10;
+  if (form.message.trim().length > 20) score += 10;
+  if (form.timeline === "asap") score += 7;
+  if (form.budget === "100k-500k" || form.budget === "500k-plus") score += 10;
+  return Math.min(score, 100);
+}
+
+function getScoreColor(score: number): string {
+  if (score >= 70) return "#FF4D00";
+  if (score >= 40) return "#FFD93D";
+  return "#6B6B80";
+}
+
+function getScoreLabel(score: number): string {
+  if (score >= 80) return "Hot Lead";
+  if (score >= 60) return "Warm Lead";
+  if (score >= 40) return "Average";
+  return "Cold Lead";
+}
+
+interface FormErrors { name?: string; email?: string; phone?: string; company?: string; }
+
 function LeadCaptureForm({ onSubmitted }: { onSubmitted?: () => void }) {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", company: "", message: "" });
+  const [step, setStep] = useState(0);
+  const [form, setForm] = useState({ name: "", email: "", phone: "", company: "", message: "", industry: "", budget: "", timeline: "" });
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<"" | "success" | "error">("");
-  const update = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+  const [errors, setErrors] = useState<FormErrors>({});
+  const update = (k: string, v: string) => { setForm(p => ({ ...p, [k]: v })); if (errors[k as keyof FormErrors]) setErrors(p => ({ ...p, [k]: undefined })); };
+  const liveScore = estimateScore(form);
+
+  const validateStep0 = (): boolean => {
+    const e: FormErrors = {};
+    if (!form.name.trim() || form.name.trim().length < 2) e.name = "Full name is required (min 2 chars)";
+    if (!form.email.trim() || !/[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Valid email is required";
+    if (form.phone && !/^[-+()\d\s]{7,20}$/.test(form.phone)) e.phone = "Invalid phone number";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); if (!form.name || !form.email) return;
+    e.preventDefault();
     setSubmitting(true); setResult("");
     try {
-      const res = await fetch("/api/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, source: "capture_form" }) });
-      if (res.ok) { setResult("success"); setForm({ name: "", email: "", phone: "", company: "", message: "" }); onSubmitted?.(); }
-      else setResult("error");
+      const payload: Record<string, string | undefined> = { name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim() || undefined, company: form.company.trim() || undefined, industry: form.industry || undefined, message: form.message.trim() || undefined, source: "capture_form" };
+      if (form.budget) payload.message = (payload.message ? payload.message + "\n" : "") + "Budget: " + form.budget;
+      if (form.timeline) payload.message = (payload.message ? payload.message + "\n" : "") + "Timeline: " + form.timeline;
+      if (form.industry) payload.message = (payload.message ? payload.message + "\n" : "") + "Industry: " + form.industry;
+      const res = await fetch("/api/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (res.ok) { setResult("success"); setForm({ name: "", email: "", phone: "", company: "", message: "", industry: "", budget: "", timeline: "" }); setStep(0); onSubmitted?.(); }
+      else { setResult("error"); }
     } catch { setResult("error"); }
     setSubmitting(false);
   };
+
+  const inputCls = (field?: string) => `w-full px-4 py-3 rounded-xl bg-[#08080C] border text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none transition-all ${field ? "border-[#FF4444]/50 focus:border-[#FF4444]" : "border-[#1E1E2A] focus:border-[#FF4D00]/50"}`;
+
   return (
     <div className="mx-auto max-w-lg">
       <div className="dash-card rounded-2xl p-8">
-        <div className="flex items-center gap-3 mb-6"><div className="w-10 h-10 rounded-xl bg-[#FF4D00]/10 flex items-center justify-center"><UserPlus className="w-5 h-5 text-[#FF4D00]" /></div><div><h2 className="text-lg font-bold">Submit a Lead</h2><p className="text-xs text-[#555566]">AI agents will qualify and assign automatically</p></div></div>
-        {result === "success" && (<motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} className="flex items-center gap-2 mb-6 p-3 rounded-xl bg-[#00FF88]/10 border border-[#00FF88]/20 text-[#00FF88] text-sm"><CheckCircle2 className="w-4 h-4 shrink-0"/>Lead submitted! AI agents are processing it now.</motion.div>)}
-        {result === "error" && (<motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} className="flex items-center gap-2 mb-6 p-3 rounded-xl bg-[#FF4444]/10 border border-[#FF4444]/20 text-[#FF4444] text-sm"><AlertCircle className="w-4 h-4 shrink-0"/>Failed to submit. Please try again.</motion.div>)}
+        <div className="flex items-center gap-3 mb-5"><div className="w-10 h-10 rounded-xl bg-[#FF4D00]/10 flex items-center justify-center"><UserPlus className="w-5 h-5 text-[#FF4D00]" /></div><div><h2 className="text-lg font-bold">Submit a Lead</h2><p className="text-xs text-[#555566]">AI agents will qualify and assign automatically</p></div></div>
+        {result === "success" && (<motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} className="flex items-center gap-2 mb-5 p-3 rounded-xl bg-[#00FF88]/10 border border-[#00FF88]/20 text-[#00FF88] text-sm"><CheckCircle2 className="w-4 h-4 shrink-0"/>Lead submitted! AI agents are processing it now.</motion.div>)}
+        {result === "error" && (<motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} className="flex items-center gap-2 mb-5 p-3 rounded-xl bg-[#FF4444]/10 border border-[#FF4444]/20 text-[#FF4444] text-sm"><AlertCircle className="w-4 h-4 shrink-0"/>Failed to submit. Please check the form and try again.</motion.div>)}
+        <div className="flex items-center gap-2 mb-6">
+          {FORM_STEPS.map((s, i) => (
+            <div key={s} className="flex items-center gap-2 flex-1">
+              <div className={`flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold transition-all shrink-0 ${i <= step ? "bg-[#FF4D00] text-black" : "bg-[#1A1A24] text-[#555566]"}`}>{i + 1}</div>
+              <span className={`text-[10px] font-medium hidden sm:inline transition-colors ${i <= step ? "text-[#E8E8EC]" : "text-[#555566]"}`}>{s}</span>
+              {i < FORM_STEPS.length - 1 && <div className={`flex-1 h-0.5 rounded-full transition-colors ${i < step ? "bg-[#FF4D00]" : "bg-[#1A1A24]"}`}/>}
+            </div>
+          ))}
+        </div>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <input value={form.name} onChange={e=>update("name",e.target.value)} placeholder="Full Name *" className="w-full px-4 py-3 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
-          <input value={form.email} onChange={e=>update("email",e.target.value)} type="email" placeholder="Email *" className="w-full px-4 py-3 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
-          <input value={form.phone} onChange={e=>update("phone",e.target.value)} placeholder="Phone" className="w-full px-4 py-3 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
-          <input value={form.company} onChange={e=>update("company",e.target.value)} placeholder="Company" className="w-full px-4 py-3 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
-          <textarea value={form.message} onChange={e=>update("message",e.target.value)} placeholder="Message" rows={3} className="w-full px-4 py-3 rounded-xl bg-[#08080C] border border-[#1E1E2A] text-sm text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50 resize-none"/>
-          <button type="submit" disabled={submitting} className="w-full py-3 rounded-xl bg-[#FF4D00] text-black text-sm font-bold hover:bg-[#FF6A2A] transition-colors disabled:opacity-40 flex items-center justify-center gap-2">{submitting?<RefreshCw className="w-4 h-4 animate-spin"/>:<Send className="w-4 h-4"/>}Submit Lead</button>
+          {step === 0 && (<>
+            <div><input value={form.name} onChange={e=>update("name",e.target.value)} placeholder="Full Name *" className={inputCls(errors.name)}/>{errors.name && <p className="text-[10px] text-[#FF4444] mt-1 ml-1">{errors.name}</p>}</div>
+            <div><input value={form.email} onChange={e=>update("email",e.target.value)} type="email" placeholder="Email *" className={inputCls(errors.email)}/>{errors.email && <p className="text-[10px] text-[#FF4444] mt-1 ml-1">{errors.email}</p>}</div>
+            <div><input value={form.phone} onChange={e=>update("phone",e.target.value)} placeholder="Phone (optional)" className={inputCls(errors.phone)}/>{errors.phone && <p className="text-[10px] text-[#FF4444] mt-1 ml-1">{errors.phone}</p>}</div>
+            <div className="flex items-center justify-between pt-2"><div/><button type="button" onClick={() => { if (validateStep0()) setStep(1); }} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#FF4D00] text-black text-sm font-bold hover:bg-[#FF6A2A] transition-colors">Next <ArrowRight className="w-4 h-4"/></button></div>
+          </>)}
+          {step === 1 && (<>
+            <div className="grid grid-cols-2 gap-3">
+              <input value={form.company} onChange={e=>update("company",e.target.value)} placeholder="Company" className={inputCls()}/>
+              <select value={form.industry} onChange={e=>update("industry",e.target.value)} className={inputCls() + " appearance-none cursor-pointer"}>{INDUSTRY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+            </div>
+            <select value={form.budget} onChange={e=>update("budget",e.target.value)} className={inputCls() + " appearance-none cursor-pointer"}>{BUDGET_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+            <select value={form.timeline} onChange={e=>update("timeline",e.target.value)} className={inputCls() + " appearance-none cursor-pointer"}>{TIMELINE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+            <div className="flex items-center justify-between pt-2">
+              <button type="button" onClick={() => setStep(0)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#1E1E2A] text-sm font-medium text-[#888899] hover:text-[#E8E8EC] hover:border-[#2A2A3A] transition-colors">Back</button>
+              <button type="button" onClick={() => setStep(2)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#FF4D00] text-black text-sm font-bold hover:bg-[#FF6A2A] transition-colors">Next <ArrowRight className="w-4 h-4"/></button>
+            </div>
+          </>)}
+          {step === 2 && (<>
+            <div className="p-4 rounded-xl bg-[#111118] border border-[#1E1E2A]">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2"><Brain className="w-4 h-4 text-[#FF4D00]"/><span className="text-xs font-bold">AI Lead Score Estimate</span></div>
+                <span className="text-lg font-bold" style={{ color: getScoreColor(liveScore) }}>{liveScore}</span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-[#1A1A24] mb-1.5">
+                <motion.div animate={{ width: `${liveScore}%` }} transition={{ duration: 0.5 }} className="h-full rounded-full" style={{ background: `linear-gradient(90deg, #6B6B80, ${getScoreColor(liveScore)})` }}/>
+              </div>
+              <p className="text-[10px] text-[#888899]">Estimated quality: <span className="font-semibold" style={{ color: getScoreColor(liveScore) }}>{getScoreLabel(liveScore)}</span></p>
+            </div>
+            <textarea value={form.message} onChange={e=>update("message",e.target.value)} placeholder="Tell us about your needs (optional)" rows={3} className={inputCls() + " resize-none"}/>
+            <div className="flex items-center justify-between pt-2">
+              <button type="button" onClick={() => setStep(1)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#1E1E2A] text-sm font-medium text-[#888899] hover:text-[#E8E8EC] hover:border-[#2A2A3A] transition-colors">Back</button>
+              <button type="submit" disabled={submitting} className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#FF4D00] text-black text-sm font-bold hover:bg-[#FF6A2A] transition-colors disabled:opacity-40">{submitting?<RefreshCw className="w-4 h-4 animate-spin"/>:<Send className="w-4 h-4"/>}Submit Lead</button>
+            </div>
+          </>)}
         </form>
       </div>
     </div>
@@ -154,64 +313,129 @@ function LeadCaptureForm({ onSubmitted }: { onSubmitted?: () => void }) {
 /* ══════════════════════════ DASHBOARD VIEW (UPGRADED) ══════════════════════════ */
 type DashTab = "leads" | "analytics" | "agents";
 
+// Map realtime lead to dashboard lead (compatible interface)
+function toLead(rl: RealtimeLead): Lead {
+  return { id: rl.id, name: rl.name, email: rl.email, phone: rl.phone, company: rl.company, source: rl.source, status: rl.status, score: rl.score, value: rl.value, message: rl.message, assignedTo: rl.assignedTo, createdAt: rl.createdAt, updatedAt: rl.updatedAt };
+}
+function toActivity(ra: RealtimeActivity): AgentActivity {
+  return { id: ra.id, agent: ra.agent, action: ra.action, status: ra.status, createdAt: ra.createdAt };
+}
+
 function DashboardView() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [activities, setActivities] = useState<AgentActivity[]>([]);
-  const [loading, setLoading] = useState(true);
+  // ── Realtime hook: replaces manual fetch + socket.io ──
+  const { leads: rtLeads, activities: rtActivities, stats: rtStats, isConnected: rtConnected } = useRealtime();
+
+  // Derive state from realtime (first poll sets loading to false via stats arriving)
+  const loading = rtStats === null;
+  const stats = rtStats;
+  const leads = useMemo(() => rtLeads.map(toLead), [rtLeads]);
+  const activities = useMemo(() => rtActivities.map(toActivity), [rtActivities]);
+
   const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [rtConnected, setRtConnected] = useState(false);
   const [newLeadNotif, setNewLeadNotif] = useState<Lead | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState<DashTab>("leads");
   const [notifOpen, setNotifOpen] = useState(false);
-  const socketRef = useRef<Socket | null>(null);
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [sR, lR, aR] = await Promise.all([fetch("/api/stats"), fetch("/api/leads"), fetch("/api/activity")]);
-      setStats(await sR.json()); const lD = await lR.json(); setLeads(lD.leads || []); setActivities(await aR.json());
-    } catch (e) { console.error("Fetch error:", e); } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchData(); const iv = setInterval(fetchData, 15000); return () => clearInterval(iv); }, [fetchData]);
-
+  // Track previous leads length to detect new leads for notification
+  const prevLeadsCountRef = useRef(0);
   useEffect(() => {
+    if (rtLeads.length > prevLeadsCountRef.current && prevLeadsCountRef.current > 0) {
+      const newest = rtLeads[rtLeads.length - 1];
+      if (newest) {
+        setNewLeadNotif(toLead(newest));
+        setTimeout(() => setNewLeadNotif(null), 4000);
+      }
+    }
+    prevLeadsCountRef.current = rtLeads.length;
+  }, [rtLeads.length]);
+
+  const handleRefresh = async () => { setRefreshing(true); /* realtime auto-refreshes; just add a visual spin */ await new Promise(r => setTimeout(r, 500)); setRefreshing(false); };
+  const handleDelete = async (id: string) => { await fetch("/api/leads/" + id, { method: "DELETE" }); };
+  const handleStatus = async (id: string, status: string) => { await fetch("/api/leads/" + id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) }); };
+  const handleBulkStatus = async (status: string) => {
+    if (selectedLeads.size === 0) return;
     try {
-      const sock = socketIO("/?XTransformPort=3003", { transports: ["websocket"], reconnection: true, reconnectionAttempts: 10, reconnectionDelay: 2000 });
-      socketRef.current = sock;
-      sock.on("connect", () => { setRtConnected(true); sock.emit("join-dashboard"); });
-      sock.on("disconnect", () => setRtConnected(false));
-      sock.on("lead:created", (data: { lead: Lead }) => { setNewLeadNotif(data.lead); setTimeout(() => setNewLeadNotif(null), 4000); fetchData(); });
-      sock.on("activity:new", () => fetchData());
-      sock.on("lead:updated", () => fetchData());
-      sock.on("lead:deleted", () => fetchData());
-      return () => { sock.disconnect(); };
-    } catch { /* socket not available */ }
-  }, [fetchData]);
+      const res = await fetch("/api/leads/bulk", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: Array.from(selectedLeads), status }) });
+      if (res.ok) setSelectedLeads(new Set());
+    } catch (e) { console.error("Bulk update error:", e); }
+  };
+  const toggleLeadSelect = (id: string) => {
+    setSelectedLeads(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  };
 
-  const handleRefresh = async () => { setRefreshing(true); await fetchData(); setRefreshing(false); };
-  const handleDelete = async (id: string) => { await fetch("/api/leads/" + id, { method: "DELETE" }); fetchData(); };
-  const handleStatus = async (id: string, status: string) => { await fetch("/api/leads/" + id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) }); setLeads(p => p.map(l => l.id === id ? { ...l, status } : l)); };
-
+  const uniqueSources = useMemo(() => [...new Set(leads.map(l => l.source))].sort(), [leads]);
   const filtered = useMemo(() => {
-    let items = statusFilter === "all" ? leads : leads.filter(l => l.status === statusFilter);
+    let items = leads;
+    if (statusFilter !== "all") items = items.filter(l => l.status === statusFilter);
+    if (sourceFilter !== "all") items = items.filter(l => l.source === sourceFilter);
     if (searchQuery.trim()) { const q = searchQuery.toLowerCase(); items = items.filter(l => l.name.toLowerCase().includes(q) || l.email.toLowerCase().includes(q) || (l.company || "").toLowerCase().includes(q)); }
     return items;
-  }, [leads, statusFilter, searchQuery]);
+  }, [leads, statusFilter, sourceFilter, searchQuery]);
 
-  const exportCSV = () => {
-    const headers = ["Name", "Email", "Phone", "Company", "Source", "Status", "Score", "Value", "Assigned To", "Created"];
-    const rows = filtered.map(l => [l.name, l.email, l.phone || "", l.company || "", l.source, l.status, l.score, l.value, l.assignedTo || "", l.createdAt]);
-    const csvRows = [headers, ...rows].map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(","));
-    const csv = csvRows.join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "mianx-leads-" + new Date().toISOString().slice(0, 10) + ".csv"; a.click();
-    URL.revokeObjectURL(url);
+    const [exportOpen, setExportOpen] = useState(false);
+
+  const getSortedLeads = () => {
+    const statusOrder: Record<string, string> = { new: "1-New", hot: "2-Hot", warm: "3-Warm", cold: "4-Cold", converted: "5-Converted", lost: "6-Lost" };
+    return [...filtered].sort((a, b) => (statusOrder[a.status] || "z").localeCompare(statusOrder[b.status] || "z") || b.score - a.score);
   };
+
+  const exportLeads = async (format: "csv" | "json") => {
+    if (format === "csv") {
+      // Use server-side export endpoint
+      try {
+        const params = new URLSearchParams({ format: "csv" });
+        if (statusFilter !== "all") params.set("status", statusFilter);
+        const res = await fetch("/api/leads/export?" + params.toString());
+        if (!res.ok) throw new Error("Export failed");
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url; a.download = "mianx-leads-" + new Date().toISOString().slice(0, 10) + ".csv"; a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) { console.error("CSV export error:", e); }
+    } else {
+      // Client-side JSON export (filtered leads)
+      const sorted = getSortedLeads();
+      const blob = new Blob([JSON.stringify(sorted, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = "mianx-leads-" + new Date().toISOString().slice(0, 10) + ".json"; a.click();
+      URL.revokeObjectURL(url);
+    }
+    setExportOpen(false);
+  };
+
+  const exportAnalytics = async () => {
+    try {
+      const res = await fetch("/api/charts");
+      const data = await res.json();
+      const report = {
+        exportedAt: new Date().toISOString(),
+        summary: {
+          totalLeads: data.funnelData[0]?.count || 0,
+          convertedLeads: data.funnelData.find((f) => f.stage === "Converted")?.count || 0,
+          conversionRate: data.funnelData[0]?.count > 0 ? Math.round(((data.funnelData.find((f) => f.stage === "Converted")?.count || 0) / data.funnelData[0].count) * 100) + "%" : "0%",
+          uniqueSources: data.sourceData.length,
+          activeAgents: data.agentData.length,
+          avgAgentSuccessRate: data.agentData.length > 0 ? Math.round(data.agentData.reduce((s, a) => s + a.rate, 0) / data.agentData.length) + "%" : "0%",
+        },
+        weeklyComparison: data.weeklyComparison,
+        topSources: data.sourceData.sort((a, b) => b.value - a.value).slice(0, 5),
+        agentPerformance: data.agentData,
+        scoreDistribution: data.scoreData,
+        dailyLeads14Days: data.dailyLeads,
+      };
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = "mianx-analytics-" + new Date().toISOString().slice(0, 10) + ".json"; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { console.error("Export analytics error:", e); }
+    setExportOpen(false);
+  };
+;
 
   if (loading) return <div className="flex items-center justify-center h-[80vh]"><div className="flex flex-col items-center gap-4"><div className="w-10 h-10 border-2 border-[#FF4D00]/30 border-t-[#FF4D00] rounded-full animate-spin"/><p className="text-sm text-[#555566] font-mono">Loading dashboard...</p></div></div>;
 
@@ -270,17 +494,23 @@ function DashboardView() {
         {dashTabs.map(t => <button key={t.key} onClick={() => setActiveTab(t.key)} className={tabClass(t.key)}><t.icon className="w-4 h-4"/>{t.label}</button>)}
       </div>
 
-      {/* Stats row */}
-      <motion.div variants={stagger} initial="hidden" animate="visible" className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* Stats row — 6 KPI cards */}
+      <motion.div variants={stagger} initial="hidden" animate="visible" className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-8">
         {stats && [
-          { label: "Total Leads", value: stats.totalLeads, icon: Users, color: "#FF4D00", sub: "+" + stats.recentLeads + " this week" },
-          { label: "Hot Leads", value: stats.hotLeads, icon: TrendingUp, color: "#FF4D00", sub: stats.conversions + " conversions" },
-          { label: "Pipeline Value", value: "$" + (stats.totalValue / 1000).toFixed(1) + "K", icon: DollarSign, color: "#00FF88", sub: "all industries" },
-          { label: "Active Agents", value: stats.activeAgents, icon: Activity, color: "#00D4FF", sub: "6 AI agents" },
+          { label: "Total Leads", value: stats.totalLeads, icon: Users, color: "#FF4D00", sub: "+" + stats.recentLeads + " this week", change: stats.weeklyGrowth },
+          { label: "Hot Leads", value: stats.hotLeads, icon: TrendingUp, color: "#FF4D00", sub: stats.conversions + " converted" },
+          { label: "Pipeline Value", value: "$" + (stats.totalValue >= 1000 ? (stats.totalValue / 1000).toFixed(1) + "K" : stats.totalValue), icon: DollarSign, color: "#00FF88", sub: "avg $" + stats.avgValue + "/lead" },
+          { label: "Conversion", value: stats.conversionRate + "%", icon: Target, color: "#00D4FF", sub: stats.convertedLeads + " closed" },
+          { label: "Avg Score", value: stats.avgScore, icon: Zap, color: "#FFD93D", sub: "out of 100" },
+          { label: "Active Agents", value: stats.activeAgents, icon: Activity, color: "#A78BFA", sub: stats.uniqueSources + " sources" },
         ].map((s, i) => (
-          <motion.div key={s.label} variants={dashFade} custom={i} className="dash-card rounded-xl p-5 relative overflow-hidden">
-            <div className="flex items-start justify-between mb-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: s.color + "15" }}><s.icon className="w-4 h-4" style={{ color: s.color }}/></div><Radio className="w-3 h-3 text-[#00FF88] rec-dot"/></div>
-            <p className="text-2xl font-bold mb-0.5">{s.value}</p><p className="text-xs text-[#555566]">{s.label}</p><p className="text-[10px] text-[#888899] mt-1">{s.sub}</p>
+          <motion.div key={s.label} variants={dashFade} custom={i} className="dash-card rounded-xl p-4 relative overflow-hidden">
+            <div className="flex items-start justify-between mb-2">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: s.color + "15" }}><s.icon className="w-4 h-4" style={{ color: s.color }}/></div>
+              {s.change !== undefined && <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${s.change >= 0 ? "bg-[#00FF88]/10 text-[#00FF88]" : "bg-[#FF4444]/10 text-[#FF4444]"}`}>{s.change >= 0 ? "+" : ""}{s.change}%</span>}
+            </div>
+            <p className="text-xl font-bold mb-0.5">{s.value}</p><p className="text-[10px] text-[#555566]">{s.label}</p><p className="text-[9px] text-[#888899] mt-0.5">{s.sub}</p>
+            <div className="absolute bottom-0 left-0 right-0 h-[2px] opacity-50" style={{ background: `linear-gradient(90deg, transparent, ${s.color}, transparent)` }}/>
           </motion.div>
         ))}
       </motion.div>
@@ -292,25 +522,50 @@ function DashboardView() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border-b border-[#1E1E2A] gap-3">
               <div><h2 className="text-base font-bold flex items-center gap-2"><Users className="w-4 h-4 text-[#FF4D00]"/>Leads</h2><p className="text-xs text-[#555566] mt-0.5">{filtered.length} lead{filtered.length !== 1 ? "s" : ""}</p></div>
               <div className="flex items-center gap-2 flex-wrap">
+                {selectedLeads.size > 0 && (
+                  <div className="flex items-center gap-1.5 mr-2">
+                    <span className="text-[10px] text-[#FF4D00] font-semibold">{selectedLeads.size} selected</span>
+                    {[{ key: "hot", label: "Set Hot" }, { key: "warm", label: "Set Warm" }, { key: "cold", label: "Set Cold" }, { key: "lost", label: "Set Lost" }].map(b => (
+                      <button key={b.key} onClick={() => handleBulkStatus(b.key)} className="px-2 py-1 text-[10px] font-semibold rounded-md bg-[#FF4D00]/10 text-[#FF4D00] border border-[#FF4D00]/30 hover:bg-[#FF4D00]/20 transition-colors">{b.label}</button>
+                    ))}
+                    <button onClick={() => setSelectedLeads(new Set())} className="px-2 py-1 text-[10px] font-semibold rounded-md text-[#555566] hover:text-[#E8E8EC] transition-colors">Clear</button>
+                  </div>
+                )}
                 <div className="relative"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#555566]"/><input type="text" placeholder="Search leads..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-7 pr-3 py-1.5 rounded-lg bg-[#08080C] border border-[#1E1E2A] text-[11px] text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50 w-36 transition-all focus:w-48"/></div>
                 <Filter className="w-3.5 h-3.5 text-[#555566]"/>
-                {[{ key: "all", label: "All" }, { key: "hot", label: "Hot" }, { key: "warm", label: "Warm" }, { key: "new", label: "New" }, { key: "cold", label: "Cold" }].map(f => (
+                {[{ key: "all", label: "All" }, { key: "hot", label: "Hot" }, { key: "warm", label: "Warm" }, { key: "new", label: "New" }, { key: "cold", label: "Cold" }, { key: "converted", label: "Conv" }].map(f => (
                   <button key={f.key} onClick={() => setStatusFilter(f.key)} className={filterClass(f.key)}>{f.label}</button>
                 ))}
-                <button onClick={exportCSV} className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-md text-[#555566] border border-[#1E1E2A] hover:border-[#00FF88]/30 hover:text-[#00FF88] transition-colors" title="Export CSV"><FileDown className="w-3 h-3"/>Export</button>
+                <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} className="text-[10px] font-semibold px-2 py-1 rounded-md border border-[#1E1E2A] bg-[#08080C] text-[#888899] focus:outline-none focus:border-[#FF4D00]/50 cursor-pointer">
+                  <option value="all">All Sources</option>
+                  {uniqueSources.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
+                </select>
+                <div className="relative">
+                  <button onClick={() => setExportOpen(!exportOpen)} className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-md text-[#555566] border border-[#1E1E2A] hover:border-[#00FF88]/30 hover:text-[#00FF88] transition-colors" title="Export"><FileDown className="w-3 h-3"/>Export</button>
+                  <AnimatePresence>{exportOpen && (
+                    <motion.div initial={{opacity:0,y:-6,scale:0.95}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:-6,scale:0.95}} className="absolute right-0 top-9 w-48 rounded-xl bg-[#111118] border border-[#1E1E2A] shadow-2xl z-50 overflow-hidden">
+                      <div className="p-2">
+                        <button onClick={() => exportLeads("csv")} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-[#E8E8EC] hover:bg-[#1A1A24] transition-colors"><FileDown className="w-3.5 h-3.5 text-[#00FF88]"/>Export as CSV</button>
+                        <button onClick={() => exportLeads("json")} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-[#E8E8EC] hover:bg-[#1A1A24] transition-colors"><FileDown className="w-3.5 h-3.5 text-[#00D4FF]"/>Export as JSON</button>
+                        <button onClick={exportAnalytics} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-[#E8E8EC] hover:bg-[#1A1A24] transition-colors"><BarChart3 className="w-3.5 h-3.5 text-[#FFD93D]"/>Export Analytics Report</button>
+                      </div>
+                    </motion.div>
+                  )}</AnimatePresence>
+                </div>
               </div>
             </div>
             <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
               <table className="w-full text-left">
                 <thead className="sticky top-0 bg-[#111118] z-10"><tr className="text-[10px] text-[#555566] uppercase tracking-wider border-b border-[#1E1E2A]">
-                  <th className="px-5 py-3 font-medium">Lead</th><th className="px-4 py-3 font-medium">Source</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Score</th><th className="px-4 py-3 font-medium">Value</th><th className="px-4 py-3 font-medium">Agent</th><th className="px-4 py-3 font-medium">Time</th><th className="px-5 py-3 font-medium text-right">Actions</th>
+                  <th className="px-3 py-3 font-medium w-8"><input type="checkbox" checked={selectedLeads.size > 0 && selectedLeads.size === filtered.length} onChange={e => { if (e.target.checked) setSelectedLeads(new Set(filtered.map(l => l.id))); else setSelectedLeads(new Set()); }} className="rounded border-[#2A2A3A] accent-[#FF4D00]"/></th><th className="px-5 py-3 font-medium">Lead</th><th className="px-4 py-3 font-medium">Source</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Score</th><th className="px-4 py-3 font-medium">Value</th><th className="px-4 py-3 font-medium">Agent</th><th className="px-4 py-3 font-medium">Time</th><th className="px-5 py-3 font-medium text-right">Actions</th>
                 </tr></thead>
                 <tbody className="divide-y divide-[#1E1E2A]/50">
                   <AnimatePresence>{filtered.map((lead, i) => (
-                    <motion.tr key={lead.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ delay: i * 0.02, duration: 0.25 }} className="hover:bg-[#15151E] transition-colors group cursor-pointer" onClick={() => setSelectedLead(lead)}>
+                    <motion.tr key={lead.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ delay: i * 0.02, duration: 0.25 }} className={"hover:bg-[#15151E] transition-colors group cursor-pointer " + (selectedLeads.has(lead.id) ? "bg-[#FF4D00]/[0.03]" : "")} onClick={() => setSelectedLead(lead)}>
+                      <td className="px-3 py-3" onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedLeads.has(lead.id)} onChange={() => toggleLeadSelect(lead.id)} className="rounded border-[#2A2A3A] accent-[#FF4D00]"/></td>
                       <td className="px-5 py-3"><p className="text-sm font-semibold truncate max-w-[150px]">{lead.name}</p><p className="text-[11px] text-[#555566] truncate max-w-[150px]">{lead.email}</p></td>
                       <td className="px-4 py-3"><span className="text-xs text-[#888899] capitalize font-mono">{lead.source}</span></td>
-                      <td className="px-4 py-3"><select value={lead.status} onChange={e => handleStatus(lead.id, e.target.value)} className="text-[10px] font-semibold px-2 py-1 rounded-md border-none bg-transparent cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#FF4D00]/50" onClick={e => e.stopPropagation()}><option value="new">New</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option></select></td>
+                      <td className="px-4 py-3"><select value={lead.status} onChange={e => handleStatus(lead.id, e.target.value)} className="text-[10px] font-semibold px-2 py-1 rounded-md border-none bg-transparent cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#FF4D00]/50" onClick={e => e.stopPropagation()}><option value="new">New</option><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option><option value="converted">Converted</option><option value="lost">Lost</option></select></td>
                       <td className="px-4 py-3"><ScoreBar score={lead.score}/></td>
                       <td className="px-4 py-3"><span className="text-xs font-mono text-[#E8E8EC]">{lead.value}</span></td>
                       <td className="px-4 py-3"><span className="text-[11px] text-[#00D4FF] font-medium">{lead.assignedTo || "—"}</span></td>
@@ -337,7 +592,7 @@ function DashboardView() {
             </div>
             <div className="dash-card rounded-xl overflow-hidden">
               <div className="p-5 border-b border-[#1E1E2A] flex items-center gap-2"><Sparkles className="w-4 h-4 text-[#FF4D00]"/><h2 className="text-base font-bold">Quick Lead Capture</h2></div>
-              <div className="p-5"><QuickLeadForm onSubmitted={fetchData}/></div>
+              <div className="p-5"><QuickLeadForm /></div>
             </div>
           </div>
         </div>
@@ -353,19 +608,25 @@ function DashboardView() {
 }
 
 function QuickLeadForm({ onSubmitted }: { onSubmitted?: () => void }) {
-  const [name, setName] = useState(""); const [email, setEmail] = useState("");
+  const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false); const [done, setDone] = useState(false);
+  const [fieldError, setFieldError] = useState("");
   const submit = async () => {
-    if (!name || !email) return; setLoading(true);
-    await fetch("/api/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, source: "dashboard_quick" }) });
-    setLoading(false); setDone(true); setName(""); setEmail(""); onSubmitted?.();
+    if (!name.trim() || name.trim().length < 2) { setFieldError("Name required (min 2 chars)"); return; }
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setFieldError("Valid email required"); return; }
+    if (phone && !/^[-+()\d\s]{7,20}$/.test(phone)) { setFieldError("Invalid phone"); return; }
+    setFieldError(""); setLoading(true);
+    await fetch("/api/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim(), email: email.trim(), phone: phone.trim() || undefined, source: "dashboard_quick" }) });
+    setLoading(false); setDone(true); setName(""); setEmail(""); setPhone(""); onSubmitted?.();
     setTimeout(() => setDone(false), 3000);
   };
   return (
     <div className="space-y-3">
       {done && <p className="text-xs text-[#00FF88] flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5"/>Lead added & processing!</p>}
+      {fieldError && <p className="text-xs text-[#FF4444] flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5"/>{fieldError}</p>}
       <input value={name} onChange={e => setName(e.target.value)} placeholder="Full Name *" className="w-full px-3 py-2 rounded-lg bg-[#08080C] border border-[#1E1E2A] text-xs text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
       <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email *" className="w-full px-3 py-2 rounded-lg bg-[#08080C] border border-[#1E1E2A] text-xs text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
+      <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone (optional)" className="w-full px-3 py-2 rounded-lg bg-[#08080C] border border-[#1E1E2A] text-xs text-[#E8E8EC] placeholder:text-[#444] focus:outline-none focus:border-[#FF4D00]/50"/>
       <button onClick={submit} disabled={loading || !name || !email} className="w-full py-2 rounded-lg bg-[#FF4D00] text-black text-xs font-bold hover:bg-[#FF6A2A] transition-colors disabled:opacity-40 flex items-center justify-center gap-1.5">
         {loading ? <RefreshCw className="w-3 h-3 animate-spin"/> : <Send className="w-3 h-3"/>}Add Lead
       </button>
@@ -439,8 +700,24 @@ function WebsiteView() {
       </div></section>
       <TestimonialsSection />
       <PricingSection />
-      <section className="py-20 md:py-24 px-6 border-t border-[#1E1E2A]/40"><div className="mx-auto max-w-3xl text-center"><motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-80px" }} custom={0}><h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-5">Ready to Transform <span className="bg-gradient-to-r from-[#FF4D00] to-[#00D4FF] bg-clip-text text-transparent">Your Business?</span></h2><p className="text-[#888899] max-w-lg mx-auto mb-10">Join hundreds of enterprises already running on MianX.ai.</p><a href="#marketplace" className="pulse-btn inline-flex items-center gap-2 px-10 py-4 text-base font-bold rounded-xl bg-[#FF4D00] text-black hover:bg-[#FF6A2A] transition-colors">Start Free Trial <ArrowRight className="w-5 h-5"/></a></motion.div></div></section>
+      <CTASection />
     </>
+  );
+}
+
+/* ══════════════════════════ LOGIN GATE ══════════════════════════ */
+function LoginGate() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FF4D00] to-[#FF8C42] flex items-center justify-center mb-6 shadow-lg shadow-[#FF4D00]/20">
+        <Cpu className="w-8 h-8 text-black" />
+      </div>
+      <h2 className="text-2xl font-bold mb-2">Authentication Required</h2>
+      <p className="text-sm text-[#888899] mb-8 max-w-sm">Sign in to access the Super Admin Dashboard with real-time AI agent monitoring.</p>
+      <a href="/login" className="pulse-btn px-8 py-3.5 text-sm font-bold rounded-xl bg-[#FF4D00] text-black hover:bg-[#FF6A2A] transition-colors inline-flex items-center gap-2">
+        Sign In to Dashboard <ArrowRight className="w-4 h-4" />
+      </a>
+    </div>
   );
 }
 
@@ -448,29 +725,64 @@ function WebsiteView() {
 export default function HomePage() {
   const [view, setView] = useState<"site" | "dashboard">("site");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { user, role, loading, logout } = useAuth();
   const viewLabel = view === "dashboard" ? "Back to Site" : "Dashboard";
   const viewIcon = view === "dashboard" ? <Cpu className="w-3.5 h-3.5"/> : <LayoutDashboard className="w-3.5 h-3.5"/>;
+
+  const handleDashToggle = () => {
+    if (view !== "dashboard") {
+      // Switching to dashboard — require auth
+      if (!user) {
+        window.location.href = '/login';
+        return;
+      }
+    }
+    setView(view === "dashboard" ? "site" : "dashboard");
+  };
   return (
     <div className="min-h-screen flex flex-col bg-[#08080C] text-[#E8E8EC] overflow-x-hidden">
       <div className="grain"/>
       <header className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-[#08080C]/70 border-b border-[#1E1E2A]/60">
         <nav className="mx-auto max-w-7xl flex items-center justify-between px-6 h-16">
           <button onClick={() => setView("site")} className="flex items-center gap-2.5 group"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#FF4D00] to-[#FF8C42] flex items-center justify-center shadow-lg shadow-[#FF4D00]/20 group-hover:shadow-[#FF4D00]/40 transition-shadow"><Cpu className="w-4 h-4 text-black"/></div><span className="text-lg font-bold tracking-tight">Mian<span className="text-[#FF4D00]">X</span>.ai</span></button>
-          <div className="hidden md:flex items-center gap-5">
+          <div className="hidden md:flex items-center gap-3">
             {view === "site" && <><a href="#industries" className="nav-link">Industries</a><a href="#marketplace" className="nav-link">Marketplace</a><a href="#capabilities" className="nav-link">Capabilities</a></>}
-            <button onClick={() => setView(view === "dashboard" ? "site" : "dashboard")} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-colors bg-[#FF4D00] text-black hover:bg-[#FF6A2A]">{viewIcon}{viewLabel}</button>
+            {view === "dashboard" && user && (
+              <div className="relative">
+                <button onClick={() => setUserMenuOpen(!userMenuOpen)} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#1E1E2A] bg-[#111118] text-[#E8E8EC] hover:border-[#FF4D00]/40 transition-colors">
+                  <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[#FF4D00] to-[#FF8C42] flex items-center justify-center"><User className="w-3.5 h-3.5 text-black"/></div>
+                  <span className="text-xs font-medium">{user.displayName || user.email}</span>
+                  {role && <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FF4D00]/10 text-[#FF4D00] font-semibold">{role}</span>}
+                </button>
+                <AnimatePresence>{userMenuOpen && (
+                  <motion.div initial={{opacity:0,y:-8,scale:0.95}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:-8,scale:0.95}} className="absolute right-0 top-12 w-56 rounded-xl bg-[#111118] border border-[#1E1E2A] shadow-2xl z-50 overflow-hidden">
+                    <div className="p-4 border-b border-[#1E1E2A]">
+                      <p className="text-sm font-bold">{user.displayName || user.email}</p>
+                      <p className="text-[11px] text-[#555566] mt-0.5">{user.email}</p>
+                    </div>
+                    <div className="p-2">
+                      <button onClick={() => { logout(); setView('site'); setUserMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-[#FF4444] hover:bg-[#FF4444]/10 transition-colors">
+                        <LogOut className="w-3.5 h-3.5"/>Sign Out
+                      </button>
+                    </div>
+                  </motion.div>
+                )}</AnimatePresence>
+              </div>
+            )}
+            <button onClick={handleDashToggle} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-colors bg-[#FF4D00] text-black hover:bg-[#FF6A2A]">{viewIcon}{viewLabel}</button>
           </div>
           <button className="md:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">{mobileOpen ? <X className="w-5 h-5"/> : <Menu className="w-5 h-5"/>}</button>
         </nav>
         {mobileOpen && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="md:hidden border-t border-[#1E1E2A]/60 bg-[#08080C]/95 backdrop-blur-xl"><div className="flex flex-col gap-4 px-6 py-5">
           {view === "site" && <><a href="#industries" className="nav-link" onClick={() => setMobileOpen(false)}>Industries</a><a href="#marketplace" className="nav-link" onClick={() => setMobileOpen(false)}>Marketplace</a><a href="#capabilities" className="nav-link" onClick={() => setMobileOpen(false)}>Capabilities</a></>}
-          <button onClick={() => { setView(view === "dashboard" ? "site" : "dashboard"); setMobileOpen(false); }} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg bg-[#FF4D00] text-black justify-center">{viewIcon}{viewLabel}</button>
+          <button onClick={() => { handleDashToggle(); setMobileOpen(false); }} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg bg-[#FF4D00] text-black justify-center">{viewIcon}{viewLabel}</button>
         </div></motion.div>}
       </header>
       <main className={"flex-1 " + (view !== "site" ? "pt-20" : "")}>
         <AnimatePresence mode="wait">
           {view === "site" && <motion.div key="site" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}><WebsiteView/></motion.div>}
-          {view === "dashboard" && <motion.div key="dash" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}><DashboardView/></motion.div>}
+          {view === "dashboard" && <motion.div key="dash" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>{user ? <DashboardView/> : <LoginGate/>}</motion.div>}
         </AnimatePresence>
       </main>
       <footer className="border-t border-[#1E1E2A]/60 py-8 px-6"><div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4">
