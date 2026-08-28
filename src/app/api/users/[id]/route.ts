@@ -33,7 +33,21 @@ export async function GET(
     const targetMembership = await db.member.findUnique({
       where: { organizationId_userId: { organizationId: currentUserMembership.organizationId, userId: id } },
       include: {
-        user: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            displayName: true,
+            phone: true,
+            avatarUrl: true,
+            status: true,
+            lastLoginAt: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
         role: {
           select: { id: true, name: true, description: true, isSystem: true },
         },
@@ -44,10 +58,8 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'User not found in your organization' }, { status: 404 });
     }
 
-    const { passwordHash, ...userWithoutSensitive } = targetMembership.user as any;
-
     const data = {
-      ...userWithoutSensitive,
+      ...targetMembership.user,
       roleName: targetMembership.role.name,
       membershipId: targetMembership.id,
       membershipStatus: targetMembership.status,

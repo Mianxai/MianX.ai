@@ -256,6 +256,8 @@ END $$;
 DO $$ BEGIN
     ALTER TABLE "DashboardStat" ADD COLUMN IF NOT EXISTS "id" TEXT;
     ALTER TABLE "DashboardStat" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+    -- Data migration: populate NULL ids for existing rows (Prisma requires NOT NULL)
+    UPDATE "DashboardStat" SET id = gen_random_uuid()::text WHERE id IS NULL;
 EXCEPTION WHEN OTHERS THEN
     RAISE NOTICE 'DashboardStat alter error: %', SQLERRM;
 END $$;
