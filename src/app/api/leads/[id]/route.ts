@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { broadcast } from '@/lib/realtime';
 import { withAuth, ok, err } from '@/lib/api-guard';
 import { z } from 'zod/v4';
+import { LEAD_STATUSES, validateStatusTransition } from '@/lib/domain/lead-transitions';
 
 const patchSchema = z.object({
-  status: z.enum(['new', 'hot', 'warm', 'cold', 'converted', 'lost']).optional(),
+  status: z.enum(LEAD_STATUSES).optional(),
   score: z.int().min(0).max(100).optional(),
   assignedTo: z.string().max(100).optional(),
 });
@@ -16,37 +17,13 @@ const putSchema = z.object({
   phone: z.string().max(30).optional(),
   company: z.string().max(200).optional(),
   source: z.string().max(50),
-  status: z.enum(['new', 'hot', 'warm', 'cold', 'converted', 'lost']),
+  status: z.enum(LEAD_STATUSES),
   score: z.int().min(0).max(100),
   value: z.string().max(50),
   message: z.string().max(2000).optional(),
   assignedTo: z.string().max(100).optional(),
   notes: z.string().max(5000).optional(),
 });
-
-// ─── Status Transition Rules ───
-// Defines valid from → to transitions.
-// 'lost' can only transition to 'new' (re-opened).
-// 'converted' is terminal — no transitions out.
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  new:      ['new', 'hot', 'warm', 'cold', 'converted', 'lost'],
-  hot:      ['hot', 'warm', 'cold', 'converted', 'lost'],
-  warm:     ['warm', 'hot', 'cold', 'converted', 'lost'],
-  cold:     ['cold', 'warm', 'hot', 'converted', 'lost'],
-  converted: [],         // terminal state
-  lost:     ['new'],      // only re-open
-};
-
-function validateStatusTransition(from: string, to: string): string | null {
-  if (from === to) return null; // same status is always fine
-  const allowed = VALID_TRANSITIONS[from];
-  if (!allowed || !allowed.includes(to)) {
-    if (from === 'converted') return 'Cannot change status from "converted" — it is a terminal state.';
-    if (from === 'lost' && to !== 'new') return 'Cannot change status from "lost" to "' + to + '" — only "new" is allowed to re-open a lost lead.';
-    return 'Invalid status transition from "' + from + '" to "' + to + '".';
-  }
-  return null;
-}
 
 // GET /api/leads/[id]
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
